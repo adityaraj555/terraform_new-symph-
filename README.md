@@ -1,2 +1,2 @@
 # symphony-service
-A Serverless application which orchestrates Measurement Automation
+A Aws step function based application which orchestrates new generation workflow.
