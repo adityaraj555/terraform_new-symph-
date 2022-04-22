@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
@@ -49,8 +50,12 @@ type DocDBClient struct {
 	DBClient *mongo.Client
 }
 
-func NewDBClientService(caFilePath, connectionURI string) *DocDBClient {
-	tlsConfig, err := getCustomTLSConfig(caFilePath)
+func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
+	Username = secrets["username"].(string)
+	Password = secrets["password"].(string)
+	ClusterEndpoint = fmt.Sprintf("%v:%v", secrets["host"], secrets["port"])
+	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, ReadPreference)
+	tlsConfig, err := getCustomTLSConfig(CaFilePath)
 	if err != nil {
 		log.Fatalf("Failed getting TLS configuration: %v", err)
 	}

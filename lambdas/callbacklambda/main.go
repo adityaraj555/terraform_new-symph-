@@ -32,11 +32,7 @@ var SecretARN string
 
 func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
 	secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-	documentDB_client.Username = secrets["username"].(string)
-	documentDB_client.Password = secrets["password"].(string)
-	documentDB_client.ClusterEndpoint = fmt.Sprintf("%v:%v", secrets["host"], secrets["port"])
-	connectionURI := fmt.Sprintf(documentDB_client.ConnectionStringTemplate, documentDB_client.Username, documentDB_client.Password, documentDB_client.ClusterEndpoint, documentDB_client.ReadPreference)
-	NewDBClient := documentDB_client.NewDBClientService(documentDB_client.CaFilePath, connectionURI)
+	NewDBClient := documentDB_client.NewDBClientService(secrets)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	documentDB_client.DBClient = NewDBClient.DBClient
