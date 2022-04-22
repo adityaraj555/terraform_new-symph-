@@ -73,7 +73,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		return nil, err
 	}
 
-	client := legacy_client.New(endpoint, secretMap[legacyAuthKey], httpClient)
+	client := legacy_client.New(endpoint, secretMap[legacyAuthKey].(string), httpClient)
 	err = client.UpdateReportStatus(ctx, &eventData.Payload)
 	if err != nil {
 		return &LambdaOutput{

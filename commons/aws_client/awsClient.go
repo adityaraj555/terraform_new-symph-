@@ -10,13 +10,13 @@ import (
 )
 
 type IAWSClient interface {
-	GetSecret(ctx context.Context, secretName, region string) (map[string]string, error)
+	GetSecret(ctx context.Context, secretName, region string) (map[string]interface{}, error)
 }
 
 type AWSClient struct{}
 
-func (ac *AWSClient) GetSecret(ctx context.Context, secretName, region string) (map[string]string, error) {
-	resp := make(map[string]string)
+func (ac *AWSClient) GetSecret(ctx context.Context, secretName, region string) (map[string]interface{}, error) {
+	resp := make(map[string]interface{})
 	svc := secretsmanager.New(
 		session.Must(session.NewSession()),
 		aws.NewConfig().WithRegion(region),
