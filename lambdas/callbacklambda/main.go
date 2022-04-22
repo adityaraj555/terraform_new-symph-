@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 	"strconv"
 	"time"
@@ -43,7 +44,12 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
-	body := CallbackRequest["body"].(string)
+	var body string
+	if requestbody, ok := CallbackRequest["body"]; ok {
+		body = requestbody.(string)
+	} else {
+		return map[string]interface{}{"status": "failed"}, errors.New("body is empty in request body")
+	}
 	var requestBody = RequestBody{}
 	err = json.Unmarshal([]byte(body), &requestBody)
 	if err != nil {
