@@ -19,7 +19,7 @@ const (
 	CaFilePath               = "rds-combined-ca-bundle.pem"
 	ConnectTimeout           = 5
 	QueryTimeout             = 30
-	ConnectionStringTemplate = "mongodb://%s:%s@%s/sample-database?replicaSet=rs0&readpreference=%s"
+	ConnectionStringTemplate = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
 	Database                 = "test"
 	Collection               = "callBackData"
 )
@@ -54,7 +54,7 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	Username = secrets["username"].(string)
 	Password = secrets["password"].(string)
 	ClusterEndpoint = fmt.Sprintf("%v:%v", secrets["host"], secrets["port"])
-	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, ReadPreference)
+	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, Database, ReadPreference)
 	tlsConfig, err := getCustomTLSConfig(CaFilePath)
 	if err != nil {
 		log.Fatalf("Failed getting TLS configuration: %v", err)

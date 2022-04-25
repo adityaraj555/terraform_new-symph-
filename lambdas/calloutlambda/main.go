@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"time"
 
 	b64 "encoding/base64"
 	"encoding/json"
@@ -18,6 +19,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
+	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 
 	"github.com/google/uuid"
 )
@@ -70,6 +72,10 @@ type LegacyLambdaOutput struct {
 
 var awsClient aws_client.IAWSClient
 var httpClient httpservice.IHTTPClientV2
+var newDBClient *documentDB_client.DocDBClient
+
+const DBSecretARN = "DBSecretARN"
+const legacyLambdaFunction = "envLegacyUpdatefunction"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type))
@@ -297,7 +303,6 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 }
 
 func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{}) error {
-	legacyLambdaFunction := os.Getenv("envLegacyUpdatefunction")
 
 	result, err := awsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
 
@@ -372,6 +377,20 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 			CallbackURL: os.Getenv("envCallbackLambdaFunction"),
 		}
 		data.Payload["meta"] = metaObj
+
+		callbackData := documentDB_client.MetaData{
+			ID: callbackId.String(),
+		}
+		callbackData.Data.OrderID = data.OrderID
+		callbackData.Data.TaskName = data.TaskName
+		callbackData.Data.WorkflowID = data.WorkflowID
+		callbackData.Data.TaskToken = data.TaskToken
+		err := newDBClient.InsertMetaData(callbackData)
+		if err != nil {
+			fmt.Println("Unable to insert Callback Data in DocumentDB")
+			return "", err
+		}
+
 	}
 
 	json_data, _ := json.Marshal(data.Payload)
@@ -430,5 +449,19 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 func main() {
 	httpClient = &httpservice.HTTPClientV2{}
 	awsClient = &aws_client.AWSClient{}
+	documentDbSecretsARN := os.Getenv("DBSecretARN")
+
+	secrets, err := awsClient.GetSecret(context.Background(), documentDbSecretsARN, "us-east-2")
+	if err != nil {
+		fmt.Println("Unable to fetch DocumentDb in secret")
+	}
+	newDBClient := documentDB_client.NewDBClientService(secrets)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	documentDB_client.DBClient = newDBClient.DBClient
+	err = documentDB_client.DBClient.Connect(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 	lambda.Start(HandleRequest)
 }
