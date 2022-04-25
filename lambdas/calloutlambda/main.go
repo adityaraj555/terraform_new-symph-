@@ -147,7 +147,7 @@ func generateBasicToken(cllientId, clientSecret string) string {
 	basicTokenEnc := b64.StdEncoding.EncodeToString([]byte(tempString))
 	return basicTokenEnc
 }
-func makeGetCallNew(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
+func makeGetCall(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
 	u, err := url.Parse(URL)
 	if err != nil {
 		log.Fatal(err)
@@ -175,38 +175,6 @@ func makeGetCallNew(ctx context.Context, URL string, headers map[string]string, 
 		log.Fatal(err)
 	}
 	return responseBody, resp.Status, nil
-}
-
-func makeGetCall(ctx context.Context, url string, headers map[string]string, payload map[string]interface{}) ([]byte, string, error) {
-	client := &http.Client{}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// appending to existing query args
-	q := req.URL.Query()
-	for key, element := range payload {
-		q.Add(key, fmt.Sprint(element))
-	}
-
-	// assign encoded query string to http request
-	req.URL.RawQuery = q.Encode()
-
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Errored when sending request to the server")
-		return nil, "", err
-	}
-
-	defer resp.Body.Close()
-	responseBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return responseBody, resp.Status, nil
-
 }
 
 func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, headers map[string]string) (string, error) {
@@ -399,7 +367,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 	requestMethod := strings.ToUpper(data.RequestMethod)
 	switch requestMethod {
 	case "GET":
-		responseBody, responseStatus, responseError = makeGetCallNew(ctx, data.URL, headers, json_data, data.QueryParam)
+		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
 	case "POST", "PUT", "DELETE":
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
