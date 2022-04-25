@@ -237,7 +237,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 	return fmt.Sprint(respJson["access_token"]), nil
 }
 
-func makePutPostDeleteCallNew(ctx context.Context, httpMethod, URL string, headers map[string]string, payload []byte) ([]byte, string, error) {
+func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers map[string]string, payload []byte) ([]byte, string, error) {
 
 	var resp *http.Response
 	var err error
@@ -263,38 +263,6 @@ func makePutPostDeleteCallNew(ctx context.Context, httpMethod, URL string, heade
 		log.Fatal(err)
 	}
 	return responseBody, resp.Status, nil
-}
-func makePutPostDeleteCall(ctx context.Context, httpMethod, url string, headers map[string]string, payload []byte) ([]byte, string, error) {
-
-	client := &http.Client{}
-	req, err := http.NewRequest(httpMethod, url, bytes.NewBuffer(payload))
-	if err != nil {
-		return nil, "", err
-	}
-
-	for key, element := range headers {
-		req.Header.Set(key, element)
-	}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		log.Fatal(err)
-		return nil, "", err
-	}
-
-	defer resp.Body.Close()
-
-	responseBody, err := ioutil.ReadAll(resp.Body)
-	fmt.Println(responseBody)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-	return responseBody, resp.Status, nil
-	// var res map[string]interface{}
-
-	// json.NewDecoder(resp.Body).Decode(&res)
-	// return res, nil
 }
 
 func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, string, error) {
@@ -434,8 +402,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 		responseBody, responseStatus, responseError = makeGetCallNew(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
 	case "POST", "PUT", "DELETE":
-		responseBody, responseStatus, responseError = makePutPostDeleteCallNew(ctx, requestMethod, data.URL, headers, json_data)
-		// responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
+		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
 		fmt.Println(string(responseBody))
 	}
 	if data.StoreDataToS3 != "" {
