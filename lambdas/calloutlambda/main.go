@@ -42,23 +42,23 @@ type AuthData struct {
 }
 
 type MyEvent struct {
-	Payload       map[string]interface{} `json:"requestData"`
-	URL           string                 `json:"url"`
-	RequestMethod string                 `json:"requestMethod"`
-	Headers       map[string]string      `json:"headers"`
-	IsWaitTask    bool                   `json:"isWaitTask"`
-	Timeout       int                    `json:"timeout"`
-	StoreDataToS3 string                 `json:"storeDataToS3"`
-	TaskName      string                 `json:"taskName"`
-	CallType      string                 `json:"callType"`
-	OrderID       string                 `json:"orderId"`
-	ReportID      string                 `json:"reportId"`
-	WorkflowID    string                 `json:"workflowId"`
-	TaskToken     string                 `json:"taskToken"`
-	Hipster       bool                   `json:"hipster,omitempty"`
-	LegacyUpdate  bool                   `json:"legacy_update,omitempty"`
-	QueryParam    map[string]string      `json:"queryParam,omitempty"`
-	Auth          AuthData               `json:"auth"`
+	Payload                map[string]interface{} `json:"requestData"`
+	URL                    string                 `json:"url"`
+	RequestMethod          string                 `json:"requestMethod"`
+	Headers                map[string]string      `json:"headers"`
+	IsWaitTask             bool                   `json:"isWaitTask"`
+	Timeout                int                    `json:"timeout"`
+	StoreDataToS3          string                 `json:"storeDataToS3"`
+	TaskName               string                 `json:"taskName"`
+	CallType               string                 `json:"callType"`
+	OrderID                string                 `json:"orderId"`
+	ReportID               string                 `json:"reportId"`
+	WorkflowID             string                 `json:"workflowId"`
+	TaskToken              string                 `json:"taskToken"`
+	HipsterLegacySubStatus string                 `json:"hipsterLegacySubStatus,omitempty"`
+	HipsterJobID           string                 `json:"hipsterJobId,omitempty"`
+	QueryParam             map[string]string      `json:"queryParam,omitempty"`
+	Auth                   AuthData               `json:"auth"`
 }
 
 // Currently not using because do not know how to handle runtime error lmbda
@@ -174,6 +174,11 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if resp.StatusCode != 200 {
+		return responseBody, resp.Status, errors.New("invalid http status code received")
+	}
+
 	return responseBody, resp.Status, nil
 }
 
@@ -202,6 +207,11 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 		log.Fatal(err)
 		return "", err
 	}
+
+	if resp.StatusCode != 200 {
+		return "", errors.New("invalid http status code received")
+	}
+
 	return fmt.Sprint(respJson["access_token"]), nil
 }
 
@@ -229,6 +239,9 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 
 	if err != nil {
 		log.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
 	return responseBody, resp.Status, nil
 }
@@ -318,8 +331,16 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	return nil
 }
 
-func handelHipster() {
+func handleHipster(ctx context.Context, reportId, hipsterLegacySubStatus, jobID string) error {
 
+	legacyRequestPayload := map[string]interface{}{
+		"ReportId":     reportId,
+		"Status":       "InProcess",
+		"SubStatus":    hipsterLegacySubStatus,
+		"HipsterJobId": jobID,
+	}
+
+	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
 }
 
 func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
@@ -369,16 +390,37 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 	case "GET":
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
+		if responseError != nil {
+			return responseStatus, responseError
+		}
 	case "POST", "PUT", "DELETE":
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
 		fmt.Println(string(responseBody))
+		if responseError != nil {
+			return responseStatus, responseError
+		}
 	}
 	if data.StoreDataToS3 != "" {
 		storeDataToS3(ctx, data.StoreDataToS3, responseBody)
 	}
 
 	if callType == "hipster" {
-		handelHipster()
+		jobID := data.HipsterJobID
+		if jobID == "" {
+			hipsterOutput := make(map[string]string)
+			ok := false
+			err := json.Unmarshal(responseBody, &hipsterOutput)
+			if err != nil {
+				return "", err
+			}
+			if jobID, ok = hipsterOutput["jobId"]; !ok {
+				return "", errors.New("Hipster JobId missing in hipster output")
+			}
+		}
+		err := handleHipster(ctx, data.ReportID, data.HipsterLegacySubStatus, jobID)
+		if err != nil {
+			return "", err
+		}
 	}
 
 	fmt.Println(responseStatus, responseError)
