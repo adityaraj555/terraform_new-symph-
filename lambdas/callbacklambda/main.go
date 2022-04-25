@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"os"
 	"strconv"
 	"time"
 
@@ -29,9 +30,10 @@ type RequestBody struct {
 	Response    map[string]interface{} `json:"response"`
 }
 
-var SecretARN string
+const DBSecretARN = "DBSecretARN"
 
 func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
+	SecretARN := os.Getenv(DBSecretARN)
 	secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 	NewDBClient := documentDB_client.NewDBClientService(secrets)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
