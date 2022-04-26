@@ -75,7 +75,8 @@ var httpClient httpservice.IHTTPClientV2
 var newDBClient *documentDB_client.DocDBClient
 
 const DBSecretARN = "DBSecretARN"
-const legacyLambdaFunction = "envLegacyUpdatefunction"
+const envLegacyUpdatefunction = "envLegacyUpdatefunction"
+const envCallbackLambdaFunctionUrl = "envLegacyUpdatefunction"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type))
@@ -303,6 +304,7 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 }
 
 func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{}) error {
+	legacyLambdaFunction := os.Getenv(envLegacyUpdatefunction)
 
 	result, err := awsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
 
@@ -374,7 +376,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 		callbackId := uuid.New()
 		metaObj := Meta{
 			CallbackID:  callbackId.String(),
-			CallbackURL: os.Getenv("envCallbackLambdaFunction"),
+			CallbackURL: os.Getenv(envCallbackLambdaFunctionUrl),
 		}
 		data.Payload["meta"] = metaObj
 
@@ -449,7 +451,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 func main() {
 	httpClient = &httpservice.HTTPClientV2{}
 	awsClient = &aws_client.AWSClient{}
-	documentDbSecretsARN := os.Getenv("DBSecretARN")
+	documentDbSecretsARN := os.Getenv(DBSecretARN)
 
 	secrets, err := awsClient.GetSecret(context.Background(), documentDbSecretsARN, "us-east-2")
 	if err != nil {
