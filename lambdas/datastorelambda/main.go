@@ -18,6 +18,7 @@ const Success = "success"
 type RequestBody struct {
 	OrderId    string `json:"orderId"`
 	WorkflowId string ` json:"workflowId"`
+	Action     string `json:"action"`
 }
 
 const DBSecretARN = "DBSecretARN"
@@ -33,15 +34,28 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		log.Fatal(err)
 	}
 
-	var data documentDB_client.DataStoreBody
-	data.CreatedAt = time.Now()
-	data.OrderId = Request.OrderId
-	data.WorkflowId = Request.WorkflowId
+	switch Request.Action {
+	case "insert":
 
-	err = NewDBClient.DataStoreInsertion(data)
-	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+		var data documentDB_client.DataStoreBody
+		data.CreatedAt = time.Now()
+		data.OrderId = Request.OrderId
+		data.WorkflowId = Request.WorkflowId
+
+		err = NewDBClient.DataStoreInsertion(data)
+		if err != nil {
+			return map[string]interface{}{"status": "failed"}, err
+		}
+	case "update":
+		var data documentDB_client.DataStoreBody
+		data.EndAt = time.Now()
+
+		err = NewDBClient.UpdateEndTimeInDocumentDB(Request.WorkflowId)
+		if err != nil {
+			return map[string]interface{}{"status": "failed"}, err
+		}
 	}
+
 	return map[string]interface{}{"status": Success}, nil
 }
 

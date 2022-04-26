@@ -36,7 +36,7 @@ var (
 type IDocDBClient interface {
 	FetchMetaData(CallbackID string) (MetaData, error)
 	DeleteMetaData(CallbackID string) error
-	UpdateDocumentDB(MetaData MetaData) bool
+	UpdateDocumentDB(Data DataStoreBody) bool
 }
 type MetaData struct {
 	ID   string `bson:"_id"`
@@ -53,8 +53,10 @@ type DocDBClient struct {
 type DataStoreBody struct {
 	OrderId            string                 `bson:"orderId" `
 	WorkflowId         string                 `bson:"_id" `
-	UpdatedAt          time.Time              `bson:"UpdatedAt" `
-	CreatedAt          time.Time              `bson:"CreatedAt" `
+	FlowType           string                 `bson:"flowType"`
+	UpdatedAt          time.Time              `bson:"updatedAt" `
+	CreatedAt          time.Time              `bson:"createdAt" `
+	EndAt              time.Time              `bson:"endAt" `
 	RunningState       map[string]interface{} `bson:"runningState" `
 	InitialInput       map[string]interface{} `bson:"initialInput" `
 	StepsPassedThrough []string               `bson:"stepsPassedThrough" `
@@ -128,6 +130,26 @@ func (DBClient *DocDBClient) DataStoreInsertion(Data DataStoreBody) error {
 	}
 	id := res.InsertedID
 	log.Printf("Inserted document ID: %s", id)
+	return nil
+}
+func (DBClient *DocDBClient) UpdateEndTimeInDocumentDB(workFlowId string) error {
+	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	defer cancel()
+
+	res, err := collection.UpdateOne(ctx, bson.M{"_id": workFlowId}, bson.D{
+		{"$set", bson.D{{"endAt", time.Now()}}},
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to update document: %v", err)
+		return err
+	}
+	if res.MatchedCount == 0 {
+		log.Fatalf("Unable to update document as no such document exist")
+	}
+	log.Printf("Updated document ID: %s", workFlowId)
 	return nil
 }
 
