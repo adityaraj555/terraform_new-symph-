@@ -21,7 +21,8 @@ const (
 	QueryTimeout             = 30
 	ConnectionStringTemplate = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
 	Database                 = "test"
-	Collection               = "callBackData"
+	MetaCollection           = "callBackData"
+	DataStoreCollection      = "datastore"
 )
 
 var (
@@ -49,6 +50,15 @@ type MetaData struct {
 type DocDBClient struct {
 	DBClient *mongo.Client
 }
+type DataStoreBody struct {
+	OrderId            string                 `bson:"orderId" `
+	WorkflowId         string                 `bson:"_id" `
+	UpdatedAt          time.Time              `bson:"UpdatedAt" `
+	CreatedAt          time.Time              `bson:"CreatedAt" `
+	RunningState       map[string]interface{} `bson:"runningState" `
+	InitialInput       map[string]interface{} `bson:"initialInput" `
+	StepsPassedThrough []string               `bson:"stepsPassedThrough" `
+}
 
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	Username = secrets["username"].(string)
@@ -67,7 +77,7 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 }
 
 func (DBClient *DocDBClient) FetchMetaData(CallbackID string) (MetaData, error) {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -80,7 +90,7 @@ func (DBClient *DocDBClient) FetchMetaData(CallbackID string) (MetaData, error) 
 	return DBMetaData, nil
 }
 func (DBClient *DocDBClient) DeleteMetaData(CallbackID string) error {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -93,7 +103,7 @@ func (DBClient *DocDBClient) DeleteMetaData(CallbackID string) error {
 	return nil
 }
 func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -106,6 +116,21 @@ func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
 	log.Printf("Inserted document ID: %s", id)
 	return nil
 }
+func (DBClient *DocDBClient) DataStoreInsertion(Data DataStoreBody) error {
+	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	defer cancel()
+	res, err := collection.InsertOne(ctx, Data)
+	if err != nil {
+		log.Fatalf("Failed to insert document: %v", err)
+		return err
+	}
+	id := res.InsertedID
+	log.Printf("Inserted document ID: %s", id)
+	return nil
+}
+
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	tlsConfig := new(tls.Config)
 	certs, err := ioutil.ReadFile(caFile)
