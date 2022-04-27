@@ -51,8 +51,8 @@ type DocDBClient struct {
 	DBClient *mongo.Client
 }
 type DataStoreBody struct {
-	OrderId            string                 `bson:"orderId" `
 	WorkflowId         string                 `bson:"_id" `
+	OrderId            string                 `bson:"orderId" `
 	FlowType           string                 `bson:"flowType"`
 	UpdatedAt          time.Time              `bson:"updatedAt" `
 	CreatedAt          time.Time              `bson:"createdAt" `
@@ -138,7 +138,7 @@ func (DBClient *DocDBClient) UpdateEndTimeInDocumentDB(workFlowId string) error 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
 
-	res, err := collection.UpdateOne(ctx, bson.M{"_id": workFlowId}, bson.D{
+	res, err := collection.UpdateMany(ctx, bson.M{"_id": workFlowId}, bson.D{
 		{"$set", bson.D{{"endAt", time.Now()}}},
 	})
 

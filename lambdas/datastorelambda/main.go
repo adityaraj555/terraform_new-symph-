@@ -36,7 +36,6 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 
 	switch Request.Action {
 	case "insert":
-
 		var data documentDB_client.DataStoreBody
 		data.CreatedAt = time.Now()
 		data.OrderId = Request.OrderId
@@ -47,9 +46,6 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			return map[string]interface{}{"status": "failed"}, err
 		}
 	case "update":
-		var data documentDB_client.DataStoreBody
-		data.EndAt = time.Now()
-
 		err = NewDBClient.UpdateEndTimeInDocumentDB(Request.WorkflowId)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
