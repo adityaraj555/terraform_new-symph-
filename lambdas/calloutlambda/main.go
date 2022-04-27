@@ -495,11 +495,11 @@ func main() {
 	if err != nil {
 		fmt.Println("Unable to fetch DocumentDb in secret")
 	}
-	newDBClient := documentDB_client.NewDBClientService(secrets)
+	docDBClient := documentDB_client.NewDBClientService(secrets)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	documentDB_client.DBClient = newDBClient.DBClient
-	err = documentDB_client.DBClient.Connect(ctx)
+	newDBClient = docDBClient
+	err = newDBClient.DBClient.Connect(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
