@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
+	"github.com/aws/aws-sdk-go/service/sfn"
 )
 
 type IAWSClient interface {
@@ -144,4 +145,17 @@ func (ac *AWSClient) StoreDataToS3(ctx context.Context, bucketName, s3KeyPath st
 		return err
 	}
 	return nil
+}
+
+func (ac *AWSClient) InvokeSFN(Input, StateMachineArn *string) (string, error) {
+	mySession := session.Must(session.NewSession())
+	svc := sfn.New(mySession)
+	out, err := svc.StartExecution(&sfn.StartExecutionInput{
+		Input:           Input,
+		StateMachineArn: StateMachineArn,
+	})
+	if err != nil {
+		return "", err
+	}
+	return *out.ExecutionArn, nil
 }
