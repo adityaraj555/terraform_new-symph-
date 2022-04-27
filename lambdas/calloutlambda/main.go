@@ -350,7 +350,8 @@ func handleHipster(ctx context.Context, reportId, hipsterLegacySubStatus, jobID 
 	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
 }
 
-func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
+func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
+	returnResponse := make(map[string]interface{})
 
 	timeout := 30
 	if data.Timeout != 0 {
@@ -367,9 +368,11 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 		err := callLegacyStatusUpdate(ctx, data.Payload)
 		if err != nil {
 			fmt.Println(err)
-			return "faiure", err
+			returnResponse["status"] = "faiure"
+			return returnResponse, err
 		}
-		return "success", err
+		returnResponse["status"] = "success"
+		return returnResponse, err
 	}
 
 	if data.IsWaitTask {
@@ -390,16 +393,22 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 		err := newDBClient.InsertMetaData(callbackData)
 		if err != nil {
 			fmt.Println("Unable to insert Callback Data in DocumentDB")
-			return "", err
+			returnResponse["status"] = "faiure"
+			return returnResponse, err
 		}
 
 	}
 
-	json_data, _ := json.Marshal(data.Payload)
-	fmt.Println(json_data)
+	json_data, err := json.Marshal(data.Payload)
+	if err != nil {
+		returnResponse["status"] = "faiure"
+		return returnResponse, err
+	}
 
 	headers := make(map[string]string)
-	headers = data.Headers
+	if data.Headers != nil {
+		headers = data.Headers
+	}
 
 	handleAuth(ctx, data.Auth, headers)
 
@@ -412,17 +421,43 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
 		if responseError != nil {
-			return responseStatus, responseError
+			returnResponse["status"] = "faiure"
+			return returnResponse, responseError
 		}
+
 	case "POST", "PUT", "DELETE":
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
 		fmt.Println(string(responseBody))
+
 		if responseError != nil {
-			return responseStatus, responseError
+			returnResponse["status"] = "faiure"
+			return returnResponse, responseError
 		}
+
+	default:
+		fmt.Println("Unknown request method, can not proceed")
+		returnResponse["status"] = "faiure"
+		return returnResponse, responseError
+
 	}
+	if !strings.HasPrefix(responseStatus, "20") {
+		returnResponse["status"] = "faiure"
+		return returnResponse, errors.New("Failure status code Received " + responseStatus)
+	}
+
+	err = json.Unmarshal(responseBody, &returnResponse)
+	if err != nil {
+		returnResponse["status"] = "faiure"
+		return returnResponse, err
+	}
+
 	if data.StoreDataToS3 != "" {
-		storeDataToS3(ctx, data.StoreDataToS3, responseBody)
+		err := storeDataToS3(ctx, data.StoreDataToS3, responseBody)
+		if err != nil {
+			returnResponse["status"] = "faiure"
+			return returnResponse, err
+		}
+		returnResponse["s3DataLocation"] = data.StoreDataToS3
 	}
 
 	if callType == "hipster" {
@@ -432,20 +467,23 @@ func HandleRequest(ctx context.Context, data MyEvent) (string, error) {
 			ok := false
 			err := json.Unmarshal(responseBody, &hipsterOutput)
 			if err != nil {
-				return "", err
+				returnResponse["status"] = "faiure"
+				return returnResponse, err
 			}
 			if jobID, ok = hipsterOutput["jobId"]; !ok {
-				return "", errors.New("Hipster JobId missing in hipster output")
+				returnResponse["status"] = "faiure"
+				return returnResponse, errors.New("Hipster JobId missing in hipster output")
 			}
 		}
 		err := handleHipster(ctx, data.ReportID, data.HipsterLegacySubStatus, jobID)
 		if err != nil {
-			return "", err
+			returnResponse["status"] = "faiure"
+			return returnResponse, err
 		}
 	}
 
-	fmt.Println(responseStatus, responseError)
-	return responseStatus, responseError
+	fmt.Println(returnResponse, responseError)
+	return returnResponse, responseError
 }
 
 func main() {
@@ -457,11 +495,10 @@ func main() {
 	if err != nil {
 		fmt.Println("Unable to fetch DocumentDb in secret")
 	}
-	newDBClient := documentDB_client.NewDBClientService(secrets)
+	newDBClient = documentDB_client.NewDBClientService(secrets)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	documentDB_client.DBClient = newDBClient.DBClient
-	err = documentDB_client.DBClient.Connect(ctx)
+	err = newDBClient.DBClient.Connect(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
