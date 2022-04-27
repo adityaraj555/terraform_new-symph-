@@ -38,8 +38,7 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 	NewDBClient := documentDB_client.NewDBClientService(secrets)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	documentDB_client.DBClient = NewDBClient.DBClient
-	err = documentDB_client.DBClient.Connect(ctx)
+	err = NewDBClient.DBClient.Connect(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

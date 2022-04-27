@@ -25,7 +25,6 @@ const (
 )
 
 var (
-	DBClient        *mongo.Client
 	Username        string
 	Password        string
 	ClusterEndpoint string
