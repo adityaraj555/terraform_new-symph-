@@ -35,7 +35,9 @@ var (
 type IDocDBClient interface {
 	FetchMetaData(CallbackID string) (MetaData, error)
 	DeleteMetaData(CallbackID string) error
-	UpdateDocumentDB(Data DataStoreBody) bool
+	UpdateEndTimeInDocumentDB(workFlowId string) error
+	DataStoreInsertion(Data DataStoreBody) error
+	InsertMetaData(MetaData MetaData) error
 }
 type MetaData struct {
 	ID   string `bson:"_id"`
