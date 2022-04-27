@@ -21,7 +21,8 @@ const (
 	QueryTimeout             = 30
 	ConnectionStringTemplate = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
 	Database                 = "test"
-	Collection               = "callBackData"
+	MetaCollection           = "callBackData"
+	DataStoreCollection      = "datastore"
 )
 
 var (
@@ -34,7 +35,9 @@ var (
 type IDocDBClient interface {
 	FetchMetaData(CallbackID string) (MetaData, error)
 	DeleteMetaData(CallbackID string) error
-	UpdateDocumentDB(MetaData MetaData) bool
+	UpdateEndTimeInDocumentDB(workFlowId string) error
+	DataStoreInsertion(Data DataStoreBody) error
+	InsertMetaData(MetaData MetaData) error
 }
 type MetaData struct {
 	ID   string `bson:"_id"`
@@ -47,6 +50,17 @@ type MetaData struct {
 }
 type DocDBClient struct {
 	DBClient *mongo.Client
+}
+type DataStoreBody struct {
+	WorkflowId         string                 `bson:"_id" `
+	OrderId            string                 `bson:"orderId" `
+	FlowType           string                 `bson:"flowType"`
+	UpdatedAt          time.Time              `bson:"updatedAt" `
+	CreatedAt          time.Time              `bson:"createdAt" `
+	EndAt              time.Time              `bson:"endAt" `
+	RunningState       map[string]interface{} `bson:"runningState" `
+	InitialInput       map[string]interface{} `bson:"initialInput" `
+	StepsPassedThrough []string               `bson:"stepsPassedThrough" `
 }
 
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
@@ -66,7 +80,7 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 }
 
 func (DBClient *DocDBClient) FetchMetaData(CallbackID string) (MetaData, error) {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -79,7 +93,7 @@ func (DBClient *DocDBClient) FetchMetaData(CallbackID string) (MetaData, error) 
 	return DBMetaData, nil
 }
 func (DBClient *DocDBClient) DeleteMetaData(CallbackID string) error {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -92,7 +106,7 @@ func (DBClient *DocDBClient) DeleteMetaData(CallbackID string) error {
 	return nil
 }
 func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
-	collection := DBClient.DBClient.Database(Database).Collection(Collection)
+	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -105,6 +119,41 @@ func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
 	log.Printf("Inserted document ID: %s", id)
 	return nil
 }
+func (DBClient *DocDBClient) DataStoreInsertion(Data DataStoreBody) error {
+	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	defer cancel()
+	res, err := collection.InsertOne(ctx, Data)
+	if err != nil {
+		log.Fatalf("Failed to insert document: %v", err)
+		return err
+	}
+	id := res.InsertedID
+	log.Printf("Inserted document ID: %s", id)
+	return nil
+}
+func (DBClient *DocDBClient) UpdateEndTimeInDocumentDB(workFlowId string) error {
+	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	defer cancel()
+
+	res, err := collection.UpdateMany(ctx, bson.M{"_id": workFlowId}, bson.D{
+		{"$set", bson.D{{"endAt", time.Now()}}},
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to update document: %v", err)
+		return err
+	}
+	if res.MatchedCount == 0 {
+		log.Fatalf("Unable to update document as no such document exist")
+	}
+	log.Printf("Updated document ID: %s", workFlowId)
+	return nil
+}
+
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	tlsConfig := new(tls.Config)
 	certs, err := ioutil.ReadFile(caFile)
