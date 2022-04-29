@@ -34,10 +34,10 @@ var (
 
 type IDocDBClient interface {
 	FetchStepExecution(StepId string) (StepExecutionDataBody, error)
-	UpdateEndTimeInDocumentDB(workFlowId string) error
-	DataStoreInsertion(Data WorkflowExecutionDataBody) error
 	InsertStepExecution(StepExecutionData StepExecutionDataBody) error
-	UpdateWorkflowExecutionInDocumentDB(update interface{}, workFlowId string) error
+	InsertWorkflowExecution(Data WorkflowExecutionDataBody) error
+	UpdateDocumentDB(query, update interface{}, collectionName string) error
+	FetchWorkflowExecution(workFlowId string) (WorkflowExecutionDataBody, error)
 }
 
 type DocDBClient struct {
