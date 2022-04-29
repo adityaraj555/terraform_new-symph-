@@ -21,8 +21,8 @@ const (
 	QueryTimeout             = 30
 	ConnectionStringTemplate = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
 	Database                 = "test"
-	MetaCollection           = "callBackData"
-	DataStoreCollection      = "datastore"
+	WorkflowDataCollection   = "WorkflowData"
+	StepsDataCollection      = "StepsData"
 )
 
 var (
@@ -33,34 +33,43 @@ var (
 )
 
 type IDocDBClient interface {
-	FetchMetaData(CallbackID string) (MetaData, error)
-	DeleteMetaData(CallbackID string) error
+	FetchStepExecution(StepId string) (StepExecutionDataBody, error)
 	UpdateEndTimeInDocumentDB(workFlowId string) error
-	DataStoreInsertion(Data DataStoreBody) error
-	InsertMetaData(MetaData MetaData) error
+	DataStoreInsertion(Data WorkflowExecutionDataBody) error
+	InsertStepExecution(StepExecutionData StepExecutionDataBody) error
+	UpdateWorkflowExecutionInDocumentDB(update interface{}, workFlowId string) error
 }
-type MetaData struct {
-	ID   string `bson:"_id"`
-	Data struct {
-		OrderID    string `bson:"order_id"`
-		TaskToken  string `bson:"task_token"`
-		WorkflowID string `bson:"workflow_id"`
-		TaskName   string `bson:"task_name"`
-	} `bson:"data"`
-}
+
 type DocDBClient struct {
 	DBClient *mongo.Client
 }
-type DataStoreBody struct {
-	WorkflowId         string                 `bson:"_id" `
-	OrderId            string                 `bson:"orderId" `
-	FlowType           string                 `bson:"flowType"`
-	UpdatedAt          time.Time              `bson:"updatedAt" `
-	CreatedAt          time.Time              `bson:"createdAt" `
-	EndAt              time.Time              `bson:"endAt" `
-	RunningState       map[string]interface{} `bson:"runningState" `
-	InitialInput       map[string]interface{} `bson:"initialInput" `
-	StepsPassedThrough []string               `bson:"stepsPassedThrough" `
+
+type WorkflowExecutionDataBody struct {
+	WorkflowId         string                   `bson:"_id"`
+	Status             string                   `bson:"status"`
+	OrderId            string                   `bson:"orderId"`
+	FlowType           string                   `bson:"flowType"`
+	UpdatedAt          int64                    `bson:"updatedAt"`
+	CreatedAt          int64                    `bson:"createdAt"`
+	FinishedAt         int64                    `bson:"finishedAt"`
+	RunningState       map[string]interface{}   `bson:"runningState"`
+	InitialInput       map[string]interface{}   `bson:"initialInput"`
+	FinalOutput        map[string]interface{}   `bson:"finalOutput"`
+	StepsPassedThrough []map[string]interface{} `bson:"stepsPassedThrough"`
+}
+
+type StepExecutionDataBody struct {
+	StepId             string                 `bson:"_id"`
+	StartTime          int64                  `bson:"startTime"`
+	EndTime            int64                  `bson:"endTime"`
+	Url                string                 `bson:"url"`
+	Input              map[string]interface{} `bson:"input"`
+	Output             map[string]interface{} `bson:"output"`
+	IntermediateOutput map[string]interface{} `bson:"intermediateOutput"`
+	Status             string                 `bson:"status"`
+	TaskToken          string                 `bson:"taskToken"`
+	WorkflowId         string                 `bson:"workflowId"`
+	TaskName           string                 `bson:"taskName"`
 }
 
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
@@ -79,38 +88,25 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	return &DocDBClient{DBClient: DBClient}
 }
 
-func (DBClient *DocDBClient) FetchMetaData(CallbackID string) (MetaData, error) {
-	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
+func (DBClient *DocDBClient) FetchStepExecution(StepId string) (StepExecutionDataBody, error) {
+	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
-	var DBMetaData MetaData
-	err := collection.FindOne(ctx, bson.M{"_id": CallbackID}).Decode(&DBMetaData)
+	var StepExecutionData StepExecutionDataBody
+	err := collection.FindOne(ctx, bson.M{"_id": StepId}).Decode(&StepExecutionData)
 	if err != nil {
 		log.Fatalf("Failed to run find query: %v", err)
-		return MetaData{}, err
+		return StepExecutionDataBody{}, err
 	}
-	return DBMetaData, nil
+	return StepExecutionData, nil
 }
-func (DBClient *DocDBClient) DeleteMetaData(CallbackID string) error {
-	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
+func (DBClient *DocDBClient) InsertStepExecution(StepExecutionData StepExecutionDataBody) error {
+	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
-
-	_, err := collection.DeleteMany(ctx, bson.M{"_id": CallbackID})
-	if err != nil {
-		log.Fatalf("Failed to run delete query: %v", err)
-		return err
-	}
-	return nil
-}
-func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
-	collection := DBClient.DBClient.Database(Database).Collection(MetaCollection)
-
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
-	defer cancel()
-	res, err := collection.InsertOne(ctx, MetaData)
+	res, err := collection.InsertOne(ctx, StepExecutionData)
 	if err != nil {
 		log.Fatalf("Failed to insert document: %v", err)
 		return err
@@ -119,8 +115,8 @@ func (DBClient *DocDBClient) InsertMetaData(MetaData MetaData) error {
 	log.Printf("Inserted document ID: %s", id)
 	return nil
 }
-func (DBClient *DocDBClient) DataStoreInsertion(Data DataStoreBody) error {
-	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+func (DBClient *DocDBClient) InsertWorkflowExecution(Data WorkflowExecutionDataBody) error {
+	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
@@ -133,15 +129,13 @@ func (DBClient *DocDBClient) DataStoreInsertion(Data DataStoreBody) error {
 	log.Printf("Inserted document ID: %s", id)
 	return nil
 }
-func (DBClient *DocDBClient) UpdateEndTimeInDocumentDB(workFlowId string) error {
-	collection := DBClient.DBClient.Database(Database).Collection(DataStoreCollection)
+func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collectionName string) error {
+	collection := DBClient.DBClient.Database(Database).Collection(collectionName)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
 	defer cancel()
 
-	res, err := collection.UpdateMany(ctx, bson.M{"_id": workFlowId}, bson.D{
-		{"$set", bson.D{{"endAt", time.Now()}}},
-	})
+	res, err := collection.UpdateMany(ctx, query, update)
 
 	if err != nil {
 		log.Fatalf("Failed to update document: %v", err)
@@ -150,10 +144,22 @@ func (DBClient *DocDBClient) UpdateEndTimeInDocumentDB(workFlowId string) error 
 	if res.MatchedCount == 0 {
 		log.Fatalf("Unable to update document as no such document exist")
 	}
-	log.Printf("Updated document ID: %s", workFlowId)
+	log.Printf("Updated document ID: %s", res.UpsertedID)
 	return nil
 }
+func (DBClient *DocDBClient) FetchWorkflowExecution(workFlowId string) (WorkflowExecutionDataBody, error) {
+	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
+	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	defer cancel()
+	var WorkflowExecutionData WorkflowExecutionDataBody
+	err := collection.FindOne(ctx, bson.M{"_id": workFlowId}).Decode(&WorkflowExecutionData)
+	if err != nil {
+		log.Fatalf("Failed to run find query: %v", err)
+		return WorkflowExecutionDataBody{}, err
+	}
+	return WorkflowExecutionData, nil
+}
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	tlsConfig := new(tls.Config)
 	certs, err := ioutil.ReadFile(caFile)

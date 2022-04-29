@@ -16,11 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var awsClient aws_client.AWSClient
-
-const Success = "success"
 
 type RequestBody struct {
 	Status      string                 `json:"status"`
@@ -31,6 +30,8 @@ type RequestBody struct {
 }
 
 const DBSecretARN = "DBSecretARN"
+const success = "success"
+const failure = "failure"
 
 func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
 	SecretARN := os.Getenv(DBSecretARN)
@@ -49,39 +50,76 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 	if requestbody, ok := CallbackRequest["body"]; ok {
 		body = requestbody.(string)
 	} else {
-		return map[string]interface{}{"status": "failed"}, errors.New("body is empty in request body")
+		return map[string]interface{}{"status": failure}, errors.New("body is empty in request body")
 	}
 	var requestBody = RequestBody{}
 	err = json.Unmarshal([]byte(body), &requestBody)
 	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failure}, err
 	}
-	MetaData, err := NewDBClient.FetchMetaData(requestBody.CallbackID)
+	StepExecutionData, err := NewDBClient.FetchStepExecution(requestBody.CallbackID)
 	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failure}, err
 	}
-	if requestBody.Status == Success {
+	var stepstatus string = failure
+	if requestBody.Status == success {
+		stepstatus = success
 		byteData, _ := json.Marshal(requestBody.Response)
 		jsonResponse := string(byteData)
 		taskoutput, err := svc.SendTaskSuccess(&sfn.SendTaskSuccessInput{
-			TaskToken: &MetaData.Data.TaskToken,
+			TaskToken: &StepExecutionData.TaskToken,
 			Output:    &jsonResponse,
 		})
 		fmt.Println(&taskoutput, err)
 	} else {
 		messageCode := strconv.Itoa(requestBody.MessageCode)
 		taskoutput, err := svc.SendTaskFailure(&sfn.SendTaskFailureInput{
-			TaskToken: &MetaData.Data.TaskToken,
+			TaskToken: &StepExecutionData.TaskToken,
 			Cause:     &requestBody.Message,
 			Error:     &messageCode,
 		})
 		fmt.Println(&taskoutput, err)
 	}
-	err = NewDBClient.DeleteMetaData(requestBody.CallbackID)
-	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+	query := bson.M{
+		"_id": StepExecutionData.StepId,
 	}
-	return map[string]interface{}{"status": Success}, nil
+	update := bson.M{
+		"$set": bson.M{
+			"output": requestBody.Response,
+			"status": requestBody.Status,
+		},
+	}
+	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.StepsDataCollection)
+	query = bson.M{
+		"_id":                        StepExecutionData.WorkflowId,
+		"stepsPassedThrough.stepsId": requestBody.CallbackID,
+	}
+
+	update = bson.M{
+		"$set": bson.M{
+			"stepsPassedThrough.$.status": stepstatus,
+		},
+	}
+	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		return map[string]interface{}{"status": failure}, err
+	}
+	query = bson.M{
+		"_id": StepExecutionData.WorkflowId,
+	}
+	update = bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now().Unix(),
+			"runningState": bson.M{
+				StepExecutionData.TaskName: stepstatus,
+			},
+		},
+	}
+	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		return map[string]interface{}{"status": failure}, err
+	}
+	return map[string]interface{}{"status": success}, nil
 }
 
 func main() {

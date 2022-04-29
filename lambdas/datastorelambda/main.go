@@ -9,16 +9,22 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var awsClient aws_client.AWSClient
 
-const Success = "success"
+const (
+	Success    = "success"
+	Inprogress = "inprogress"
+	Finished   = "finished"
+)
 
 type RequestBody struct {
-	OrderId    string `json:"orderId"`
-	WorkflowId string ` json:"workflowId"`
-	Action     string `json:"action"`
+	Input      map[string]interface{} `json:"input"`
+	OrderId    string                 `json:"orderId"`
+	WorkflowId string                 `json:"workflowId"`
+	Action     string                 `json:"action"`
 }
 
 const DBSecretARN = "DBSecretARN"
@@ -36,17 +42,25 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 
 	switch Request.Action {
 	case "insert":
-		var data documentDB_client.DataStoreBody
-		data.CreatedAt = time.Now()
+		var data documentDB_client.WorkflowExecutionDataBody
+		data.CreatedAt = time.Now().Unix()
 		data.OrderId = Request.OrderId
 		data.WorkflowId = Request.WorkflowId
-
-		err = NewDBClient.DataStoreInsertion(data)
+		data.Status = Inprogress
+		data.InitialInput = Request.Input
+		err = NewDBClient.InsertWorkflowExecution(data)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
 	case "update":
-		err = NewDBClient.UpdateEndTimeInDocumentDB(Request.WorkflowId)
+		update := bson.M{
+			"$set": bson.M{
+				"finishedAt": time.Now().Unix(),
+				"status":     Finished,
+			},
+		}
+		query := bson.M{"_id": Request.WorkflowId}
+		err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}

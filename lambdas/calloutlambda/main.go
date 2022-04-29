@@ -20,6 +20,7 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/google/uuid"
 )
@@ -77,6 +78,10 @@ var newDBClient *documentDB_client.DocDBClient
 const DBSecretARN = "DBSecretARN"
 const envLegacyUpdatefunction = "envLegacyUpdatefunction"
 const envCallbackLambdaFunctionUrl = "envLegacyUpdatefunction"
+const Submitted = "submitted"
+const running = "running"
+const success = "success"
+const failure = "failure"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type))
@@ -350,7 +355,40 @@ func handleHipster(ctx context.Context, reportId, hipsterLegacySubStatus, jobID 
 	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
 }
 
-func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
+func buildQuery(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {
+	var setrecord interface{}
+	var stepstatus string = failure
+	updatedAt := time.Now().Unix()
+	if IsWaitTask && status == success {
+		stepstatus = running
+		setrecord = bson.M{
+			"updatedAt": updatedAt,
+			"runningState": bson.M{
+				TaskName: Submitted,
+			},
+		}
+	} else {
+		if !IsWaitTask && status == success {
+			stepstatus = success
+		}
+		setrecord = bson.M{
+			"updatedAt": updatedAt,
+		}
+	}
+	return bson.M{
+		"$addToSet": bson.M{
+			"stepsPassedThrough": bson.M{
+				"taskName":  TaskName,
+				"stepsId":   stepID,
+				"startTime": starttime,
+				"status":    stepstatus,
+			},
+		},
+		"$set": setrecord,
+	}
+}
+func callService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
+
 	returnResponse := make(map[string]interface{})
 
 	timeout := 30
@@ -368,7 +406,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		err := callLegacyStatusUpdate(ctx, data.Payload)
 		if err != nil {
 			fmt.Println(err)
-			returnResponse["status"] = "faiure"
+			returnResponse["status"] = failure
 			return returnResponse, err
 		}
 		returnResponse["status"] = "success"
@@ -376,24 +414,27 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 	}
 
 	if data.IsWaitTask {
-		callbackId := uuid.New()
+
 		metaObj := Meta{
-			CallbackID:  callbackId.String(),
+			CallbackID:  stepID,
 			CallbackURL: os.Getenv(envCallbackLambdaFunctionUrl),
 		}
 		data.Payload["meta"] = metaObj
 
-		callbackData := documentDB_client.MetaData{
-			ID: callbackId.String(),
+		StepExecutionData := documentDB_client.StepExecutionDataBody{
+			StepId:     stepID,
+			StartTime:  time.Now().Unix(),
+			Url:        data.URL,
+			Input:      data.Payload,
+			TaskToken:  data.TaskToken,
+			WorkflowId: data.WorkflowID,
+			TaskName:   data.TaskName,
 		}
-		callbackData.Data.OrderID = data.OrderID
-		callbackData.Data.TaskName = data.TaskName
-		callbackData.Data.WorkflowID = data.WorkflowID
-		callbackData.Data.TaskToken = data.TaskToken
-		err := newDBClient.InsertMetaData(callbackData)
+
+		err := newDBClient.InsertStepExecution(StepExecutionData)
 		if err != nil {
-			fmt.Println("Unable to insert Callback Data in DocumentDB")
-			returnResponse["status"] = "faiure"
+			fmt.Println("Unable to insert Step Data in DocumentDB")
+			returnResponse["status"] = failure
 			return returnResponse, err
 		}
 
@@ -401,7 +442,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 
 	json_data, err := json.Marshal(data.Payload)
 	if err != nil {
-		returnResponse["status"] = "faiure"
+		returnResponse["status"] = failure
 		return returnResponse, err
 	}
 
@@ -421,7 +462,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
 		if responseError != nil {
-			returnResponse["status"] = "faiure"
+			returnResponse["status"] = failure
 			return returnResponse, responseError
 		}
 
@@ -430,31 +471,31 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		fmt.Println(string(responseBody))
 
 		if responseError != nil {
-			returnResponse["status"] = "faiure"
+			returnResponse["status"] = failure
 			return returnResponse, responseError
 		}
 
 	default:
 		fmt.Println("Unknown request method, can not proceed")
-		returnResponse["status"] = "faiure"
+		returnResponse["status"] = failure
 		return returnResponse, responseError
 
 	}
 	if !strings.HasPrefix(responseStatus, "20") {
-		returnResponse["status"] = "faiure"
+		returnResponse["status"] = failure
 		return returnResponse, errors.New("Failure status code Received " + responseStatus)
 	}
 
 	err = json.Unmarshal(responseBody, &returnResponse)
 	if err != nil {
-		returnResponse["status"] = "faiure"
+		returnResponse["status"] = failure
 		return returnResponse, err
 	}
 
 	if data.StoreDataToS3 != "" {
 		err := storeDataToS3(ctx, data.StoreDataToS3, responseBody)
 		if err != nil {
-			returnResponse["status"] = "faiure"
+			returnResponse["status"] = failure
 			return returnResponse, err
 		}
 		returnResponse["s3DataLocation"] = data.StoreDataToS3
@@ -467,23 +508,43 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 			ok := false
 			err := json.Unmarshal(responseBody, &hipsterOutput)
 			if err != nil {
-				returnResponse["status"] = "faiure"
+				returnResponse["status"] = failure
 				return returnResponse, err
 			}
 			if jobID, ok = hipsterOutput["jobId"]; !ok {
-				returnResponse["status"] = "faiure"
+				returnResponse["status"] = failure
 				return returnResponse, errors.New("Hipster JobId missing in hipster output")
 			}
 		}
 		err := handleHipster(ctx, data.ReportID, data.HipsterLegacySubStatus, jobID)
 		if err != nil {
-			returnResponse["status"] = "faiure"
+			returnResponse["status"] = failure
 			return returnResponse, err
 		}
 	}
 
 	fmt.Println(returnResponse, responseError)
+
 	return returnResponse, responseError
+}
+func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
+	starttime := time.Now().Unix()
+	stepID := uuid.New().String()
+	respose, err := callService(ctx, data, stepID)
+	query := bson.M{"_id": data.WorkflowID}
+	if err != nil {
+		update := buildQuery(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
+		newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		return respose, err
+	} else {
+		update := buildQuery(data.TaskName, stepID, success, starttime, data.IsWaitTask)
+		err := newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		if err != nil {
+			respose["status"] = failure
+		}
+		return respose, err
+	}
+
 }
 
 func main() {
