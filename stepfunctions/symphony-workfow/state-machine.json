@@ -1,0 +1,379 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "UpdateLegacyMLAutomationStart",
+  "States": {
+    "UpdateLegacyMLAutomationStart": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "Payload": {
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskName": "UpdateLegacyMLAutomationStart",
+          "callType": "Legacy",
+          "payload": {
+            "ReportId.$": "$$.Execution.Input.reportId",
+            "Status": "InProcess",
+            "SubStatus": "MLAutomationStarted"
+          }
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "GetImageMetaData"
+    },
+    "GetImageMetaData": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "ResultSelector": {
+        "response.$": "$.Payload"
+      },
+      "ResultPath": "$.GetImageMetaData",
+      "OutputPath": "$",
+      "Parameters": {
+        "Payload": {
+          "payload": {},
+          "url.$": "States.Format('https://intranetrest.cmh.reportsstage.evinternal.net/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.orderId)",
+          "requestMethod": "GET",
+          "headers": {},
+          "isWaitTask": false,
+          "retry": "number of times we want to retry on specific error types like timeout, 500",
+          "timeout": "5",
+          "storeDataToS3": "",
+          "taskName": "GetImageMetaData",
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "callType": "Service",
+          "auth": {}
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "FacetKeyPointDetection"
+    },
+    "FacetKeyPointDetection": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "ResultSelector": {
+        "response.$": "$"
+      },
+      "ResultPath": "$.FacetKeyPointDetection",
+      "OutputPath": "$",
+      "Parameters": {
+        "Payload": {
+          "payload": {
+            "orderId.$": "$$.Execution.Input.orderId",
+            "address.$": "$$.Execution.Input.address",
+            "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
+          },
+          "url": "https://api.cmh.platform-test.evinternal.net/factory-automeasure/measurement-automation/measurement-automation",
+          "requestMethod": "POST",
+          "headers": {},
+          "isWaitTask": false,
+          "retry": "number of times we want to retry on specific error types like timeout, 500",
+          "timeout": "No of seconds",
+          "storeDataToS3": "",
+          "taskName": "FacetKeyPointDetection",
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskToken.$": "$$.Task.Token",
+          "callType": "Service",
+          "auth": {}
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "3DModellingService"
+    },
+    "3DModellingService": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "ResultSelector": {
+        "response.$": "$"
+      },
+      "ResultPath": "$.3DModellingService",
+      "OutputPath": "$",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST",
+        "Payload": {
+          "payload": {
+            "orderId.$": "$$.Execution.Input.orderId",
+            "address.$": "$$.Execution.Input.address",
+            "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation",
+            "facetKeyPointDetectionLocation.$": "$.FacetKeyPointDetection.response.FacetKeyPointDetectionLocation"
+          },
+          "url": "http://measurement-service.cmh.pgtest.evinternal.net/runs",
+          "requestMethod": "POST",
+          "headers": {},
+          "isWaitTask": false,
+          "retry": "number of times we want to retry on specific error types like timeout, 500",
+          "timeout": "No of seconds",
+          "storeDataToS3": "",
+          "taskName": "3DModellingService",
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskToken.$": "$$.Task.Token",
+          "callType": "Service",
+          "auth": {}
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "UpdateLegacyMLAutomationComplete"
+    },
+    "UpdateLegacyMLAutomationComplete": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "ResultSelector": {
+        "response.$": "$.Payload"
+      },
+      "ResultPath": "$.UpdateLegacyMLAutomationComplete",
+      "OutputPath": "$",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST",
+        "Payload": {
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskName": "UpdateLegacyMLAutomationComplete",
+          "callType": "Legacy",
+          "payload": {
+            "ReportId.$": "$$.Execution.Input.reportId",
+            "Status": "InProcess",
+            "SubStatus": "MLAutomationCompleted"
+          }
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "CreateHipsterJobAndWaitForMeasurement"
+    },
+    "CreateHipsterJobAndWaitForMeasurement": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "ResultSelector": {
+        "response.$": "$"
+      },
+      "ResultPath": "$.CreateHipsterJobAndWaitForMeasurement",
+      "OutputPath": "$",
+      "Parameters": {
+        "Payload": {
+          "payload": {
+            "orderId.$": "$$.Execution.Input.orderId",
+            "address.$": "$$.Execution.Input.address",
+            "customerNotes.$": "$$.Execution.Input.customerNotes",
+            "measurementInstructions.$": "$$.Execution.Input.measurementInstructions",
+            "orderType.$": "$$.Execution.Input.orderType",
+            "propertyModelLocation.$": "$.3DModellingService.response.3DModellingServiceLocation"
+          },
+          "url": "{hipster_base_url}/v2/job",
+          "requestMethod": "POST",
+          "headers": {},
+          "isWaitTask": false,
+          "retry": "number of times we want to retry on specific error types like timeout, 500",
+          "timeout": "No of seconds",
+          "storeDataToS3": "",
+          "taskName": "CreateHipsterJobAndWaitForMeasurement",
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "callType": "Hipster",
+          "taskToken.$": "$$.Task.Token",
+          "hipsterLegacySubStatus": "HipsterMeasurmentStarted",
+          "auth": {}
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "UpdateHipsterMeasurementCompleteInLegacy"
+    },
+    "UpdateHipsterMeasurementCompleteInLegacy": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "ResultSelector": {
+        "response.$": "$.Payload"
+      },
+      "ResultPath": "$.UpdateHipsterMeasurementCompleteInLegacy",
+      "OutputPath": "$",
+      "Parameters": {
+        "Payload": {
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskName": "UpdateHipsterMeasurementCompleteInLegacy",
+          "callType": "Legacy",
+          "payload": {
+            "ReportId.$": "$$.Execution.Input.reportId",
+            "Status": "InProcess",
+            "SubStatus": "HipsterMeasurementComplete"
+          }
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "UpdateHipsterJobAndWaitForQC"
+    },
+    "UpdateHipsterJobAndWaitForQC": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "ResultSelector": {
+        "response.$": "$"
+      },
+      "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
+      "OutputPath": "$",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST",
+        "Payload": {
+          "payload": {
+            "mode": "QC"
+          },
+          "url.$": "States.Format('hipster_base_url/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+          "requestMethod": "POST",
+          "headers": {},
+          "isWaitTask": false,
+          "retry": "number of times we want to retry on specific error types like timeout, 500",
+          "timeout": "No of seconds",
+          "storeDataToS3": "",
+          "taskName": "UpdateHipsterJobAndWaitForQC",
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "callType": "Hipster",
+          "taskToken.$": "$$.Task.Token",
+          "hipsterLegacySubStatus": "HipsterQCStarted",
+          "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
+          "auth": {}
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "UpdateHipsterQCCompleteInLegacy"
+    },
+    "UpdateHipsterQCCompleteInLegacy": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "ResultSelector": {
+        "response.$": "$.Payload"
+      },
+      "ResultPath": "$.UpdateHipsterQCCompleteInLegacy",
+      "OutputPath": "$",
+      "Parameters": {
+        "Payload": {
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "taskName": "UpdateHipsterQCCompleteInLegacy",
+          "callType": "Legacy",
+          "payload": {
+            "ReportId.$": "$$.Execution.Input.reportId",
+            "Status": "InProcess",
+            "SubStatus": "HipsterQCComplete"
+          }
+        },
+        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:symphony-callout:$LATEST"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "End": true
+    }
+  }
+}
