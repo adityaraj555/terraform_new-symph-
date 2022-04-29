@@ -421,23 +421,6 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 		data.Payload["meta"] = metaObj
 
-		StepExecutionData := documentDB_client.StepExecutionDataBody{
-			StepId:     stepID,
-			StartTime:  time.Now().Unix(),
-			Url:        data.URL,
-			Input:      data.Payload,
-			TaskToken:  data.TaskToken,
-			WorkflowId: data.WorkflowID,
-			TaskName:   data.TaskName,
-		}
-
-		err := newDBClient.InsertStepExecution(StepExecutionData)
-		if err != nil {
-			fmt.Println("Unable to insert Step Data in DocumentDB")
-			returnResponse["status"] = failure
-			return returnResponse, err
-		}
-
 	}
 
 	json_data, err := json.Marshal(data.Payload)
@@ -530,19 +513,39 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
-	respose, err := callService(ctx, data, stepID)
+	response, err := callService(ctx, data, stepID)
+	StepExecutionData := documentDB_client.StepExecutionDataBody{
+		StepId:     stepID,
+		StartTime:  starttime,
+		Url:        data.URL,
+		Input:      data.Payload,
+		TaskToken:  data.TaskToken,
+		WorkflowId: data.WorkflowID,
+		TaskName:   data.TaskName,
+	}
+	if data.IsWaitTask {
+		StepExecutionData.IntermediateOutput = response
+	} else {
+		StepExecutionData.Output = response
+		StepExecutionData.EndTime = time.Now().Unix()
+	}
+	err = newDBClient.InsertStepExecution(StepExecutionData)
+	if err != nil {
+		fmt.Println("Unable to insert Step Data in DocumentDB")
+		return response, err
+	}
 	query := bson.M{"_id": data.WorkflowID}
 	if err != nil {
 		update := buildQuery(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
 		newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
-		return respose, err
+		return response, err
 	} else {
 		update := buildQuery(data.TaskName, stepID, success, starttime, data.IsWaitTask)
 		err := newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
-			respose["status"] = failure
+			response["status"] = failure
 		}
-		return respose, err
+		return response, err
 	}
 
 }
