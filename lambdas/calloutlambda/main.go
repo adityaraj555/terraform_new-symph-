@@ -376,12 +376,12 @@ func buildQuery(TaskName, stepID, status string, starttime int64, IsWaitTask boo
 		}
 	}
 	return bson.M{
-		"$addToSet": bson.M{
-			"stepsPassedThrough": bson.M{
-				"taskName":  TaskName,
-				"stepsId":   stepID,
-				"startTime": starttime,
-				"status":    stepstatus,
+		"$push": bson.M{
+			"stepsPassedThrough": documentDB_client.StepsPassedThroughBody{
+				TaskName:  TaskName,
+				StepId:    stepID,
+				StartTime: starttime,
+				Status:    stepstatus,
 			},
 		},
 		"$set": setrecord,
@@ -553,18 +553,20 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 func main() {
 	httpClient = &httpservice.HTTPClientV2{}
 	awsClient = &aws_client.AWSClient{}
-	documentDbSecretsARN := os.Getenv(DBSecretARN)
-
-	secrets, err := awsClient.GetSecret(context.Background(), documentDbSecretsARN, "us-east-2")
-	if err != nil {
-		fmt.Println("Unable to fetch DocumentDb in secret")
-	}
-	newDBClient = documentDB_client.NewDBClientService(secrets)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = newDBClient.DBClient.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
+	if newDBClient == nil {
+		SecretARN := os.Getenv(DBSecretARN)
+		fmt.Println("fetching db secrets")
+		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		if err != nil {
+			fmt.Println("Unable to fetch DocumentDb in secret")
+		}
+		newDBClient = documentDB_client.NewDBClientService(secrets)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = newDBClient.DBClient.Connect(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	lambda.Start(HandleRequest)
 }

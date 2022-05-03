@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -13,6 +14,7 @@ import (
 )
 
 var awsClient aws_client.AWSClient
+var newDBClient *documentDB_client.DocDBClient
 
 const (
 	Success    = "success"
@@ -30,15 +32,7 @@ type RequestBody struct {
 const DBSecretARN = "DBSecretARN"
 
 func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, error) {
-	SecretARN := os.Getenv(DBSecretARN)
-	secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-	NewDBClient := documentDB_client.NewDBClientService(secrets)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = NewDBClient.DBClient.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
+	var err error
 
 	switch Request.Action {
 	case "insert":
@@ -48,7 +42,8 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		data.WorkflowId = Request.WorkflowId
 		data.Status = Inprogress
 		data.InitialInput = Request.Input
-		err = NewDBClient.InsertWorkflowExecution(data)
+		data.StepsPassedThrough = []documentDB_client.StepsPassedThroughBody{}
+		err = newDBClient.InsertWorkflowExecution(data)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -60,7 +55,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			},
 		}
 		query := bson.M{"_id": Request.WorkflowId}
-		err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -70,6 +65,20 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 }
 
 func main() {
-
+	if newDBClient == nil {
+		SecretARN := os.Getenv(DBSecretARN)
+		fmt.Println("fetching db secrets")
+		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		if err != nil {
+			fmt.Println("Unable to fetch DocumentDb in secret")
+		}
+		newDBClient = documentDB_client.NewDBClientService(secrets)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = newDBClient.DBClient.Connect(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	lambda.Start(Handler)
 }

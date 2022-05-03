@@ -20,6 +20,7 @@ import (
 )
 
 var awsClient aws_client.AWSClient
+var newDBClient *documentDB_client.DocDBClient
 
 type RequestBody struct {
 	Status      string                 `json:"status"`
@@ -34,16 +35,7 @@ const success = "success"
 const failure = "failure"
 
 func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
-	SecretARN := os.Getenv(DBSecretARN)
-	secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-	NewDBClient := documentDB_client.NewDBClientService(secrets)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = NewDBClient.DBClient.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	var err error
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
 	var body string
@@ -57,7 +49,7 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
-	StepExecutionData, err := NewDBClient.FetchStepExecution(requestBody.CallbackID)
+	StepExecutionData, err := newDBClient.FetchStepExecution(requestBody.CallbackID)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
@@ -85,14 +77,15 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 	}
 	update := bson.M{
 		"$set": bson.M{
-			"output": requestBody.Response,
-			"status": requestBody.Status,
+			"output":  requestBody.Response,
+			"status":  requestBody.Status,
+			"endTime": time.Now().Unix(),
 		},
 	}
-	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.StepsDataCollection)
+	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.StepsDataCollection)
 	query = bson.M{
-		"_id":                        StepExecutionData.WorkflowId,
-		"stepsPassedThrough.stepsId": requestBody.CallbackID,
+		"_id":                       StepExecutionData.WorkflowId,
+		"stepsPassedThrough.stepId": requestBody.CallbackID,
 	}
 
 	update = bson.M{
@@ -100,7 +93,7 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 			"stepsPassedThrough.$.status": stepstatus,
 		},
 	}
-	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
@@ -115,7 +108,7 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 			},
 		},
 	}
-	err = NewDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
@@ -123,6 +116,20 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 }
 
 func main() {
-
+	if newDBClient == nil {
+		SecretARN := os.Getenv(DBSecretARN)
+		fmt.Println("fetching db secrets")
+		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		if err != nil {
+			fmt.Println("Unable to fetch DocumentDb in secret")
+		}
+		newDBClient = documentDB_client.NewDBClientService(secrets)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = newDBClient.DBClient.Connect(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	lambda.Start(Handler)
 }

@@ -55,7 +55,7 @@ type WorkflowExecutionDataBody struct {
 	RunningState       map[string]interface{}   `bson:"runningState"`
 	InitialInput       map[string]interface{}   `bson:"initialInput"`
 	FinalOutput        map[string]interface{}   `bson:"finalOutput"`
-	StepsPassedThrough []map[string]interface{} `bson:"stepsPassedThrough"`
+	StepsPassedThrough []StepsPassedThroughBody `bson:"stepsPassedThrough"`
 }
 
 type StepExecutionDataBody struct {
@@ -70,6 +70,13 @@ type StepExecutionDataBody struct {
 	TaskToken          string                 `bson:"taskToken"`
 	WorkflowId         string                 `bson:"workflowId"`
 	TaskName           string                 `bson:"taskName"`
+}
+
+type StepsPassedThroughBody struct {
+	TaskName  string `bson:"taskName"`
+	StepId    string `bson:"stepId"`
+	StartTime int64  `bson:"startTime"`
+	Status    string `bson:"status"`
 }
 
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
