@@ -51,6 +51,10 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 		return map[string]interface{}{"status": failure}, err
 	}
 	StepExecutionData, err := newDBClient.FetchStepExecution(requestBody.CallbackID)
+
+	if requestBody.CallbackID == "" {
+		return map[string]interface{}{"status": "failed"}, errors.New("callbackId is empty")
+	}
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}

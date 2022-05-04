@@ -45,23 +45,23 @@ type AuthData struct {
 }
 
 type MyEvent struct {
-	Payload                map[string]interface{} `json:"requestData"`
-	URL                    string                 `json:"url"`
-	RequestMethod          string                 `json:"requestMethod"`
-	Headers                map[string]string      `json:"headers"`
-	IsWaitTask             bool                   `json:"isWaitTask"`
-	Timeout                int                    `json:"timeout"`
-	StoreDataToS3          string                 `json:"storeDataToS3"`
-	TaskName               string                 `json:"taskName"`
-	CallType               string                 `json:"callType"`
-	OrderID                string                 `json:"orderId"`
-	ReportID               string                 `json:"reportId"`
-	WorkflowID             string                 `json:"workflowId"`
-	TaskToken              string                 `json:"taskToken"`
-	HipsterLegacySubStatus string                 `json:"hipsterLegacySubStatus,omitempty"`
-	HipsterJobID           string                 `json:"hipsterJobId,omitempty"`
-	QueryParam             map[string]string      `json:"queryParam,omitempty"`
-	Auth                   AuthData               `json:"auth"`
+	Payload       map[string]interface{} `json:"requestData"`
+	URL           string                 `json:"url"`
+	RequestMethod string                 `json:"requestMethod"`
+	Headers       map[string]string      `json:"headers"`
+	IsWaitTask    bool                   `json:"isWaitTask"`
+	Timeout       int                    `json:"timeout"`
+	StoreDataToS3 string                 `json:"storeDataToS3"`
+	TaskName      string                 `json:"taskName"`
+	CallType      string                 `json:"callType"`
+	OrderID       string                 `json:"orderId"`
+	ReportID      string                 `json:"reportId"`
+	WorkflowID    string                 `json:"workflowId"`
+	TaskToken     string                 `json:"taskToken"`
+	HipsterJobID  string                 `json:"hipsterJobId,omitempty"`
+	QueryParam    map[string]string      `json:"queryParam,omitempty"`
+	Auth          AuthData               `json:"auth"`
+	Status        string                 `json:"status"`
 }
 
 // Currently not using because do not know how to handle runtime error lmbda
@@ -82,6 +82,22 @@ const Submitted = "submitted"
 const running = "running"
 const success = "success"
 const failure = "failure"
+
+func (event *MyEvent) validate() error {
+	// URL mandatory ??
+	if event.ReportID == "" || event.CallType == "" || event.WorkflowID == "" {
+		return errors.New("mandatory fields(reportId, callType, workflowId) cannot be empty")
+	}
+
+	if (event.CallType == "hipster" || event.CallType == "eagleflow") && (event.Status == "") {
+		return errors.New("status cannot be empty")
+	}
+
+	if event.IsWaitTask && event.TaskToken == "" {
+		return errors.New("need task token for async tasks")
+	}
+	return nil
+}
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type))
@@ -343,13 +359,12 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	return nil
 }
 
-func handleHipster(ctx context.Context, reportId, hipsterLegacySubStatus, jobID string) error {
+func handleHipster(ctx context.Context, reportId, status, jobID string) error {
 
 	legacyRequestPayload := map[string]interface{}{
-		"ReportId":     reportId,
-		"Status":       "InProcess",
-		"SubStatus":    hipsterLegacySubStatus,
-		"HipsterJobId": jobID,
+		"status":       status,
+		"hipsterJobId": jobID,
+		"reportId":     reportId,
 	}
 
 	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
@@ -391,6 +406,10 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	returnResponse := make(map[string]interface{})
 
+	if err := data.validate(); err != nil {
+		return returnResponse, err
+	}
+
 	timeout := 30
 	if data.Timeout != 0 {
 		timeout = data.Timeout
@@ -403,7 +422,13 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	callType := strings.ToLower(data.CallType)
 
 	if callType == "eagleflow" {
-		err := callLegacyStatusUpdate(ctx, data.Payload)
+		req := map[string]interface{}{
+			"reportId":   data.ReportID,
+			"workflowId": data.WorkflowID,
+			"status":     data.Status,
+			"taskName":   data.TaskName,
+		}
+		err := callLegacyStatusUpdate(ctx, req)
 		if err != nil {
 			fmt.Println(err)
 			returnResponse["status"] = failure
@@ -499,7 +524,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 				return returnResponse, errors.New("Hipster JobId missing in hipster output")
 			}
 		}
-		err := handleHipster(ctx, data.ReportID, data.HipsterLegacySubStatus, jobID)
+		err := handleHipster(ctx, data.ReportID, data.Status, jobID)
 		if err != nil {
 			returnResponse["status"] = failure
 			return returnResponse, err
