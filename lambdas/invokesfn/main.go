@@ -13,6 +13,20 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 )
 
+type sfnInput struct {
+	Address struct {
+		City      string  `json:"city"`
+		Country   string  `json:"country"`
+		Longitude float64 `json:"longitude"`
+		Latitude  float64 `json:"latitude"`
+		State     string  `json:"state"`
+		Street    string  `json:"street"`
+		Zip       string  `json:"zip"`
+	}
+	OrderID  string `json:"orderId"`
+	ReportID string `json:"reportId"`
+}
+
 var awsClient aws_client.AWSClient
 
 const StateMachineARN = "StateMachineARN"
@@ -45,22 +59,9 @@ func validateInput(input string) error {
 		return err
 	}
 	fmt.Printf("request input: %#v", req)
+	// validation for any other fields??
 	if req.ReportID == "" {
 		return errors.New("reportId cannot be empty")
 	}
 	return nil
-}
-
-type sfnInput struct {
-	Address struct {
-		City      string  `json:"city"`
-		Country   string  `json:"country"`
-		Longitude float64 `json:"longitude"`
-		Latitude  float64 `json:"latitude"`
-		State     string  `json:"state"`
-		Street    string  `json:"street"`
-		Zip       string  `json:"zip"`
-	}
-	OrderID  string `json:"orderId"`
-	ReportID string `json:"reportId"`
 }
