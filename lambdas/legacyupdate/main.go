@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -9,6 +10,7 @@ import (
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/legacy_client"
+	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
 )
 
 const (
@@ -25,11 +27,12 @@ var awsClient aws_client.IAWSClient
 var httpClient httpservice.IHTTPClientV2
 
 type eventData struct {
-	OrderID    string                            `json:"orderId"`
-	ReportID   string                            `json:"reportId"`
-	WorkflowID string                            `json:"workflowId"`
-	TaskName   string                            `json:"taskName"`
-	Payload    legacy_client.LegacyUpdateRequest `json:"payload"`
+	OrderID      string `json:"orderId"`
+	ReportID     string `json:"reportId"`
+	WorkflowID   string `json:"workflowId"`
+	TaskName     string `json:"taskName"`
+	Status       string `json:"status"`
+	HipsterJobID string `json:"hipsterJobId"`
 }
 
 type LambdaOutput struct {
@@ -41,18 +44,12 @@ type LambdaOutput struct {
 /*
 Input:
 {
-	"payload": {
-		"ReportId": 12345,
-  		"Status": "InProcess",
-  		"SubStatus": "MLAutomationCompleted|MeasurementPending|MeasurementCompleted|QCPending|QCCompleted",
-  		"Notes": "some notes",
-  		"IsRecapture": false,
-  		"HipsterJobId": "afaa627a-727a-4e1d-a5d2-9ef16471759b"
-	},
-	"task_name": "facet-key-point",
-	"order_id": "",
-	"report_id": "",
-	"workflow_id": "",
+	"status": "wf-status",
+	"hipsterJobId": "613498-kjhvcdlo87234",
+	"taskName": "facet-key-point",
+	"orderId": "",
+	"reportId": "",
+	"workflowId": "",
 }
 
 Output:
@@ -64,6 +61,16 @@ Output:
 
 */
 func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
+
+	if eventData.ReportID == "" {
+		return nil, errors.New("reportId cannot be empty")
+	}
+
+	status, ok := status.StatusMap[eventData.Status]
+	if !ok {
+		return nil, errors.New("invalid status")
+	}
+
 	endpoint := os.Getenv(envLegacyEndpoint)
 	authsecret := os.Getenv(envLegacyAuthSecret)
 
@@ -74,7 +81,13 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 	}
 
 	client := legacy_client.New(endpoint, secretMap[legacyAuthKey].(string), httpClient)
-	err = client.UpdateReportStatus(ctx, &eventData.Payload)
+	payload := legacy_client.LegacyUpdateRequest{
+		Status:       status.Status,
+		SubStatus:    status.SubStatus,
+		ReportID:     eventData.ReportID,
+		HipsterJobId: eventData.HipsterJobID,
+	}
+	err = client.UpdateReportStatus(ctx, &payload)
 	if err != nil {
 		return &LambdaOutput{
 			Status: failure,
