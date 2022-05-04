@@ -58,3 +58,27 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 	}
 	return nil
 }
+
+func (lc *LegacyClient) UploadMLJsonToEvoss(ctx context.Context, reportId string, mlJson []byte) error {
+
+	if reportId == "" || len(mlJson) == 0 {
+		return errors.New("invalid request body")
+	}
+
+	url := fmt.Sprintf("%s/UploadMLJson?reportId=%s", lc.EndPoint, reportId)
+	headers := map[string]string{
+		"Authorization": "Basic " + lc.AuthToken,
+	}
+
+	response, err := lc.HTTPClient.Post(ctx, url, bytes.NewReader(mlJson), headers)
+	if err != nil {
+		log.Error(ctx, "error : ", err)
+		return err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		log.Error(ctx, "response not ok: ", response.StatusCode)
+		return errors.New("response not ok from legacy")
+	}
+	return nil
+}

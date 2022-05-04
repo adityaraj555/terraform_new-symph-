@@ -8,7 +8,7 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
-	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/legacy_client"
+	"github.eagleview.com/engineering/symphony-service/commons/legacy_client"
 )
 
 const (
