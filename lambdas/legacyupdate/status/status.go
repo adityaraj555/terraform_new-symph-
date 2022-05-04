@@ -18,6 +18,10 @@ var StatusMap = map[string]status{
 		Status:    "InProcess",
 		SubStatus: "MLAutomationCompleted",
 	},
+	"MASymphonyCompleted": {
+		Status:    "InProcess",
+		SubStatus: "MLSFNAutomationCompleted",
+	},
 	"MeasurementStarted": {
 		Status:    "InProcess",
 		SubStatus: "HipsterMeasurementPending",
@@ -41,9 +45,5 @@ var StatusMap = map[string]status{
 	"QCCompleted": {
 		Status:    "InProcess",
 		SubStatus: "HipsterQCCompleted",
-	},
-	"SymphonyCompleted": {
-		Status:    "InProcess",
-		SubStatus: "MLSFNAutomationCompleted",
 	},
 }
