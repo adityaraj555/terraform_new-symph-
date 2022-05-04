@@ -80,8 +80,8 @@ const envCallbackLambdaFunctionUrl = "envLegacyUpdatefunction"
 
 func (event *MyEvent) validate() error {
 	// URL mandatory ??
-	if event.ReportID == "" || event.CallType == "" {
-		return errors.New("mandatory fields cannot be empty")
+	if event.ReportID == "" || event.CallType == "" || event.WorkflowID == "" {
+		return errors.New("mandatory fields(reportId, callType, workflowId) cannot be empty")
 	}
 
 	if (event.CallType == "hipster" || event.CallType == "eagleflow") && (event.Status == "") {

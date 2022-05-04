@@ -29,7 +29,10 @@ type sfnInput struct {
 
 var awsClient aws_client.AWSClient
 
-const StateMachineARN = "StateMachineARN"
+const (
+	StateMachineARN = "StateMachineARN"
+	emptyString     = ""
+)
 
 func main() {
 	lambda.Start(Handler)
@@ -60,9 +63,13 @@ func validateInput(input string) error {
 		return err
 	}
 	fmt.Printf("request input: %#v", req)
-	// validation for any other fields??
-	if req.ReportID == "" {
+	if req.ReportID == emptyString {
 		return errors.New("reportId cannot be empty")
 	}
+
+	if req.Address.City == emptyString || req.Address.Country == emptyString || req.Address.State == emptyString || req.Address.Zip == emptyString || req.Address.Street == emptyString {
+		return errors.New("address fields(street, city, state, country, zip) missing")
+	}
+
 	return nil
 }
