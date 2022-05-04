@@ -513,7 +513,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
-	response, err := callService(ctx, data, stepID)
+	response, serviceerr := callService(ctx, data, stepID)
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
 		StepId:     stepID,
 		StartTime:  starttime,
@@ -523,22 +523,26 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		WorkflowId: data.WorkflowID,
 		TaskName:   data.TaskName,
 	}
+	if serviceerr != nil {
+		StepExecutionData.Status = failure
+		StepExecutionData.Output = response
+	}
 	if data.IsWaitTask {
 		StepExecutionData.IntermediateOutput = response
 	} else {
 		StepExecutionData.Output = response
 		StepExecutionData.EndTime = time.Now().Unix()
 	}
-	err = newDBClient.InsertStepExecution(StepExecutionData)
+	err := newDBClient.InsertStepExecution(StepExecutionData)
 	if err != nil {
 		fmt.Println("Unable to insert Step Data in DocumentDB")
 		return response, err
 	}
 	query := bson.M{"_id": data.WorkflowID}
-	if err != nil {
+	if serviceerr != nil {
 		update := buildQuery(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
 		newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
-		return response, err
+		return response, serviceerr
 	} else {
 		update := buildQuery(data.TaskName, stepID, success, starttime, data.IsWaitTask)
 		err := newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)

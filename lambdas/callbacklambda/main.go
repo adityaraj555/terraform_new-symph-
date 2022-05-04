@@ -33,6 +33,7 @@ type RequestBody struct {
 const DBSecretARN = "DBSecretARN"
 const success = "success"
 const failure = "failure"
+const rework = "rework"
 
 func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -54,7 +55,10 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 		return map[string]interface{}{"status": failure}, err
 	}
 	var stepstatus string = failure
-	if requestBody.Status == success {
+	if requestBody.Status == rework {
+		requestBody.Response["isReworkRequired"] = true
+	}
+	if requestBody.Status == success || requestBody.Status == rework {
 		stepstatus = success
 		byteData, _ := json.Marshal(requestBody.Response)
 		jsonResponse := string(byteData)
