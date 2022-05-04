@@ -8,7 +8,7 @@ type status struct {
 var StatusMap = map[string]status{
 	"MAStarted": {
 		Status:    "InProcess",
-		SubStatus: "PengingMLAutomation",
+		SubStatus: "MLAutomationStarted",
 	},
 	"MAFailed": {
 		Status:    "InProcess",
@@ -41,5 +41,9 @@ var StatusMap = map[string]status{
 	"QCCompleted": {
 		Status:    "InProcess",
 		SubStatus: "HipsterQCCompleted",
+	},
+	"SymphonyCompleted": {
+		Status:    "InProcess",
+		SubStatus: "MLSFNAutomationCompleted",
 	},
 }

@@ -52,6 +52,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
 }
 
 func validateInput(input string) error {
+	fmt.Print("input body:", input)
 	req := sfnInput{}
 	err := json.Unmarshal([]byte(input), &req)
 	if err != nil {
