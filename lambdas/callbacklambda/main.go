@@ -16,7 +16,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/sfn"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var awsClient aws_client.AWSClient
@@ -34,37 +33,29 @@ const DBSecretARN = "DBSecretARN"
 const success = "success"
 const failure = "failure"
 const rework = "rework"
+const isReworkRequired = "isReworkRequired"
 
-func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
+func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]interface{}, error) {
 	var err error
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
-	var body string
-	if requestbody, ok := CallbackRequest["body"]; ok {
-		body = requestbody.(string)
-	} else {
-		return map[string]interface{}{"status": failure}, errors.New("body is empty in request body")
-	}
-	var requestBody = RequestBody{}
-	err = json.Unmarshal([]byte(body), &requestBody)
-	if err != nil {
-		return map[string]interface{}{"status": failure}, err
-	}
-	StepExecutionData, err := newDBClient.FetchStepExecution(requestBody.CallbackID)
+	StepExecutionData, err := newDBClient.FetchStepExecutionData(CallbackRequest.CallbackID)
 
-	if requestBody.CallbackID == "" {
+	if CallbackRequest.CallbackID == "" {
 		return map[string]interface{}{"status": "failed"}, errors.New("callbackId is empty")
 	}
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
 	var stepstatus string = failure
-	if requestBody.Status == rework {
-		requestBody.Response["isReworkRequired"] = true
+	if CallbackRequest.Status == rework {
+		CallbackRequest.Response[isReworkRequired] = true
+	} else {
+		CallbackRequest.Response[isReworkRequired] = false
 	}
-	if requestBody.Status == success || requestBody.Status == rework {
+	if CallbackRequest.Status == success || CallbackRequest.Status == rework {
 		stepstatus = success
-		byteData, _ := json.Marshal(requestBody.Response)
+		byteData, _ := json.Marshal(CallbackRequest.Response)
 		jsonResponse := string(byteData)
 		taskoutput, err := svc.SendTaskSuccess(&sfn.SendTaskSuccessInput{
 			TaskToken: &StepExecutionData.TaskToken,
@@ -72,51 +63,26 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 		})
 		fmt.Println(&taskoutput, err)
 	} else {
-		messageCode := strconv.Itoa(requestBody.MessageCode)
+		messageCode := strconv.Itoa(CallbackRequest.MessageCode)
 		taskoutput, err := svc.SendTaskFailure(&sfn.SendTaskFailureInput{
 			TaskToken: &StepExecutionData.TaskToken,
-			Cause:     &requestBody.Message,
+			Cause:     &CallbackRequest.Message,
 			Error:     &messageCode,
 		})
 		fmt.Println(&taskoutput, err)
 	}
-	query := bson.M{
-		"_id": StepExecutionData.StepId,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			"output":  requestBody.Response,
-			"status":  requestBody.Status,
-			"endTime": time.Now().Unix(),
-		},
-	}
-	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.StepsDataCollection)
-	query = bson.M{
-		"_id":                       StepExecutionData.WorkflowId,
-		"stepsPassedThrough.stepId": requestBody.CallbackID,
-	}
-
-	update = bson.M{
-		"$set": bson.M{
-			"stepsPassedThrough.$.status": stepstatus,
-		},
-	}
-	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	filter, query := newDBClient.BuildQueryForCallBack(documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
-	query = bson.M{
-		"_id": StepExecutionData.WorkflowId,
+	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		return map[string]interface{}{"status": failure}, err
 	}
-	update = bson.M{
-		"$set": bson.M{
-			"updatedAt": time.Now().Unix(),
-			"runningState": bson.M{
-				StepExecutionData.TaskName: stepstatus,
-			},
-		},
-	}
-	err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}

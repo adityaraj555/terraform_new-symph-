@@ -16,13 +16,20 @@ import (
 )
 
 const (
-	CaFilePath               = "rds-combined-ca-bundle.pem"
-	ConnectTimeout           = 5
-	QueryTimeout             = 30
-	ConnectionStringTemplate = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
-	Database                 = "test"
-	WorkflowDataCollection   = "WorkflowData"
-	StepsDataCollection      = "StepsData"
+	CaFilePath                    = "rds-combined-ca-bundle.pem"
+	ConnectTimeout                = 5
+	QueryTimeout                  = 30
+	ConnectionStringTemplate      = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
+	Database                      = "test"
+	WorkflowDataCollection        = "WorkflowData"
+	StepsDataCollection           = "StepsData"
+	success                       = "success"
+	failure                       = "failure"
+	Submitted                     = "submitted"
+	running                       = "running"
+	UpdateStepExecution           = "UpdateStepExecution"
+	UpdateWorkflowExecutionSteps  = "UpdateWorkflowExecutionSteps"
+	UpdateWorkflowExecutionStatus = "UpdateWorkflowExecutionStatus"
 )
 
 var (
@@ -33,11 +40,13 @@ var (
 )
 
 type IDocDBClient interface {
-	FetchStepExecution(StepId string) (StepExecutionDataBody, error)
-	InsertStepExecution(StepExecutionData StepExecutionDataBody) error
-	InsertWorkflowExecution(Data WorkflowExecutionDataBody) error
+	FetchStepExecutionData(StepId string) (StepExecutionDataBody, error)
+	InsertStepExecutionData(StepExecutionData StepExecutionDataBody) error
+	InsertWorkflowExecutionData(Data WorkflowExecutionDataBody) error
 	UpdateDocumentDB(query, update interface{}, collectionName string) error
-	FetchWorkflowExecution(workFlowId string) (WorkflowExecutionDataBody, error)
+	FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error)
+	BuildQueryForCallBack(event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{})
+	BuildQueryForUpdateWorkflowDataCallout(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
 }
 
 type DocDBClient struct {
@@ -95,7 +104,7 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	return &DocDBClient{DBClient: DBClient}
 }
 
-func (DBClient *DocDBClient) FetchStepExecution(StepId string) (StepExecutionDataBody, error) {
+func (DBClient *DocDBClient) FetchStepExecutionData(StepId string) (StepExecutionDataBody, error) {
 	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
@@ -108,7 +117,7 @@ func (DBClient *DocDBClient) FetchStepExecution(StepId string) (StepExecutionDat
 	}
 	return StepExecutionData, nil
 }
-func (DBClient *DocDBClient) InsertStepExecution(StepExecutionData StepExecutionDataBody) error {
+func (DBClient *DocDBClient) InsertStepExecutionData(StepExecutionData StepExecutionDataBody) error {
 	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
@@ -122,7 +131,7 @@ func (DBClient *DocDBClient) InsertStepExecution(StepExecutionData StepExecution
 	log.Printf("Inserted document ID: %s", id)
 	return nil
 }
-func (DBClient *DocDBClient) InsertWorkflowExecution(Data WorkflowExecutionDataBody) error {
+func (DBClient *DocDBClient) InsertWorkflowExecutionData(Data WorkflowExecutionDataBody) error {
 	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
@@ -154,7 +163,7 @@ func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collect
 	log.Printf("Updated document ID: %s", res.UpsertedID)
 	return nil
 }
-func (DBClient *DocDBClient) FetchWorkflowExecution(workFlowId string) (WorkflowExecutionDataBody, error) {
+func (DBClient *DocDBClient) FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error) {
 	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
 	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
@@ -166,6 +175,79 @@ func (DBClient *DocDBClient) FetchWorkflowExecution(workFlowId string) (Workflow
 		return WorkflowExecutionDataBody{}, err
 	}
 	return WorkflowExecutionData, nil
+}
+
+func (DBClient *DocDBClient) BuildQueryForUpdateWorkflowDataCallout(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {
+	var setrecord interface{}
+	var stepstatus string = failure
+	updatedAt := time.Now().Unix()
+	if IsWaitTask && status == success {
+		stepstatus = running
+		setrecord = bson.M{
+			"updatedAt": updatedAt,
+			"runningState": bson.M{
+				TaskName: Submitted,
+			},
+		}
+	} else {
+		if !IsWaitTask && status == success {
+			stepstatus = success
+		}
+		setrecord = bson.M{
+			"updatedAt": updatedAt,
+		}
+	}
+	return bson.M{
+		"$push": bson.M{
+			"stepsPassedThrough": StepsPassedThroughBody{
+				TaskName:  TaskName,
+				StepId:    stepID,
+				StartTime: starttime,
+				Status:    stepstatus,
+			},
+		},
+		"$set": setrecord,
+	}
+}
+func (DBClient *DocDBClient) BuildQueryForCallBack(event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{}) {
+	var filter interface{}
+	var query interface{}
+	if event == UpdateStepExecution {
+		filter = bson.M{
+			"_id": stepID,
+		}
+		query = bson.M{
+			"$set": bson.M{
+				"output":  callbackResponse,
+				"status":  status,
+				"endTime": time.Now().Unix(),
+			},
+		}
+	} else if event == UpdateWorkflowExecutionSteps {
+		filter = bson.M{
+			"_id":                       workflowID,
+			"stepsPassedThrough.stepId": stepID,
+		}
+
+		query = bson.M{
+			"$set": bson.M{
+				"stepsPassedThrough.$.status": status,
+			},
+		}
+	} else if event == UpdateWorkflowExecutionStatus {
+		filter = bson.M{
+			"_id": workflowID,
+		}
+		query = bson.M{
+			"$set": bson.M{
+				"updatedAt": time.Now().Unix(),
+				"runningState": bson.M{
+					TaskName: status,
+				},
+			},
+		}
+	}
+	return filter, query
 }
 func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 	tlsConfig := new(tls.Config)

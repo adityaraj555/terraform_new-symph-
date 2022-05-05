@@ -78,8 +78,6 @@ var newDBClient *documentDB_client.DocDBClient
 const DBSecretARN = "DBSecretARN"
 const envLegacyUpdatefunction = "envLegacyUpdatefunction"
 const envCallbackLambdaFunctionUrl = "envLegacyUpdatefunction"
-const Submitted = "submitted"
-const running = "running"
 const success = "success"
 const failure = "failure"
 
@@ -346,7 +344,7 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 		return errors.New("error occured while executing lambda ")
 	}
 
-	legacyStatus, ok := resp["Status"]
+	legacyStatus, ok := resp["status"]
 	if !ok {
 		return errors.New("legacy Response should have status")
 	}
@@ -370,38 +368,6 @@ func handleHipster(ctx context.Context, reportId, status, jobID string) error {
 	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
 }
 
-func buildQuery(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {
-	var setrecord interface{}
-	var stepstatus string = failure
-	updatedAt := time.Now().Unix()
-	if IsWaitTask && status == success {
-		stepstatus = running
-		setrecord = bson.M{
-			"updatedAt": updatedAt,
-			"runningState": bson.M{
-				TaskName: Submitted,
-			},
-		}
-	} else {
-		if !IsWaitTask && status == success {
-			stepstatus = success
-		}
-		setrecord = bson.M{
-			"updatedAt": updatedAt,
-		}
-	}
-	return bson.M{
-		"$push": bson.M{
-			"stepsPassedThrough": documentDB_client.StepsPassedThroughBody{
-				TaskName:  TaskName,
-				StepId:    stepID,
-				StartTime: starttime,
-				Status:    stepstatus,
-			},
-		},
-		"$set": setrecord,
-	}
-}
 func callService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
 
 	returnResponse := make(map[string]interface{})
@@ -558,19 +524,19 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		StepExecutionData.Output = response
 		StepExecutionData.EndTime = time.Now().Unix()
 	}
-	err := newDBClient.InsertStepExecution(StepExecutionData)
+	err := newDBClient.InsertStepExecutionData(StepExecutionData)
 	if err != nil {
 		fmt.Println("Unable to insert Step Data in DocumentDB")
 		return response, err
 	}
-	query := bson.M{"_id": data.WorkflowID}
+	filter := bson.M{"_id": data.WorkflowID}
 	if serviceerr != nil {
-		update := buildQuery(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
-		newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
+		newDBClient.UpdateDocumentDB(filter, update, documentDB_client.WorkflowDataCollection)
 		return response, serviceerr
 	} else {
-		update := buildQuery(data.TaskName, stepID, success, starttime, data.IsWaitTask)
-		err := newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(data.TaskName, stepID, success, starttime, data.IsWaitTask)
+		err := newDBClient.UpdateDocumentDB(filter, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			response["status"] = failure
 		}

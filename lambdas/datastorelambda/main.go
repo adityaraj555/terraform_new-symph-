@@ -43,7 +43,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		data.Status = Inprogress
 		data.InitialInput = Request.Input
 		data.StepsPassedThrough = []documentDB_client.StepsPassedThroughBody{}
-		err = newDBClient.InsertWorkflowExecution(data)
+		err = newDBClient.InsertWorkflowExecutionData(data)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
