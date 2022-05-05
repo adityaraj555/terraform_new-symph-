@@ -77,7 +77,7 @@ var newDBClient *documentDB_client.DocDBClient
 
 const DBSecretARN = "DBSecretARN"
 const envLegacyUpdatefunction = "envLegacyUpdatefunction"
-const envCallbackLambdaFunctionUrl = "envLegacyUpdatefunction"
+const envCallbackLambdaFunction = "envCallbackLambdaFunction"
 const success = "success"
 const failure = "failure"
 
@@ -408,7 +408,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 		metaObj := Meta{
 			CallbackID:  stepID,
-			CallbackURL: os.Getenv(envCallbackLambdaFunctionUrl),
+			CallbackURL: os.Getenv(envCallbackLambdaFunction),
 		}
 		data.Payload["meta"] = metaObj
 
