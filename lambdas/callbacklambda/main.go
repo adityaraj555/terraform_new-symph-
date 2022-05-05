@@ -56,6 +56,10 @@ func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[s
 	if err != nil {
 		return map[string]interface{}{"status": "failed"}, err
 	}
+
+	if requestBody.CallbackID == "" {
+		return map[string]interface{}{"status": "failed"}, errors.New("callbackId is empty")
+	}
 	MetaData, err := NewDBClient.FetchMetaData(requestBody.CallbackID)
 	if err != nil {
 		return map[string]interface{}{"status": "failed"}, err
