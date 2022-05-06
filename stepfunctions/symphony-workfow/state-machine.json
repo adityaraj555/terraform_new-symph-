@@ -467,6 +467,7 @@
                   "callType": "hipster",
                   "taskToken.$": "$$.Task.Token",
                   "status": "QCStarted",
+                  "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
                   "auth": {}
                 }
               },
@@ -528,6 +529,7 @@
                   "callType": "hipster",
                   "taskToken.$": "$$.Task.Token",
                   "status": "MeasurementStarted",
+                  "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
                   "auth": {}
                 }
               },
