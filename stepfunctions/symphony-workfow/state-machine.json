@@ -577,7 +577,7 @@
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyMLAutomationStart",
+          "taskName": "updateMLAutomationRejected",
           "callType": "eagleflow",
           "status": "MAFailed",
           "requestData": {}
@@ -638,7 +638,7 @@
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyMLAutomationStart",
+          "taskName": "UpdateLegacyStatus",
           "callType": "eagleflow",
           "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.LegacyStatus",
           "requestData": {}
