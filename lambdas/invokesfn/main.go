@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -11,20 +10,21 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
+	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
 
 type sfnInput struct {
 	Address struct {
-		City      string  `json:"city"`
-		Country   string  `json:"country"`
-		Longitude float64 `json:"longitude"`
-		Latitude  float64 `json:"latitude"`
-		State     string  `json:"state"`
-		Street    string  `json:"street"`
-		Zip       string  `json:"zip"`
+		City      string  `json:"city" validate:"required"`
+		Country   string  `json:"country" validate:"required"`
+		Longitude float64 `json:"longitude" validate:"required"`
+		Latitude  float64 `json:"latitude" validate:"required"`
+		State     string  `json:"state" validate:"required"`
+		Street    string  `json:"street" validate:"required"`
+		Zip       string  `json:"zip" validate:"required"`
 	}
 	OrderID  string `json:"orderId"`
-	ReportID string `json:"reportId"`
+	ReportID string `json:"reportId" validate:"required"`
 }
 
 var awsClient aws_client.AWSClient
@@ -41,7 +41,7 @@ func main() {
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
 	SFNStateMachineARN := os.Getenv(StateMachineARN)
 	for _, message := range sqsEvent.Records {
-		if err = validateInput(message.Body); err != nil {
+		if err = validateInput(ctx, message.Body); err != nil {
 			return err
 		}
 		ExecutionArn, err := awsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
@@ -54,21 +54,18 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
 	return err
 }
 
-func validateInput(input string) error {
-	fmt.Print("input body:", input)
+func validateInput(ctx context.Context, input string) error {
+	log.Info("input body:", input)
 	req := sfnInput{}
 	err := json.Unmarshal([]byte(input), &req)
 	if err != nil {
 		log.Error("invalid input for sfn", input)
 		return err
 	}
-	fmt.Printf("request input: %#v", req)
-	if req.ReportID == emptyString {
-		return errors.New("reportId cannot be empty")
-	}
 
-	if req.Address.City == emptyString || req.Address.Country == emptyString || req.Address.State == emptyString || req.Address.Zip == emptyString || req.Address.Street == emptyString {
-		return errors.New("address fields(street, city, state, country, zip) missing")
+	if err := validator.ValidateInvokeSfnRequest(ctx, req); err != nil {
+		log.Error("error in validation: ", err)
+		return err
 	}
 
 	return nil
