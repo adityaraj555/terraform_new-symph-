@@ -1,0 +1,194 @@
+def accountmap = [
+  'platform-dev':'356071200662',
+  'platform-test':'952028532360', 
+  'platform-stage':'633128282718',
+  'platform-prod':'249106962406',
+]
+
+def lambdafilenamemap = [
+  'calloutLambda':'calloutlambda',
+  'callbackLambda':'callbacklambda', 
+  'dataStoreLambda':'datastorelambda',
+  'invokesfnLambda':'invokesfn',
+  'legacyupdate':'legacyupdate',
+  'convertModelDataLambda':'evjsonhandlerlambda',
+]
+pipeline {
+
+  agent {
+    kubernetes {
+      yamlFile 'build/jenkins/pod.yaml'
+    }
+  }
+
+  parameters {
+    string(name: "DOMAIN",             defaultValue: "symphony-service",      description: "Platform Domain Name")
+    choice(name: "ENV",                choices: ["platform-dev", "platform-test", "platform-stage", "platform-prod"],                    description: "Select the environment for deploy")
+    choice(name: "LAMBDA",                choices: ["calloutLambda", "callbackLambda", "legacyupdate", "invokesfnLambda","dataStoreLambda","convertModelDataLambda"],    description: "Select the lambda for deploy")
+    choice(name: "ECR_ACCOUNT_ID",     choices: "176992832580",                      description: "ECR account ID (default: platform-ci)")
+    choice(name: "ECR_REGION",         choices: "us-east-2",                         description: "ECR region")
+    string(name: "GITHUB_CREDENTIALS", defaultValue: "platform-github-token",        description: "Platform GitHub credentials")
+    string(name: "ARGOCD_CREDENTIALS", defaultValue: "platform-argocd-token",        description: "Platform ArgoCD credentials")
+    string(name: "SLACK_CREDENTIALS",  defaultValue: "slackintegration",             description: "Slack credentials for Graph Warehouse notifications")
+    choice(name: "RUN_JENKINS_MIGRATION", choices: ["yes", "no"],                    description: "choice for running the mirgration stage from Jenkins")
+    string(name: "BUILD_NOTES",        defaultValue: "symphony-service-api build", description: "notes for the current build in one line")
+    gitParameter name: 'RELEASE_BRANCH' , description: 'select the release branch to deploy' , type: 'PT_BRANCH' , defaultValue:'origin/release-1.0.0', branchFilter:'origin/release-.*'
+  }
+
+  environment {
+    AWS_CREDENTIALS       = credentials("JenkinsDeploymentUser")
+    AWS_ACCESS_KEY_ID     = "${env.AWS_CREDENTIALS_USR}"
+    AWS_SECRET_ACCESS_KEY = "${env.AWS_CREDENTIALS_PSW}"
+    DEPLOYMENT_ROLE       = "JenkinsDeploymentRole"
+    GIT_COMMIT_URL        = "https://github.eagleview.com/engineering/symphony-service/commit/${env.GIT_COMMIT}"
+    README_URL            = 'https://github.eagleview.com/engineering/symphony-service/blob/develop/README.md'
+    MIGRATION_VERSION     = ''
+    S3_BUCKET             = "deployment-updates.evinternal.net"
+    S3_TARGET_ACCOUNT     = '176992832580'
+  }
+
+  stages {
+
+    stage('env') {
+      steps {
+        script {
+          env.REVISION   = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          env.ECR_IMAGE  = "${ECR_ACCOUNT_ID}.dkr.ecr.${ECR_REGION}.amazonaws.com/${DOMAIN}/${LAMBDA}:${REVISION}.${BUILD_NUMBER}"
+          env.ARGOAPPLICATION = "${DOMAIN}-${ENV}"
+          env.RUN_IMAGE_STAGE  = 'true'
+          env.DEPLOY_TARGET_ACCOUNT = accountmap.get(ENV)
+        }
+      }
+    }
+
+    stage('dependencies') {
+      steps {
+        container('golang') {
+          withCredentials([string(credentialsId: "$GITHUB_CREDENTIALS", variable: "GITHUB_TOKEN")]) {
+            sh "git config --global url.https://${GITHUB_TOKEN}@github.eagleview.com/.insteadOf https://github.eagleview.com/"
+            sh "GOPRIVATE=github.eagleview.com make dep"
+          }
+        }
+      }
+    }
+    
+    // stage('test') {
+    //   when {
+    //     expression { env.RUN_IMAGE_STAGE=='true' }
+    //   }
+    //   steps {
+    //     container('golang') {
+    //       sh "apt-get update"
+    //       sh "GOPRIVATE=github.eagleview.com make test"
+    //     }
+    //   }
+    // }
+    
+    // stage('analysis') {
+    //   when {
+    //     expression { env.RUN_IMAGE_STAGE=='true' }
+    //   }
+    //   steps {
+    //     container('sonarqube') {
+    //       withCredentials([string(credentialsId: 'platform-sonarqube-token', variable: 'sonarLogin')]) {
+    //         sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=${sonarLogin}"
+    //       }
+    //     }
+    //   }
+    // }
+    stage('build') {
+      when {
+        expression { env.RUN_IMAGE_STAGE=='true' }
+      }
+      steps {
+        container('golang') {
+          sh "GOPRIVATE=github.eagleview.com make build-lambda LAMBDA=${lambdafilenamemap.get(LAMBDA)}"
+        }
+      }
+    }
+
+    stage('image') {
+      when {
+        expression { env.RUN_IMAGE_STAGE=='true' }
+      }
+      steps {
+        container('kaniko') {
+          withAWS(role: "${DEPLOYMENT_ROLE}", roleAccount: "${ECR_ACCOUNT_ID}", region: "${ECR_REGION}"){
+            sh "/kaniko/executor -f ./build/docker/lambda.Dockerfile -c `pwd` --skip-tls-verify --cache=true --destination=${env.ECR_IMAGE}"
+          }
+        }
+      } 
+    }
+    // stage('image scanner') {
+    //   when {
+    //     expression { env.RUN_IMAGE_STAGE=='true' }
+    //   }
+    //    agent {
+    //        label 'rapid-7'
+    //    }
+    //    steps { 
+    //      withCredentials([usernamePassword(credentialsId: 'JenkinsDeploymentUser', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+    //         sh "aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 176992832580.dkr.ecr.us-east-2.amazonaws.com"
+    //         sh  "docker pull ${ECR_IMAGE}"
+    //         assessContainerImage failOnPluginError: true,
+    //                                   imageId: "${ECR_IMAGE}",
+    //                                   thresholdRules: [totalVulnerabilities(action: 'Fail', threshold: '1')],
+    //                                   nameRules: [] 
+    //               sh  "docker rmi ${ECR_IMAGE}"
+    //      }
+    //   }
+    // }
+    
+  }
+
+
+  post {
+    success {
+      withCredentials([string(credentialsId: "${env.SLACK_CREDENTIALS}", variable: "SLACK_TOKEN")]) {
+      slackSend(
+        teamDomain: "eagleview",
+          channel: "#reports-workflow-cicd",
+          token: "$SLACK_TOKEN",
+        color: "good",
+        message: """
+DEPLOYED *${env.LAMBDA}* TO *${env.ENV}* <${BUILD_URL}|${BUILD_DISPLAY_NAME}>
+```
+  LAMBDA:       ${env.LAMBDA}
+  DOMAIN:        ${env.DOMAIN}
+  ENV:           ${env.ENV}
+  BRANCH:        ${env.GIT_BRANCH}
+  REVISION:      ${env.REVISION}
+  BUILD_NUMBER:  ${env.BUILD_NUMBER}
+  ECR_IMAGE:     ${env.ECR_IMAGE}
+  BUILD_NOTES:   ${env.BUILD_NOTES}
+```
+"""
+      )
+    }
+    }
+    failure {
+      withCredentials([string(credentialsId: "${env.SLACK_CREDENTIALS}", variable: "SLACK_TOKEN")]) {
+      slackSend(
+        teamDomain: "eagleview",
+          channel: "#reports-workflow-cicd",
+          token: "$SLACK_TOKEN",
+        color: "danger",
+        message: """
+FAILED TO DEPLOY *${env.LAMBDA}* TO *${env.ENV}* <${BUILD_URL}|${BUILD_DISPLAY_NAME}>
+```
+  LAMBDA:       ${env.LAMBDA}
+  DOMAIN:        ${env.DOMAIN}
+  ENV:           ${env.ENV}
+  BRANCH:        ${env.GIT_BRANCH}
+  REVISION:      ${env.REVISION}
+  BUILD_NUMBER:  ${env.BUILD_NUMBER}
+  ECR_IMAGE:     ${env.ECR_IMAGE}
+  BUILD_NOTES:   ${env.BUILD_NOTES}
+```
+"""
+      )
+    }
+  }
+  }
+
+}

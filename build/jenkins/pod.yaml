@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    iam.amazonaws.com/role: "EKS-Image-Builder"   # run pod in a role that is allowed to push to ECR
+spec:
+  containers:
+  - name: golang
+    image: 176992832580.dkr.ecr.us-east-2.amazonaws.com/golang:1.13                            # use golang container to run tests and build binaries
+    command: ['cat']                              # use cat to keep the container alive during jenkins build
+    tty: true                                     # required for cat
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug   # use :debug version to include cat binary
+    command: ['cat']                              # use cat to keep the container alive during jenkins build
+    tty: true                                     # required for cat
+    volumeMounts:
+      - name: docker-config
+        mountPath: /kaniko/.docker/               # need to mount shared .docker config from k8s config
+  - name: builder
+    image: 176992832580.dkr.ecr.us-east-2.amazonaws.com/platform-builder:v0.2.0   # a custom docker image with argocd binaries already installed
+    command: ['cat']                                                              # use cat to keep the container alive during jenkins build
+    tty: true                                                                     # required for cat
+  - name: sonarqube
+    image: 176992832580.dkr.ecr.us-east-2.amazonaws.com/sonarsource/sonar-scanner-cli:4.6.0          # a container with node/java and sonar-scanner for code analysis
+    command: ['cat']                                                              # use cat to keep the container alive during jenkins build
+    tty: true                                                                    # required for cat
+  volumes:
+    - name: docker-config
+      configMap:
+        name: docker-config
