@@ -328,7 +328,7 @@
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyMLAutomationComplete",
+          "taskName": "UpdateLegacyMLSymphonyAutomationComplete",
           "callType": "eagleflow",
           "status": "MASymphonyCompleted",
           "requestData": {}
@@ -522,7 +522,7 @@
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 15,
                   "storeDataToS3": "",
-                  "taskName": "UpdateHipsterJobAndWaitForQC",
+                  "taskName": "UpdateHipsterJobAndWaitForMeasurement",
                   "orderId.$": "$$.Execution.Input.orderId",
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
@@ -641,7 +641,7 @@
           "workflowId.$": "$$.Execution.Name",
           "taskName": "UpdateLegacyStatus",
           "callType": "eagleflow",
-          "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.LegacyStatus",
+          "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
           "requestData": {}
         },
         "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
