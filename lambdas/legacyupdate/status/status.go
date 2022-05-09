@@ -5,6 +5,10 @@ type status struct {
 	SubStatus string
 }
 
+func New() *status {
+	return new(status)
+}
+
 var StatusMap = map[string]status{
 	"MAStarted": {
 		Status:    "InProcess",
