@@ -20,6 +20,8 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/validator"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/google/uuid"
@@ -31,7 +33,7 @@ type Meta struct {
 }
 
 type AuthData struct {
-	Type             string `json:"type"`
+	Type             enums.AuthType `json:"type" validate:"omitempty,authType"`
 	RequiredAuthData struct {
 		SecretStoreType  string            `json:"secretStoreType"`
 		URL              string            `json:"url,omitempty"`
@@ -47,17 +49,17 @@ type AuthData struct {
 type MyEvent struct {
 	Payload       map[string]interface{} `json:"requestData"`
 	URL           string                 `json:"url"`
-	RequestMethod string                 `json:"requestMethod"`
+	RequestMethod enums.RequestMethod    `json:"requestMethod" validate:"omitempty,httpMethod"`
 	Headers       map[string]string      `json:"headers"`
 	IsWaitTask    bool                   `json:"isWaitTask"`
 	Timeout       int                    `json:"timeout"`
 	StoreDataToS3 string                 `json:"storeDataToS3"`
 	TaskName      string                 `json:"taskName"`
-	CallType      string                 `json:"callType"`
+	CallType      enums.CallType         `json:"callType" validate:"omitempty,callTypes"`
 	OrderID       string                 `json:"orderId"`
-	ReportID      string                 `json:"reportId"`
-	WorkflowID    string                 `json:"workflowId"`
-	TaskToken     string                 `json:"taskToken"`
+	ReportID      string                 `json:"reportId" validate:"required"`
+	WorkflowID    string                 `json:"workflowId" validate:"required"`
+	TaskToken     string                 `json:"taskToken" validate:"required_if=IsWaitTask true"`
 	HipsterJobID  string                 `json:"hipsterJobId,omitempty"`
 	QueryParam    map[string]string      `json:"queryParam,omitempty"`
 	Auth          AuthData               `json:"auth"`
@@ -81,28 +83,12 @@ const envCallbackLambdaFunction = "envCallbackLambdaFunction"
 const success = "success"
 const failure = "failure"
 
-func (event *MyEvent) validate() error {
-	// URL mandatory ??
-	if event.ReportID == "" || event.CallType == "" || event.WorkflowID == "" {
-		return errors.New("mandatory fields(reportId, callType, workflowId) cannot be empty")
-	}
-
-	if (event.CallType == "hipster" || event.CallType == "eagleflow") && (event.Status == "") {
-		return errors.New("status cannot be empty")
-	}
-
-	if event.IsWaitTask && event.TaskToken == "" {
-		return errors.New("need task token for async tasks")
-	}
-	return nil
-}
-
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
-	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type))
+	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type.String()))
 	switch authType {
-	case "", "none":
+	case "", enums.AuthNone:
 		return nil
-	case "basic":
+	case enums.AuthBasic:
 		cllientId, clientSecret, err := fetchClientIdSecret(ctx, payoadAuthData)
 		if err != nil {
 			return err
@@ -111,7 +97,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		basicTokenEnc := b64.StdEncoding.EncodeToString([]byte(tempString))
 		headers["Authorization"] = "Basic " + basicTokenEnc
 		return nil
-	case "x-api-key":
+	case enums.AuthXApiKey:
 		secretStoreType := strings.ToLower(payoadAuthData.RequiredAuthData.SecretStoreType)
 		var XAPIKey string
 		switch secretStoreType {
@@ -140,7 +126,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		}
 		headers["Authorization"] = "X-API-Key " + XAPIKey
 		return nil
-	case "bearer":
+	case enums.AuthBearer:
 		cllientId, clientSecret, err := fetchClientIdSecret(ctx, payoadAuthData)
 		if err != nil {
 			fmt.Println("unable to fetch cllientId, clientSecret")
@@ -246,11 +232,11 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	var resp *http.Response
 	var err error
 	switch httpMethod {
-	case "POST":
+	case enums.POST:
 		resp, err = httpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
-	case "PUT":
+	case enums.PUT:
 		resp, err = httpClient.Put(ctx, URL, bytes.NewReader(payload), headers)
-	case "DELETE":
+	case enums.DELETE:
 		resp, err = httpClient.Delete(ctx, URL, headers)
 	}
 
@@ -358,7 +344,6 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 }
 
 func handleHipster(ctx context.Context, reportId, status, jobID string) error {
-
 	legacyRequestPayload := map[string]interface{}{
 		"status":       status,
 		"hipsterJobId": jobID,
@@ -372,7 +357,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	returnResponse := make(map[string]interface{})
 
-	if err := data.validate(); err != nil {
+	if err := validator.ValidateCallOutRequest(ctx, data); err != nil {
 		return returnResponse, err
 	}
 
@@ -385,9 +370,13 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		APITimeout: timeout,
 	})
 
-	callType := strings.ToLower(data.CallType)
+	callType := strings.ToLower(data.CallType.String())
 
-	if callType == "eagleflow" {
+	if (callType == enums.HipsterCT || callType == enums.LegacyCT) && (data.Status == "") {
+		return returnResponse, errors.New("status cannot be empty")
+	}
+
+	if callType == enums.LegacyCT {
 		req := map[string]interface{}{
 			"reportId":   data.ReportID,
 			"workflowId": data.WorkflowID,
@@ -430,9 +419,9 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	var responseStatus string
 	var responseBody []byte
 	var responseError error
-	requestMethod := strings.ToUpper(data.RequestMethod)
+	requestMethod := strings.ToUpper(data.RequestMethod.String())
 	switch requestMethod {
-	case "GET":
+	case enums.GET:
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
 		fmt.Println(string(responseBody))
 		if responseError != nil {
@@ -440,7 +429,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			return returnResponse, responseError
 		}
 
-	case "POST", "PUT", "DELETE":
+	case enums.POST, enums.PUT, enums.DELETE:
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
 		fmt.Println(string(responseBody))
 
@@ -475,7 +464,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		returnResponse["s3DataLocation"] = data.StoreDataToS3
 	}
 
-	if callType == "hipster" {
+	if callType == enums.HipsterCT {
 		jobID := data.HipsterJobID
 		if jobID == "" {
 			hipsterOutput := make(map[string]string)
