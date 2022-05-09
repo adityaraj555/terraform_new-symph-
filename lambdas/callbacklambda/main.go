@@ -19,8 +19,7 @@ import (
 )
 
 var awsClient aws_client.AWSClient
-
-const Success = "success"
+var newDBClient *documentDB_client.DocDBClient
 
 type RequestBody struct {
 	Status      string                 `json:"status"`
@@ -31,64 +30,80 @@ type RequestBody struct {
 }
 
 const DBSecretARN = "DBSecretARN"
+const success = "success"
+const failure = "failure"
+const rework = "rework"
+const isReworkRequired = "isReworkRequired"
 
-func Handler(ctx context.Context, CallbackRequest map[string]interface{}) (map[string]interface{}, error) {
-	SecretARN := os.Getenv(DBSecretARN)
-	secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-	NewDBClient := documentDB_client.NewDBClientService(secrets)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err = NewDBClient.DBClient.Connect(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]interface{}, error) {
+	var err error
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
-	var body string
-	if requestbody, ok := CallbackRequest["body"]; ok {
-		body = requestbody.(string)
-	} else {
-		return map[string]interface{}{"status": "failed"}, errors.New("body is empty in request body")
-	}
-	var requestBody = RequestBody{}
-	err = json.Unmarshal([]byte(body), &requestBody)
-	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
-	}
+	StepExecutionData, err := newDBClient.FetchStepExecutionData(CallbackRequest.CallbackID)
 
-	if requestBody.CallbackID == "" {
+	if CallbackRequest.CallbackID == "" {
 		return map[string]interface{}{"status": "failed"}, errors.New("callbackId is empty")
 	}
-	MetaData, err := NewDBClient.FetchMetaData(requestBody.CallbackID)
 	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failure}, err
 	}
-	if requestBody.Status == Success {
-		byteData, _ := json.Marshal(requestBody.Response)
+	var stepstatus string = failure
+	if CallbackRequest.Status == rework {
+		CallbackRequest.Response[isReworkRequired] = true
+	} else {
+		CallbackRequest.Response[isReworkRequired] = false
+	}
+	if CallbackRequest.Status == success || CallbackRequest.Status == rework {
+		stepstatus = success
+		byteData, _ := json.Marshal(CallbackRequest.Response)
 		jsonResponse := string(byteData)
 		taskoutput, err := svc.SendTaskSuccess(&sfn.SendTaskSuccessInput{
-			TaskToken: &MetaData.Data.TaskToken,
+			TaskToken: &StepExecutionData.TaskToken,
 			Output:    &jsonResponse,
 		})
 		fmt.Println(&taskoutput, err)
 	} else {
-		messageCode := strconv.Itoa(requestBody.MessageCode)
+		messageCode := strconv.Itoa(CallbackRequest.MessageCode)
 		taskoutput, err := svc.SendTaskFailure(&sfn.SendTaskFailureInput{
-			TaskToken: &MetaData.Data.TaskToken,
-			Cause:     &requestBody.Message,
+			TaskToken: &StepExecutionData.TaskToken,
+			Cause:     &CallbackRequest.Message,
 			Error:     &messageCode,
 		})
 		fmt.Println(&taskoutput, err)
 	}
-	err = NewDBClient.DeleteMetaData(requestBody.CallbackID)
+	filter, query := newDBClient.BuildQueryForCallBack(documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failure}, err
 	}
-	return map[string]interface{}{"status": Success}, nil
+	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		return map[string]interface{}{"status": failure}, err
+	}
+	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		return map[string]interface{}{"status": failure}, err
+	}
+	return map[string]interface{}{"status": success}, nil
 }
 
 func main() {
-
+	if newDBClient == nil {
+		SecretARN := os.Getenv(DBSecretARN)
+		fmt.Println("fetching db secrets")
+		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		if err != nil {
+			fmt.Println("Unable to fetch DocumentDb in secret")
+		}
+		newDBClient = documentDB_client.NewDBClientService(secrets)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = newDBClient.DBClient.Connect(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 	lambda.Start(Handler)
 }
