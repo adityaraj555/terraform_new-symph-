@@ -48,7 +48,7 @@ type AuthData struct {
 
 type MyEvent struct {
 	Payload       map[string]interface{} `json:"requestData"`
-	URL           string                 `json:"url"`
+	URL           string                 `json:"url" validate:"omitempty,url"`
 	RequestMethod enums.RequestMethod    `json:"requestMethod" validate:"omitempty,httpMethod"`
 	Headers       map[string]string      `json:"headers"`
 	IsWaitTask    bool                   `json:"isWaitTask"`
@@ -73,7 +73,7 @@ type LegacyLambdaOutput struct {
 	Message     string `json:"message"`
 }
 
-var awsClient aws_client.IAWSClient
+var AwsClient aws_client.IAWSClient
 var httpClient httpservice.IHTTPClientV2
 var newDBClient *documentDB_client.DocDBClient
 
@@ -105,7 +105,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 			secretManagerArn := payoadAuthData.RequiredAuthData.SecretManagerArn
 			XAPIKeyKey := payoadAuthData.RequiredAuthData.XAPIKeyKey
 
-			secretString, err := awsClient.GetSecretString(ctx, secretManagerArn)
+			secretString, err := AwsClient.GetSecretString(ctx, secretManagerArn)
 			if err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		case "secret_manager_key":
 			XAPIKeyKey := payoadAuthData.RequiredAuthData.XAPIKeyKey
 			var err1 error
-			XAPIKey, err1 = awsClient.GetSecretString(ctx, XAPIKeyKey)
+			XAPIKey, err1 = AwsClient.GetSecretString(ctx, XAPIKeyKey)
 
 			if err1 != nil {
 				return err1
@@ -266,7 +266,7 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		secretManagerArn := payoadAuthData.RequiredAuthData.SecretManagerArn
 		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
-		secretString, err := awsClient.GetSecretString(ctx, secretManagerArn)
+		secretString, err := AwsClient.GetSecretString(ctx, secretManagerArn)
 		if err != nil {
 			return "", "", err
 		}
@@ -279,8 +279,8 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
 		var err1, err2 error
-		cllientId, err1 = awsClient.GetSecretString(ctx, cllientIdKey)
-		clientSecret, err2 = awsClient.GetSecretString(ctx, clientSecretKey)
+		cllientId, err1 = AwsClient.GetSecretString(ctx, cllientIdKey)
+		clientSecret, err2 = AwsClient.GetSecretString(ctx, clientSecretKey)
 
 		if err1 != nil {
 			return "", "", err1
@@ -300,7 +300,7 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 	if err != nil {
 		return err
 	}
-	err = awsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
+	err = AwsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
 
 	if err != nil {
 		return err
@@ -311,7 +311,7 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{}) error {
 	legacyLambdaFunction := os.Getenv(envLegacyUpdatefunction)
 
-	result, err := awsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
+	result, err := AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
 
 	if err != nil {
 		return err
@@ -353,11 +353,27 @@ func handleHipster(ctx context.Context, reportId, status, jobID string) error {
 	return callLegacyStatusUpdate(ctx, legacyRequestPayload)
 }
 
-func callService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
+func validate(ctx context.Context, data MyEvent) error {
+	if err := validator.ValidateCallOutRequest(ctx, data); err != nil {
+		return err
+	}
+
+	callType := data.CallType.String()
+
+	if callType == "" && (data.RequestMethod == "" || data.URL == "") {
+		return errors.New("invalid callout request")
+	}
+	if (callType == enums.HipsterCT || callType == enums.LegacyCT) && (data.Status == "") {
+		return errors.New("status cannot be empty")
+	}
+	return nil
+}
+
+func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
 
 	returnResponse := make(map[string]interface{})
 
-	if err := validator.ValidateCallOutRequest(ctx, data); err != nil {
+	if err := validate(ctx, data); err != nil {
 		return returnResponse, err
 	}
 
@@ -370,11 +386,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		APITimeout: timeout,
 	})
 
-	callType := strings.ToLower(data.CallType.String())
-
-	if (callType == enums.HipsterCT || callType == enums.LegacyCT) && (data.Status == "") {
-		return returnResponse, errors.New("status cannot be empty")
-	}
+	callType := data.CallType.String()
 
 	if callType == enums.LegacyCT {
 		req := map[string]interface{}{
@@ -493,7 +505,7 @@ func callService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
-	response, serviceerr := callService(ctx, data, stepID)
+	response, serviceerr := CallService(ctx, data, stepID)
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
 		StepId:     stepID,
 		StartTime:  starttime,
@@ -536,11 +548,11 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 
 func main() {
 	httpClient = &httpservice.HTTPClientV2{}
-	awsClient = &aws_client.AWSClient{}
+	AwsClient = &aws_client.AWSClient{}
 	if newDBClient == nil {
 		SecretARN := os.Getenv(DBSecretARN)
 		fmt.Println("fetching db secrets")
-		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		secrets, err := AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
 			fmt.Println("Unable to fetch DocumentDb in secret")
 		}
