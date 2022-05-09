@@ -1,5 +1,7 @@
 package enums
 
+import "strings"
+
 type TaskStatus string
 
 const (
@@ -14,7 +16,7 @@ func TaskStatusList() []string {
 
 func (ts TaskStatus) String() string {
 	l := TaskStatusList()
-	x := string(ts)
+	x := strings.ToLower(string(ts))
 	for _, v := range l {
 		if v == x {
 			return x

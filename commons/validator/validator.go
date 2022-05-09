@@ -34,19 +34,19 @@ func initStructValidation() (*validator.Validate, ut.Translator) {
 		return name
 	})
 
-	return v, trans
-}
-
-func ValidateCallOutRequest(ctx context.Context, data interface{}) error {
-
-	v, trans := initStructValidation()
-
 	_ = v.RegisterTranslation("required", trans, func(ut ut.Translator) error {
 		return ut.Add("required", "{0} is a required field", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T("required", fe.Field())
 		return t
 	})
+
+	return v, trans
+}
+
+func ValidateCallOutRequest(ctx context.Context, data interface{}) error {
+
+	v, trans := initStructValidation()
 
 	_ = v.RegisterTranslation("required_if", trans, func(ut ut.Translator) error {
 		return ut.Add("required_if", "{0} is a required field based on the given input", true)
@@ -99,10 +99,23 @@ func ValidateCallOutRequest(ctx context.Context, data interface{}) error {
 func ValidateInvokeSfnRequest(ctx context.Context, data interface{}) error {
 	v, trans := initStructValidation()
 
-	_ = v.RegisterTranslation("required", trans, func(ut ut.Translator) error {
-		return ut.Add("required", "{0} is a required field", true)
+	err := v.Struct(data)
+	errs := translateError(err, trans)
+	return combinedError(errs)
+}
+
+func ValidateCallBackRequest(ctx context.Context, data interface{}) error {
+	v, trans := initStructValidation()
+
+	_ = v.RegisterValidation("taskStatus", func(fl validator.FieldLevel) bool {
+		_, ok := util.FindInStringArray(enums.TaskStatusList(), fl.Field().String(), true)
+		return ok
+	})
+
+	_ = v.RegisterTranslation("taskStatus", trans, func(ut ut.Translator) error {
+		return ut.Add("taskStatus", "invalid status", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
-		t, _ := ut.T("required", fe.Field())
+		t, _ := ut.T("taskStatus", fe.Field())
 		return t
 	})
 
