@@ -608,7 +608,8 @@
       "Parameters": {
         "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:evmlconverter:$LATEST",
         "Payload": {
-          "workflowId.$": "$$.Execution.Name"
+          "workflowId.$": "$$.Execution.Name",
+          "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
         }
       },
       "Retry": [
