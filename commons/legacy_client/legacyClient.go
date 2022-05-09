@@ -26,6 +26,11 @@ type LegacyClient struct {
 	AuthToken  string
 }
 
+type ILegacyClient interface {
+	UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error
+	UploadMLJsonToEvoss(ctx context.Context, reportId string, mlJson []byte) error
+}
+
 type LegacyUpdateRequest struct {
 	ReportID     string
 	Status       string

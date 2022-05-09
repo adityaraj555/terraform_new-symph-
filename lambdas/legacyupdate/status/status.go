@@ -5,6 +5,11 @@ type status struct {
 	SubStatus string
 }
 
+type failedTaskMetaData struct {
+	Status           status
+	FallbackTaskName string
+}
+
 func New() *status {
 	return new(status)
 }
@@ -49,5 +54,22 @@ var StatusMap = map[string]status{
 	"QCCompleted": {
 		Status:    "InProcess",
 		SubStatus: "HipsterQCCompleted",
+	},
+}
+
+var FailedTaskStatusMap = map[string]failedTaskMetaData{
+	"CreateHipsterJobAndWaitForMeasurement": {
+		Status: status{
+			Status:    "InProcess",
+			SubStatus: "HipsterMeasurementRejected",
+		},
+		FallbackTaskName: "3DModellingService",
+	},
+	"UpdateHipsterJobAndWaitForQC": {
+		Status: status{
+			Status:    "InProcess",
+			SubStatus: "HipsterQCRejected",
+		},
+		FallbackTaskName: "CreateHipsterJobAndWaitForMeasurement",
 	},
 }
