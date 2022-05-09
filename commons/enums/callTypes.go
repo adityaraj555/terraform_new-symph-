@@ -14,7 +14,7 @@ func CallTypeList() []string {
 }
 
 func (ct CallType) String() string {
-	l := RequestMethodList()
+	l := CallTypeList()
 	x := strings.ToLower(string(ct))
 	for _, m := range l {
 		if x == m {

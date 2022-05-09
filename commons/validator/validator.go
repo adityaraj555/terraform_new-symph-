@@ -139,6 +139,9 @@ func translateError(err error, trans ut.Translator) (errs []error) {
 
 // combinedError combine all the error messages
 func combinedError(errs []error) error {
+	if len(errs) == 0 {
+		return nil
+	}
 	msg := []string{}
 	for _, e := range errs {
 		msg = append(msg, e.Error())
