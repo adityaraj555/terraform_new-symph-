@@ -72,4 +72,11 @@ var FailedTaskStatusMap = map[string]failedTaskMetaData{
 		},
 		FallbackTaskName: "CreateHipsterJobAndWaitForMeasurement",
 	},
+	"UpdateHipsterJobAndWaitForMeasurement": {
+		Status: status{
+			Status:    "InProcess",
+			SubStatus: "HipsterMeasurementRejected",
+		},
+		FallbackTaskName: "3DModellingService",
+	},
 }

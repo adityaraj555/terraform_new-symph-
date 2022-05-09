@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/platform-gosdk/log"
@@ -18,10 +17,6 @@ const (
 )
 
 var (
-	failureTaskOutputMap = map[string]string{
-		"CreateHipsterJobAndWaitForMeasurement": "3DModellingService",
-		"UpdateHipsterJobAndWaitForQC":          "CreateHipsterJobAndWaitForMeasurement",
-	}
 	legacyStatusMap      = map[string]string{}
 	endpoint, authsecret string
 	commonHandler        common_handler.CommonHandler
@@ -39,7 +34,6 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		finalTaskStepID     string
 		taskOutput          interface{}
 		propertyModelS3Path string
-		legacyStatus        string = "HipsterQCCompleted"
 	)
 	statusObject := *status.New()
 	if statusObject, ok = status.StatusMap["QCCompleted"]; !ok {
@@ -51,10 +45,9 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		return lambdaResponse(failure), err
 	}
 
-	finalTask := workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-2]
-	fmt.Printf("%+v", finalTask)
-	if finalTask.Status == success {
-		finalTaskStepID = finalTask.StepId
+	lastCompletedTask := workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-2]
+	if lastCompletedTask.Status == success {
+		finalTaskStepID = lastCompletedTask.StepId
 		if workflowData.FlowType == "Twister" {
 			if statusObject, ok = status.StatusMap["MACompleted"]; !ok {
 				return lambdaResponse(failure), errors.New("record not found in map")
@@ -62,7 +55,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		}
 
 	} else {
-		if failureOutput, ok := status.FailedTaskStatusMap[finalTask.TaskName]; !ok {
+		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
 			return lambdaResponse(failure), errors.New("record not found in failureTaskOutputMap map")
 		} else {
 			statusObject = failureOutput.Status
@@ -74,7 +67,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 			}
 		}
 	}
-	legacyStatus = statusObject.SubStatus
+	legacyStatus := statusObject.SubStatus
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(finalTaskStepID)
 	if err != nil {
 		return lambdaResponse(failure), err
