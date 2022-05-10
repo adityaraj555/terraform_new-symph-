@@ -11,7 +11,7 @@
       "ResultPath": "$.InsertWorkflowDataToDocDB",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:inserttodocumentdb:$LATEST",
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-datastorelambda",
         "Payload": {
           "input.$": "$$.Execution.Input",
           "orderId.$": "$$.Execution.Input.orderId",
@@ -51,7 +51,7 @@
           "status": "MAStarted",
           "requestData": {}
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
       },
       "Retry": [
         {
@@ -99,7 +99,7 @@
                   "callType": "Service",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
@@ -124,7 +124,7 @@
               "ResultPath": "$.ImageSelection",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
@@ -192,7 +192,7 @@
                   "callType": "Service",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
@@ -217,7 +217,7 @@
               "ResultPath": "$.3DModellingService",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
@@ -286,7 +286,7 @@
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name"
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:test1234:$LATEST"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:test1234:$LATEST"
       },
       "Retry": [
         {
@@ -323,7 +323,7 @@
       "ResultPath": "$.UpdateLegacyMLAutomationComplete",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
         "Payload": {
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
@@ -389,7 +389,7 @@
                   "status": "MeasurementStarted",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
@@ -423,7 +423,7 @@
                   "status": "MeasurementCompleted",
                   "requestData": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
@@ -448,7 +448,7 @@
               "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "mode": "QC"
@@ -510,7 +510,7 @@
               "ResultPath": "$.UpdateHipsterJobAndWaitForMeasurement",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "mode": "Measurement"
@@ -572,7 +572,7 @@
       "ResultPath": "$.updateMLAutomationRejected",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST",
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
         "Payload": {
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
@@ -606,7 +606,7 @@
       "ResultPath": "$.EVMLJsonConverter_UploadToEvoss",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:evmlconverter:$LATEST",
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-evmlconverter:$LATEST",
         "Payload": {
           "workflowId.$": "$$.Execution.Name",
           "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
@@ -644,7 +644,7 @@
           "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
           "requestData": {}
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:simple_callout_docdb_test:$LATEST"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
       },
       "Retry": [
         {
@@ -675,7 +675,7 @@
           "workflowId.$": "$$.Execution.Name",
           "action": "update"
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:280563037387:function:inserttodocumentdb:$LATEST"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-datastorelambda"
       },
       "Retry": [
         {
