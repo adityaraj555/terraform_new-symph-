@@ -14,6 +14,27 @@ type ILegacyClient struct {
 	mock.Mock
 }
 
+// GetLegacyBaseUrlAndAuthToken provides a mock function with given fields: ctx
+func (_m *ILegacyClient) GetLegacyBaseUrlAndAuthToken(ctx context.Context) (string, string) {
+	ret := _m.Called(ctx)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context) string); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 string
+	if rf, ok := ret.Get(1).(func(context.Context) string); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Get(1).(string)
+	}
+
+	return r0, r1
+}
+
 // UpdateReportStatus provides a mock function with given fields: ctx, req
 func (_m *ILegacyClient) UpdateReportStatus(ctx context.Context, req *legacy_client.LegacyUpdateRequest) error {
 	ret := _m.Called(ctx, req)
@@ -21,20 +42,6 @@ func (_m *ILegacyClient) UpdateReportStatus(ctx context.Context, req *legacy_cli
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context, *legacy_client.LegacyUpdateRequest) error); ok {
 		r0 = rf(ctx, req)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// UploadMLJsonToEvoss provides a mock function with given fields: ctx, reportId, mlJson
-func (_m *ILegacyClient) UploadMLJsonToEvoss(ctx context.Context, reportId string, mlJson []byte) error {
-	ret := _m.Called(ctx, reportId, mlJson)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []byte) error); ok {
-		r0 = rf(ctx, reportId, mlJson)
 	} else {
 		r0 = ret.Error(0)
 	}

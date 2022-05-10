@@ -28,7 +28,7 @@ type LegacyClient struct {
 
 type ILegacyClient interface {
 	UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error
-	UploadMLJsonToEvoss(ctx context.Context, reportId string, mlJson []byte) error
+	GetLegacyBaseUrlAndAuthToken(ctx context.Context) (string, string)
 }
 
 type LegacyUpdateRequest struct {
@@ -37,6 +37,10 @@ type LegacyUpdateRequest struct {
 	SubStatus    string
 	Notes        string
 	HipsterJobId string
+}
+
+func (lc *LegacyClient) GetLegacyBaseUrlAndAuthToken(ctx context.Context) (string, string) {
+	return lc.EndPoint, lc.AuthToken
 }
 
 func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error {
@@ -52,30 +56,6 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 	}
 
 	response, err := lc.HTTPClient.Post(ctx, url, bytes.NewReader(payload), headers)
-	if err != nil {
-		log.Error(ctx, "error : ", err)
-		return err
-	}
-
-	if response.StatusCode != http.StatusOK {
-		log.Error(ctx, "response not ok: ", response.StatusCode)
-		return errors.New("response not ok from legacy")
-	}
-	return nil
-}
-
-func (lc *LegacyClient) UploadMLJsonToEvoss(ctx context.Context, reportId string, mlJson []byte) error {
-
-	if reportId == "" || len(mlJson) == 0 {
-		return errors.New("invalid request body")
-	}
-
-	url := fmt.Sprintf("%s/UploadMLJson?reportId=%s", lc.EndPoint, reportId)
-	headers := map[string]string{
-		"Authorization": "Basic " + lc.AuthToken,
-	}
-
-	response, err := lc.HTTPClient.Post(ctx, url, bytes.NewReader(mlJson), headers)
 	if err != nil {
 		log.Error(ctx, "error : ", err)
 		return err
