@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"strconv"
 	"time"
 
 	"fmt"
@@ -25,7 +24,7 @@ var newDBClient *documentDB_client.DocDBClient
 type RequestBody struct {
 	Status      enums.TaskStatus       `json:"status" validate:"required,taskStatus"`
 	Message     string                 `json:"message"`
-	MessageCode int                    `json:"messageCode"`
+	MessageCode interface{}            `json:"messageCode"`
 	CallbackID  string                 `json:"callbackId" validate:"required"`
 	Response    map[string]interface{} `json:"response"`
 }
@@ -66,7 +65,7 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		})
 		fmt.Println(&taskoutput, err)
 	} else {
-		messageCode := strconv.Itoa(CallbackRequest.MessageCode)
+		messageCode := CallbackRequest.MessageCode.(string)
 		taskoutput, err := svc.SendTaskFailure(&sfn.SendTaskFailureInput{
 			TaskToken: &StepExecutionData.TaskToken,
 			Cause:     &CallbackRequest.Message,
