@@ -5,14 +5,6 @@ def accountmap = [
   'platform-prod':'249106962406',
 ]
 
-def lambdafilenamemap = [
-  'calloutLambda':'calloutlambda',
-  'callbackLambda':'callbacklambda', 
-  'dataStoreLambda':'datastorelambda',
-  'invokesfnLambda':'invokesfn',
-  'legacyupdate':'legacyupdate',
-  'convertModelDataLambda':'evjsonhandlerlambda',
-]
 pipeline {
 
   agent {
@@ -22,16 +14,16 @@ pipeline {
   }
 
   parameters {
-    string(name: "DOMAIN",             defaultValue: "symphony-service",      description: "Platform Domain Name")
+    string(name: "DOMAIN",             defaultValue: "property-data-orchestrator",      description: "Platform Domain Name")
     choice(name: "ENV",                choices: ["platform-dev", "platform-test", "platform-stage", "platform-prod"],                    description: "Select the environment for deploy")
-    choice(name: "LAMBDA",                choices: ["calloutLambda", "callbackLambda", "legacyupdate", "invokesfnLambda","dataStoreLambda","convertModelDataLambda"],    description: "Select the lambda for deploy")
+    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter"],    description: "Select the lambda for deploy")
     choice(name: "ECR_ACCOUNT_ID",     choices: "176992832580",                      description: "ECR account ID (default: platform-ci)")
     choice(name: "ECR_REGION",         choices: "us-east-2",                         description: "ECR region")
     string(name: "GITHUB_CREDENTIALS", defaultValue: "platform-github-token",        description: "Platform GitHub credentials")
     string(name: "ARGOCD_CREDENTIALS", defaultValue: "platform-argocd-token",        description: "Platform ArgoCD credentials")
     string(name: "SLACK_CREDENTIALS",  defaultValue: "slackintegration",             description: "Slack credentials for Graph Warehouse notifications")
     choice(name: "RUN_JENKINS_MIGRATION", choices: ["yes", "no"],                    description: "choice for running the mirgration stage from Jenkins")
-    string(name: "BUILD_NOTES",        defaultValue: "symphony-service-api build", description: "notes for the current build in one line")
+    string(name: "BUILD_NOTES",        defaultValue: "property-data-orchestrator-api build", description: "notes for the current build in one line")
     gitParameter name: 'RELEASE_BRANCH' , description: 'select the release branch to deploy' , type: 'PT_BRANCH' , defaultValue:'origin/release-1.0.0', branchFilter:'origin/release-.*'
   }
 
@@ -102,7 +94,7 @@ pipeline {
       }
       steps {
         container('golang') {
-          sh "GOPRIVATE=github.eagleview.com make build-lambda LAMBDA=${lambdafilenamemap.get(LAMBDA)}"
+          sh "GOPRIVATE=github.eagleview.com make build-lambda LAMBDA=${LAMBDA}"
         }
       }
     }
