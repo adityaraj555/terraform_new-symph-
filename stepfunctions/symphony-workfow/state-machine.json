@@ -226,7 +226,7 @@
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
                     "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
                   },
-                  "url": "http://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/3dmodelling",
+                  "url": "https://measurement-service.cmh.imageproc.evinternal.net/v2/runs",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
