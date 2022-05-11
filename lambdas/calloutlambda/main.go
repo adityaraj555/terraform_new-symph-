@@ -566,7 +566,7 @@ func main() {
 		defer cancel()
 		err = newDBClient.DBClient.Connect(ctx)
 		if err != nil {
-			log.Error(context.Background(), err)
+			log.Error(ctx, err)
 		}
 	}
 	lambda.Start(HandleRequest)

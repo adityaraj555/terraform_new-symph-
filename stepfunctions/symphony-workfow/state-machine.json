@@ -131,7 +131,7 @@
                     "address.$": "$$.Execution.Input.address",
                     "getImageMetadata.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
                   },
-                  "url": "https://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/imageselection",
+                  "url": "https://api.cmh.platform-dev2.evinternal.net/factory-automeasure/ma-image-selector/v2/image-selection",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -177,7 +177,7 @@
                     "getImageMetadata.$": "$.GetImageMetaData.response.GetImageMetaDataLocation",
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation"
                   },
-                  "url": "https://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/keypointextraction",
+                  "url": "https://api.cmh.platform-test2.evinternal.net/factory-automeasure/measurement-automation/v2/measurement-automation",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -226,7 +226,7 @@
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
                     "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
                   },
-                  "url": "http://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/3dmodelling",
+                  "url": "https://measurement-service.cmh.imageproc.evinternal.net/v2/runs",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,

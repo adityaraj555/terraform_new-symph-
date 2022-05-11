@@ -96,11 +96,11 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, Database, ReadPreference)
 	tlsConfig, err := getCustomTLSConfig(CaFilePath)
 	if err != nil {
-		log.Error(context.Background(), "Failed getting TLS configuration: %v", err)
+		log.Errorf(context.Background(), "Failed getting TLS configuration: %v", err)
 	}
 	DBClient, err := mongo.NewClient(options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
 	if err != nil {
-		log.Error(context.Background(), err)
+		log.Errorf(context.Background(), "Error= %v", err)
 	}
 	return &DocDBClient{DBClient: DBClient}
 }
