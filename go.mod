@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/aws/aws-lambda-go v1.30.0
 	github.com/aws/aws-sdk-go v1.43.43
+	github.com/fatih/structs v1.1.0
 	github.com/go-playground/locales v0.14.0
 	github.com/go-playground/universal-translator v0.18.0
 	github.com/go-playground/validator/v10 v10.11.0
