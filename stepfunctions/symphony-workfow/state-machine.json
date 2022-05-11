@@ -609,6 +609,7 @@
         "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-evmlconverter:$LATEST",
         "Payload": {
           "workflowId.$": "$$.Execution.Name",
+          "reportId.$": "$$.Execution.Input.reportId",
           "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
         }
       },

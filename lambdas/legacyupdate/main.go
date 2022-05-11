@@ -10,6 +10,7 @@ import (
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/legacy_client"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
 )
 
@@ -66,6 +67,8 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		return nil, errors.New("reportId cannot be empty")
 	}
 
+	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
+
 	status, ok := status.StatusMap[eventData.Status]
 	if !ok {
 		return nil, errors.New("invalid status")
@@ -102,14 +105,8 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 	}, nil
 }
 
-func initLogging(level string) {
-	log.SetFormat("json")
-	l := log.ParseLevel(level)
-	log.SetLevel(l)
-}
-
 func main() {
-	initLogging(logLevel)
+	log_config.InitLogging(logLevel)
 	httpClient = &httpservice.HTTPClientV2{}
 	awsClient = &aws_client.AWSClient{}
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{

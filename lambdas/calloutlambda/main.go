@@ -11,16 +11,18 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.eagleview.com/engineering/assess-platform-library/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 	"go.mongodb.org/mongo-driver/bson"
 
@@ -82,6 +84,7 @@ const envLegacyUpdatefunction = "envLegacyUpdatefunction"
 const envCallbackLambdaFunction = "envCallbackLambdaFunction"
 const success = "success"
 const failure = "failure"
+const loglevel = "info"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type.String()))
@@ -129,7 +132,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 	case enums.AuthBearer:
 		cllientId, clientSecret, err := fetchClientIdSecret(ctx, payoadAuthData)
 		if err != nil {
-			fmt.Println("unable to fetch cllientId, clientSecret")
+			log.Error(ctx, "unable to fetch cllientId, clientSecret")
 			return err
 		}
 
@@ -162,7 +165,7 @@ func generateBasicToken(cllientId, clientSecret string) string {
 func makeGetCall(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
 	u, err := url.Parse(URL)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return nil, "", err
 	}
 	q := u.Query()
@@ -184,7 +187,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 	}
 
 	if resp.StatusCode != 200 {
@@ -209,14 +212,14 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 
 	resp, err := httpClient.Post(ctx, URL, payload, headers)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return "", err
 	}
 	var respJson map[string]interface{}
 
 	err = json.NewDecoder(resp.Body).Decode(&respJson)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return "", err
 	}
 
@@ -241,7 +244,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return nil, "", err
 	}
 
@@ -250,7 +253,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 	}
 	if resp.StatusCode != 200 {
 		return responseBody, resp.Status, errors.New("invalid http status code received")
@@ -326,7 +329,7 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 
 	errorType, ok := resp["errorType"]
 	if ok {
-		fmt.Println(errorType)
+		log.Info(ctx, errorType)
 		return errors.New("error occured while executing lambda ")
 	}
 
@@ -397,7 +400,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 		err := callLegacyStatusUpdate(ctx, req)
 		if err != nil {
-			fmt.Println(err)
+			log.Error(ctx, err)
 			returnResponse["status"] = failure
 			return returnResponse, err
 		}
@@ -435,7 +438,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	switch requestMethod {
 	case enums.GET:
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
-		fmt.Println(string(responseBody))
+		log.Info(ctx, string(responseBody))
 		if responseError != nil {
 			returnResponse["status"] = failure
 			return returnResponse, responseError
@@ -443,7 +446,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	case enums.POST, enums.PUT, enums.DELETE:
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
-		fmt.Println(string(responseBody))
+		log.Info(ctx, string(responseBody))
 
 		if responseError != nil {
 			returnResponse["status"] = failure
@@ -451,7 +454,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 
 	default:
-		fmt.Println("Unknown request method, can not proceed")
+		log.Info(ctx, "Unknown request method, can not proceed")
 		returnResponse["status"] = failure
 		return returnResponse, responseError
 
@@ -498,13 +501,14 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 	}
 
-	fmt.Println(returnResponse, responseError)
+	log.Info(ctx, returnResponse, responseError)
 
 	return returnResponse, responseError
 }
 func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
+	ctx = log_config.SetTraceIdInContext(ctx, data.ReportID, data.WorkflowID)
 	response, serviceerr := CallService(ctx, data, stepID)
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
 		StepId:     stepID,
@@ -525,19 +529,19 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		StepExecutionData.Output = response
 		StepExecutionData.EndTime = time.Now().Unix()
 	}
-	err := newDBClient.InsertStepExecutionData(StepExecutionData)
+	err := newDBClient.InsertStepExecutionData(ctx, StepExecutionData)
 	if err != nil {
-		fmt.Println("Unable to insert Step Data in DocumentDB")
+		log.Error(ctx, "Unable to insert Step Data in DocumentDB")
 		return response, err
 	}
 	filter := bson.M{"_id": data.WorkflowID}
 	if serviceerr != nil {
-		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(data.TaskName, stepID, failure, starttime, data.IsWaitTask)
-		newDBClient.UpdateDocumentDB(filter, update, documentDB_client.WorkflowDataCollection)
+		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, failure, starttime, data.IsWaitTask)
+		newDBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		return response, serviceerr
 	} else {
-		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(data.TaskName, stepID, success, starttime, data.IsWaitTask)
-		err := newDBClient.UpdateDocumentDB(filter, update, documentDB_client.WorkflowDataCollection)
+		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, success, starttime, data.IsWaitTask)
+		err := newDBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			response["status"] = failure
 		}
@@ -547,21 +551,22 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 }
 
 func main() {
+	log_config.InitLogging(loglevel)
 	httpClient = &httpservice.HTTPClientV2{}
 	AwsClient = &aws_client.AWSClient{}
 	if newDBClient == nil {
 		SecretARN := os.Getenv(DBSecretARN)
-		fmt.Println("fetching db secrets")
+		log.Error(context.Background(), "fetching db secrets")
 		secrets, err := AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
-			fmt.Println("Unable to fetch DocumentDb in secret")
+			log.Error(context.Background(), "Unable to fetch DocumentDb in secret")
 		}
 		newDBClient = documentDB_client.NewDBClientService(secrets)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		err = newDBClient.DBClient.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(context.Background(), err)
 		}
 	}
 	lambda.Start(HandleRequest)

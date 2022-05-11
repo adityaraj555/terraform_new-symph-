@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+
 	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
+
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -20,6 +22,7 @@ const (
 	Success    = "success"
 	Inprogress = "inprogress"
 	Finished   = "finished"
+	loglevel   = "info"
 )
 
 type RequestBody struct {
@@ -33,7 +36,7 @@ const DBSecretARN = "DBSecretARN"
 
 func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, error) {
 	var err error
-
+	ctx = log_config.SetTraceIdInContext(ctx, Request.OrderId, Request.WorkflowId)
 	switch Request.Action {
 	case "insert":
 		var data documentDB_client.WorkflowExecutionDataBody
@@ -43,7 +46,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		data.Status = Inprogress
 		data.InitialInput = Request.Input
 		data.StepsPassedThrough = []documentDB_client.StepsPassedThroughBody{}
-		err = newDBClient.InsertWorkflowExecutionData(data)
+		err = newDBClient.InsertWorkflowExecutionData(ctx, data)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -55,7 +58,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			},
 		}
 		query := bson.M{"_id": Request.WorkflowId}
-		err = newDBClient.UpdateDocumentDB(query, update, documentDB_client.WorkflowDataCollection)
+		err = newDBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -65,19 +68,20 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 }
 
 func main() {
+	log_config.InitLogging(loglevel)
 	if newDBClient == nil {
 		SecretARN := os.Getenv(DBSecretARN)
-		fmt.Println("fetching db secrets")
+		log.Info(context.Background(), "fetching db secrets")
 		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
-			fmt.Println("Unable to fetch DocumentDb in secret")
+			log.Error(context.Background(), "Unable to fetch DocumentDb in secret")
 		}
 		newDBClient = documentDB_client.NewDBClientService(secrets)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		err = newDBClient.DBClient.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(context.Background(), err)
 		}
 	}
 	lambda.Start(Handler)

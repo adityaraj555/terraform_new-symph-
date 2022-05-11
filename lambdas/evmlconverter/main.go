@@ -11,11 +11,10 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/fatih/structs"
 	"github.com/google/uuid"
-	logconst "github.eagleview.com/engineering/assess-platform-library/constants"
 	ctxlog "github.eagleview.com/engineering/assess-platform-library/log"
-	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -30,18 +29,18 @@ const (
 )
 
 var (
-	legacyStatusMap                       = map[string]string{}
-	commonHandler                         common_handler.CommonHandler
-	logKeyForOrderID, logKeyForWorkflowID ctxlog.TrackID
+	legacyStatusMap = map[string]string{}
+	commonHandler   common_handler.CommonHandler
 )
 
 type eventData struct {
+	ReportID              string `json:"reportId"`
 	WorkflowID            string `json:"workflowId"`
 	ImageMetaDataLocation string `json:"imageMetaDataLocation"`
 }
 
 func handler(ctx context.Context, eventData eventData) (map[string]interface{}, error) {
-	ctx = context.WithValue(ctx, logKeyForWorkflowID, eventData.WorkflowID)
+	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
 	ctxlog.Info(ctx, "EVMLConverter Lambda Reached")
 
 	var (
@@ -66,13 +65,12 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New("QCCompleted record not found in StatusMap map")
 	}
 
-	workflowData, err := commonHandler.DBClient.FetchWorkflowExecutionData(eventData.WorkflowID)
+	workflowData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, eventData.WorkflowID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching workflow data from DocumentDb: ", err.Error())
 		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
 	}
 
-	ctx = context.WithValue(ctx, logKeyForOrderID, workflowData.OrderId)
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
 
 	lastCompletedTask := workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-1]
@@ -103,7 +101,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	}
 
 	legacyStatus = statusObject.SubStatus
-	taskData, err := commonHandler.DBClient.FetchStepExecutionData(finalTaskStepID)
+	taskData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, finalTaskStepID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching steo data from DocumentDb: ", err.Error())
 		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
@@ -239,30 +237,21 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 		response["legacyStatus"] = legacyStatus
 	}
 
-	err := commonHandler.DBClient.InsertStepExecutionData(stepExecutionData)
+	err := commonHandler.DBClient.InsertStepExecutionData(ctx, stepExecutionData)
 	if err != nil {
 		ctxlog.Error(ctx, "Unable to insert Step Data in DocumentDB")
 	}
 	filter := bson.M{"_id": workflowId}
-	update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(taskName, stepExecutionData.StepId, status, stepExecutionData.StartTime, false)
-	err = commonHandler.DBClient.UpdateDocumentDB(filter, update, documentDB_client.WorkflowDataCollection)
+	update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, taskName, stepExecutionData.StepId, status, stepExecutionData.StartTime, false)
+	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		ctxlog.Error(ctx, "Unable to update DocumentDb")
 	}
 	return response
 }
 
-func initLogging(level string) {
-	log.SetFormat("json")
-	l := log.ParseLevel(level)
-	log.SetLevel(l)
-	logKeyForOrderID = ctxlog.TrackID(logconst.TrackIDOrderID)
-	logKeyForWorkflowID = ctxlog.TrackID(logconst.TrackIDWfTracerID)
-	ctxlog.SetContextKeys(logKeyForOrderID, logKeyForWorkflowID)
-}
-
 func main() {
-	initLogging(logLevel)
+	log_config.InitLogging(logLevel)
 	commonHandler = common_handler.New(true, true, true, true)
 	lambda.Start(handler)
 }
