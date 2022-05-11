@@ -40,6 +40,9 @@ clean:
  
 .PHONY: dep run test cover clean build image docker-push tag-image ecr-login
 
+generate-mocks:
+	mockery --all --output ./commons/mocks
+
 #==================================================================================================
 # BUILDING RELEASE EXECUTABLES
 #==================================================================================================

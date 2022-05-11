@@ -47,6 +47,7 @@ type IDocDBClient interface {
 	FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error)
 	BuildQueryForCallBack(event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{})
 	BuildQueryForUpdateWorkflowDataCallout(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
+	CheckConnection(ctx context.Context) error
 }
 
 type DocDBClient struct {
@@ -104,6 +105,9 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	return &DocDBClient{DBClient: DBClient}
 }
 
+func (DBClient *DocDBClient) CheckConnection(ctx context.Context) error {
+	return DBClient.DBClient.Connect(ctx)
+}
 func (DBClient *DocDBClient) FetchStepExecutionData(StepId string) (StepExecutionDataBody, error) {
 	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 

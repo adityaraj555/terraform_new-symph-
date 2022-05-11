@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -21,6 +23,8 @@ type IAWSClient interface {
 	InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}) (*lambda.InvokeOutput, error)
 	StoreDataToS3(ctx context.Context, bucketName, s3KeyPath string, responseBody []byte) error
 	InvokeSFN(Input, StateMachineArn *string) (string, error)
+	GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error)
+	FetchS3BucketPath(s3Path string) (string, string, error)
 }
 
 type AWSClient struct{}
@@ -159,4 +163,34 @@ func (ac *AWSClient) InvokeSFN(Input, StateMachineArn *string) (string, error) {
 		return "", err
 	}
 	return *out.ExecutionArn, nil
+}
+
+func (ac *AWSClient) GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	region := "us-east-2"
+	svc := s3.New(sess, aws.NewConfig().WithRegion(region))
+	requestInput := &s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(s3KeyPath),
+	}
+	result, err := svc.GetObject(requestInput)
+	if err != nil {
+		return nil, err
+	}
+	defer result.Body.Close()
+	return ioutil.ReadAll(result.Body)
+}
+
+func (ac *AWSClient) FetchS3BucketPath(s3Path string) (string, string, error) {
+	if !(strings.HasPrefix(s3Path, "s3://") || strings.HasPrefix(s3Path, "S3://")) {
+		s3Path = "s3://" + s3Path
+	}
+	u, err := url.Parse(s3Path)
+	if err != nil {
+		return "", "", err
+	}
+	return u.Host, u.Path, nil
 }
