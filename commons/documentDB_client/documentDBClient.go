@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"time"
+
+	"github.eagleview.com/engineering/assess-platform-library/log"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -96,11 +97,11 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, Database, ReadPreference)
 	tlsConfig, err := getCustomTLSConfig(CaFilePath)
 	if err != nil {
-		log.Fatalf("Failed getting TLS configuration: %v", err)
+		log.Errorf(nil, "Failed getting TLS configuration: %v", err)
 	}
 	DBClient, err := mongo.NewClient(options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
 	if err != nil {
-		log.Fatal(err)
+		log.Errorf(nil, "Error= %v", err)
 	}
 	return &DocDBClient{DBClient: DBClient}
 }
@@ -116,7 +117,7 @@ func (DBClient *DocDBClient) FetchStepExecutionData(StepId string) (StepExecutio
 	var StepExecutionData StepExecutionDataBody
 	err := collection.FindOne(ctx, bson.M{"_id": StepId}).Decode(&StepExecutionData)
 	if err != nil {
-		log.Fatalf("Failed to run find query: %v", err)
+		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return StepExecutionDataBody{}, err
 	}
 	return StepExecutionData, nil
@@ -128,11 +129,11 @@ func (DBClient *DocDBClient) InsertStepExecutionData(StepExecutionData StepExecu
 	defer cancel()
 	res, err := collection.InsertOne(ctx, StepExecutionData)
 	if err != nil {
-		log.Fatalf("Failed to insert document: %v", err)
+		log.Errorf(ctx, "Failed to insert document: %v", err)
 		return err
 	}
 	id := res.InsertedID
-	log.Printf("Inserted document ID: %s", id)
+	log.Infof(ctx, "Inserted document ID: %s", id)
 	return nil
 }
 func (DBClient *DocDBClient) InsertWorkflowExecutionData(Data WorkflowExecutionDataBody) error {
@@ -142,11 +143,11 @@ func (DBClient *DocDBClient) InsertWorkflowExecutionData(Data WorkflowExecutionD
 	defer cancel()
 	res, err := collection.InsertOne(ctx, Data)
 	if err != nil {
-		log.Fatalf("Failed to insert document: %v", err)
+		log.Errorf(ctx, "Failed to insert document: %v", err)
 		return err
 	}
 	id := res.InsertedID
-	log.Printf("Inserted document ID: %s", id)
+	log.Infof(ctx, "Inserted document ID: %s", id)
 	return nil
 }
 func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collectionName string) error {
@@ -158,13 +159,13 @@ func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collect
 	res, err := collection.UpdateMany(ctx, query, update)
 
 	if err != nil {
-		log.Fatalf("Failed to update document: %v", err)
+		log.Errorf(ctx, "Failed to update document: %v", err)
 		return err
 	}
 	if res.MatchedCount == 0 {
-		log.Fatalf("Unable to update document as no such document exist")
+		log.Errorf(ctx, "Unable to update document as no such document exist")
 	}
-	log.Printf("Updated document ID: %s", res.UpsertedID)
+	log.Infof(ctx, "Updated document ID: %s", res.UpsertedID)
 	return nil
 }
 func (DBClient *DocDBClient) FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error) {
@@ -175,7 +176,7 @@ func (DBClient *DocDBClient) FetchWorkflowExecutionData(workFlowId string) (Work
 	var WorkflowExecutionData WorkflowExecutionDataBody
 	err := collection.FindOne(ctx, bson.M{"_id": workFlowId}).Decode(&WorkflowExecutionData)
 	if err != nil {
-		log.Fatalf("Failed to run find query: %v", err)
+		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionDataBody{}, err
 	}
 	return WorkflowExecutionData, nil

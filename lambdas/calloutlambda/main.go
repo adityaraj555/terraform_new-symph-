@@ -11,10 +11,11 @@ import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.eagleview.com/engineering/assess-platform-library/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
@@ -162,7 +163,7 @@ func generateBasicToken(cllientId, clientSecret string) string {
 func makeGetCall(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
 	u, err := url.Parse(URL)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return nil, "", err
 	}
 	q := u.Query()
@@ -184,7 +185,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 	}
 
 	if resp.StatusCode != 200 {
@@ -209,14 +210,14 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 
 	resp, err := httpClient.Post(ctx, URL, payload, headers)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return "", err
 	}
 	var respJson map[string]interface{}
 
 	err = json.NewDecoder(resp.Body).Decode(&respJson)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return "", err
 	}
 
@@ -241,7 +242,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	}
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 		return nil, "", err
 	}
 
@@ -250,7 +251,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error(ctx, err)
 	}
 	if resp.StatusCode != 200 {
 		return responseBody, resp.Status, errors.New("invalid http status code received")
@@ -561,7 +562,7 @@ func main() {
 		defer cancel()
 		err = newDBClient.DBClient.Connect(ctx)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(ctx, err)
 		}
 	}
 	lambda.Start(HandleRequest)
