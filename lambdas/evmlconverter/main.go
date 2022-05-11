@@ -50,7 +50,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		finalTaskStepID                     string
 		taskOutput                          interface{}
 		propertyModelS3Path, evJsonLocation string
-		legacyStatus                        string
+		legacyStatus                        string = "QCCompleted"
 	)
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
@@ -65,7 +65,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	workflowData, err := commonHandler.DBClient.FetchWorkflowExecutionData(eventData.WorkflowID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching workflow data from DocumentDb: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, "", legacyStatus, eventData.WorkflowID, StepExecutionData), err
 	}
 
 	ctx = context.WithValue(ctx, logKeyForOrderID, workflowData.OrderId)
@@ -83,7 +83,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	} else {
 		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
 			ctxlog.Error(ctx, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
-			return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
+			return updateDocumentDbAndGetResponse(ctx, "", legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
 		} else {
 			legacyStatus = failureOutput.StatusKey
 			for _, val := range workflowData.StepsPassedThrough {
@@ -98,24 +98,24 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(finalTaskStepID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching steo data from DocumentDb: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 	if taskOutput, ok = taskData.Output["propertyModelLocation"]; !ok {
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New("propertyModelLocation missing from task output")
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New("propertyModelLocation missing from task output")
 	}
 	if propertyModelS3Path, ok = taskOutput.(string); !ok {
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 
 	evjsonS3Path, err := CovertPropertyModelToEVJson(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelS3Path, eventData.ImageMetaDataLocation)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in calling EVJson convertor service: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 
 	if evJsonLocation, ok = evjsonS3Path["evJsonLocation"]; !ok {
 		ctxlog.Error(ctx, "evJsonLocation not returned")
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New("evJsonLocation not returned")
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New("evJsonLocation not returned")
 	}
 
 	ctxlog.Info(ctx, "EVJsonLocation: ", evJsonLocation)
@@ -124,19 +124,18 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	host, path, err := commonHandler.AwsClient.FetchS3BucketPath(evJsonLocation)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching AWS path: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 	propertyModelByteArray, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, path)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in getting downloading from s3: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 
 	if _, err = UploadMLJsonToEvoss(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelByteArray); err != nil {
 		ctxlog.Error(ctx, "Error while uploading file to EVOSS: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
-	legacyStatus = "QCCompleted"
 	ctxlog.Info(ctx, "EVJson successfully uploaded to EVOSS...")
 	return updateDocumentDbAndGetResponse(ctx, success, legacyStatus, eventData.WorkflowID, StepExecutionData), nil
 }
