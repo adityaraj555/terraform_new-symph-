@@ -15,6 +15,7 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
 
@@ -34,6 +35,7 @@ const success = "success"
 const failure = "failure"
 const rework = "rework"
 const isReworkRequired = "isReworkRequired"
+const loglevel = "info"
 
 func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]interface{}, error) {
 	var err error
@@ -44,7 +46,7 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
-	StepExecutionData, err := newDBClient.FetchStepExecutionData(CallbackRequest.CallbackID)
+	StepExecutionData, err := newDBClient.FetchStepExecutionData(ctx, CallbackRequest.CallbackID)
 
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
@@ -73,18 +75,18 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		})
 		fmt.Println(&taskoutput, err)
 	}
-	filter, query := newDBClient.BuildQueryForCallBack(documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
-	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.StepsDataCollection)
+	filter, query := newDBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
-	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
-	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
+	filter, query = newDBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
-	filter, query = newDBClient.BuildQueryForCallBack(documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
-	err = newDBClient.UpdateDocumentDB(filter, query, documentDB_client.WorkflowDataCollection)
+	filter, query = newDBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
+	err = newDBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
@@ -92,12 +94,13 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 }
 
 func main() {
+	log_config.InitLogging(loglevel)
 	if newDBClient == nil {
 		SecretARN := os.Getenv(DBSecretARN)
-		fmt.Println("fetching db secrets")
+		log.Info("fetching db secrets")
 		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
-			fmt.Println("Unable to fetch DocumentDb in secret")
+			log.Error("Unable to fetch DocumentDb in secret")
 		}
 		newDBClient = documentDB_client.NewDBClientService(secrets)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

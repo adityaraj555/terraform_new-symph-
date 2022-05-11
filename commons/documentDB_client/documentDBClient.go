@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.eagleview.com/engineering/assess-platform-library/log"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -41,13 +40,13 @@ var (
 )
 
 type IDocDBClient interface {
-	FetchStepExecutionData(StepId string) (StepExecutionDataBody, error)
-	InsertStepExecutionData(StepExecutionData StepExecutionDataBody) error
-	InsertWorkflowExecutionData(Data WorkflowExecutionDataBody) error
-	UpdateDocumentDB(query, update interface{}, collectionName string) error
-	FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error)
-	BuildQueryForCallBack(event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{})
-	BuildQueryForUpdateWorkflowDataCallout(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
+	FetchStepExecutionData(ctx context.Context, StepId string) (StepExecutionDataBody, error)
+	InsertStepExecutionData(ctx context.Context, StepExecutionData StepExecutionDataBody) error
+	InsertWorkflowExecutionData(ctx context.Context, Data WorkflowExecutionDataBody) error
+	UpdateDocumentDB(ctx context.Context, query, update interface{}, collectionName string) error
+	FetchWorkflowExecutionData(ctx context.Context, workFlowId string) (WorkflowExecutionDataBody, error)
+	BuildQueryForCallBack(ctx context.Context, event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{})
+	BuildQueryForUpdateWorkflowDataCallout(ctx context.Context, TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
 	CheckConnection(ctx context.Context) error
 }
 
@@ -97,11 +96,11 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	connectionURI := fmt.Sprintf(ConnectionStringTemplate, Username, Password, ClusterEndpoint, Database, ReadPreference)
 	tlsConfig, err := getCustomTLSConfig(CaFilePath)
 	if err != nil {
-		log.Errorf(nil, "Failed getting TLS configuration: %v", err)
+		log.Errorf(context.Background(), "Failed getting TLS configuration: %v", err)
 	}
 	DBClient, err := mongo.NewClient(options.Client().ApplyURI(connectionURI).SetTLSConfig(tlsConfig))
 	if err != nil {
-		log.Errorf(nil, "Error= %v", err)
+		log.Errorf(context.Background(), "Error= %v", err)
 	}
 	return &DocDBClient{DBClient: DBClient}
 }
@@ -109,10 +108,10 @@ func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 func (DBClient *DocDBClient) CheckConnection(ctx context.Context) error {
 	return DBClient.DBClient.Connect(ctx)
 }
-func (DBClient *DocDBClient) FetchStepExecutionData(StepId string) (StepExecutionDataBody, error) {
+func (DBClient *DocDBClient) FetchStepExecutionData(ctx context.Context, StepId string) (StepExecutionDataBody, error) {
 	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	var StepExecutionData StepExecutionDataBody
 	err := collection.FindOne(ctx, bson.M{"_id": StepId}).Decode(&StepExecutionData)
@@ -122,10 +121,10 @@ func (DBClient *DocDBClient) FetchStepExecutionData(StepId string) (StepExecutio
 	}
 	return StepExecutionData, nil
 }
-func (DBClient *DocDBClient) InsertStepExecutionData(StepExecutionData StepExecutionDataBody) error {
+func (DBClient *DocDBClient) InsertStepExecutionData(ctx context.Context, StepExecutionData StepExecutionDataBody) error {
 	collection := DBClient.DBClient.Database(Database).Collection(StepsDataCollection)
 
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	res, err := collection.InsertOne(ctx, StepExecutionData)
 	if err != nil {
@@ -136,10 +135,10 @@ func (DBClient *DocDBClient) InsertStepExecutionData(StepExecutionData StepExecu
 	log.Infof(ctx, "Inserted document ID: %s", id)
 	return nil
 }
-func (DBClient *DocDBClient) InsertWorkflowExecutionData(Data WorkflowExecutionDataBody) error {
+func (DBClient *DocDBClient) InsertWorkflowExecutionData(ctx context.Context, Data WorkflowExecutionDataBody) error {
 	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	res, err := collection.InsertOne(ctx, Data)
 	if err != nil {
@@ -150,10 +149,10 @@ func (DBClient *DocDBClient) InsertWorkflowExecutionData(Data WorkflowExecutionD
 	log.Infof(ctx, "Inserted document ID: %s", id)
 	return nil
 }
-func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collectionName string) error {
+func (DBClient *DocDBClient) UpdateDocumentDB(ctx context.Context, query, update interface{}, collectionName string) error {
 	collection := DBClient.DBClient.Database(Database).Collection(collectionName)
 
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 
 	res, err := collection.UpdateMany(ctx, query, update)
@@ -168,10 +167,10 @@ func (DBClient *DocDBClient) UpdateDocumentDB(query, update interface{}, collect
 	log.Infof(ctx, "Updated document ID: %s", res.UpsertedID)
 	return nil
 }
-func (DBClient *DocDBClient) FetchWorkflowExecutionData(workFlowId string) (WorkflowExecutionDataBody, error) {
+func (DBClient *DocDBClient) FetchWorkflowExecutionData(ctx context.Context, workFlowId string) (WorkflowExecutionDataBody, error) {
 	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
-	ctx, cancel := context.WithTimeout(context.Background(), QueryTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	var WorkflowExecutionData WorkflowExecutionDataBody
 	err := collection.FindOne(ctx, bson.M{"_id": workFlowId}).Decode(&WorkflowExecutionData)
@@ -182,7 +181,7 @@ func (DBClient *DocDBClient) FetchWorkflowExecutionData(workFlowId string) (Work
 	return WorkflowExecutionData, nil
 }
 
-func (DBClient *DocDBClient) BuildQueryForUpdateWorkflowDataCallout(TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {
+func (DBClient *DocDBClient) BuildQueryForUpdateWorkflowDataCallout(ctx context.Context, TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {
 	var setrecord interface{}
 	var stepstatus string = failure
 	updatedAt := time.Now().Unix()
@@ -214,7 +213,7 @@ func (DBClient *DocDBClient) BuildQueryForUpdateWorkflowDataCallout(TaskName, st
 		"$set": setrecord,
 	}
 }
-func (DBClient *DocDBClient) BuildQueryForCallBack(event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{}) {
+func (DBClient *DocDBClient) BuildQueryForCallBack(ctx context.Context, event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{}) {
 	var filter interface{}
 	var query interface{}
 	if event == UpdateStepExecution {
