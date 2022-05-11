@@ -162,7 +162,7 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 		"url":           evJsonConvertorEndpoint,
 		"requestMethod": "POST",
 		"IsWaitTask":    false,
-		"taskName":      "CovertPropertyModelToEVJson",
+		"taskName":      "ConvertPropertyModelToEVJson",
 		"orderId":       reportId,
 		"reportId":      reportId,
 		"workflowId":    workflowId,
