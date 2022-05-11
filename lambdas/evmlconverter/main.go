@@ -177,15 +177,14 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJson []byte) (map[string]string, error) {
 	calloutLambdaFunction := os.Getenv(envCalloutLambdaFunction)
 
-	requestBody := make(map[string]interface{})
-	json.Unmarshal(mlJson, requestBody)
-
 	endpoint, token := commonHandler.LegacyClient.GetLegacyBaseUrlAndAuthToken(ctx)
 	payload := map[string]interface{}{
-		"requestData":   requestBody,
+		"requestData":   fmt.Sprintf(`"%s"`, string(mlJson)),
 		"url":           fmt.Sprintf("%s/UploadMLJson?reportId=%s", endpoint, reportId),
 		"requestMethod": "POST",
 		"header": map[string]string{
+			"Content-Type":  "application/json",
+			"Accept":        "application/json",
 			"Authorization": "Basic " + token,
 		},
 		"IsWaitTask": false,
