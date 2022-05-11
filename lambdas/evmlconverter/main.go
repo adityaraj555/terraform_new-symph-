@@ -45,11 +45,12 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	ctxlog.Info(ctx, "EVMLConverter Lambda Reached")
 
 	var (
-		err                                               error
-		ok                                                bool
-		finalTaskStepID                                   string
-		taskOutput                                        interface{}
-		propertyModelS3Path, legacyStatus, evJsonLocation string
+		err                                 error
+		ok                                  bool
+		finalTaskStepID                     string
+		taskOutput                          interface{}
+		propertyModelS3Path, evJsonLocation string
+		legacyStatus                        string
 	)
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
@@ -59,11 +60,6 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		Input:      structs.Map(eventData),
 		WorkflowId: eventData.WorkflowID,
 		TaskName:   "EVMLJsonConverter_UploadToEvoss",
-	}
-	statusObject := *status.New()
-	if statusObject, ok = status.StatusMap["QCCompleted"]; !ok {
-		ctxlog.Error(ctx, "QCCompleted record not found in StatusMap map")
-		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New("QCCompleted record not found in StatusMap map")
 	}
 
 	workflowData, err := commonHandler.DBClient.FetchWorkflowExecutionData(eventData.WorkflowID)
@@ -82,17 +78,14 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		finalTaskStepID = lastCompletedTask.StepId
 		if workflowData.FlowType == "Twister" {
 			ctxlog.Info(ctx, "Job being pushed to Twister...")
-			if statusObject, ok = status.StatusMap["MACompleted"]; !ok {
-				ctxlog.Error(ctx, "MACompleted record not found in StatusMap map")
-				return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New("MACompleted record not found in StatusMap map")
-			}
+			legacyStatus = "MACompleted"
 		}
 	} else {
 		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
 			ctxlog.Error(ctx, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
 			return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
 		} else {
-			statusObject = failureOutput.Status
+			legacyStatus = failureOutput.StatusKey
 			for _, val := range workflowData.StepsPassedThrough {
 				if val.TaskName == failureOutput.FallbackTaskName {
 					finalTaskStepID = val.StepId
@@ -102,7 +95,6 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		}
 	}
 
-	legacyStatus = statusObject.SubStatus
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(finalTaskStepID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching steo data from DocumentDb: ", err.Error())
@@ -144,7 +136,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		ctxlog.Error(ctx, "Error while uploading file to EVOSS: ", err.Error())
 		return updateDocumentDbAndGetResponse(ctx, failure, legacyStatus, eventData.WorkflowID, StepExecutionData), err
 	}
-
+	legacyStatus = "QCCompleted"
 	ctxlog.Info(ctx, "EVJson successfully uploaded to EVOSS...")
 	return updateDocumentDbAndGetResponse(ctx, success, legacyStatus, eventData.WorkflowID, StepExecutionData), nil
 }

@@ -6,7 +6,7 @@ type status struct {
 }
 
 type failedTaskMetaData struct {
-	Status           status
+	StatusKey        string
 	FallbackTaskName string
 }
 
@@ -59,24 +59,15 @@ var StatusMap = map[string]status{
 
 var FailedTaskStatusMap = map[string]failedTaskMetaData{
 	"CreateHipsterJobAndWaitForMeasurement": {
-		Status: status{
-			Status:    "InProcess",
-			SubStatus: "HipsterMeasurementRejected",
-		},
+		StatusKey:        "MeasurementFailed",
 		FallbackTaskName: "3DModellingService",
 	},
 	"UpdateHipsterJobAndWaitForQC": {
-		Status: status{
-			Status:    "InProcess",
-			SubStatus: "HipsterQCRejected",
-		},
+		StatusKey:        "QCFailed",
 		FallbackTaskName: "CreateHipsterJobAndWaitForMeasurement",
 	},
 	"UpdateHipsterJobAndWaitForMeasurement": {
-		Status: status{
-			Status:    "InProcess",
-			SubStatus: "HipsterMeasurementRejected",
-		},
+		StatusKey:        "MeasurementFailed",
 		FallbackTaskName: "3DModellingService",
 	},
 }
