@@ -2,11 +2,11 @@ package common_handler
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
+	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/legacy_client"
@@ -41,13 +41,13 @@ func New(awsClient, httpClient, dbClient, legacyClient bool) CommonHandler {
 
 	if dbClient {
 		SecretARN := os.Getenv(DBSecretARN)
-		fmt.Println("fetching db secrets")
+		log.Info("fetching db secrets")
 		if CommonHandlerObject.AwsClient == nil {
 			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
 		}
 		secrets, err := CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
-			fmt.Println("Unable to fetch DocumentDb in secret")
+			log.Error("Unable to fetch DocumentDb in secret")
 			panic(err)
 		}
 		CommonHandlerObject.DBClient = documentDB_client.NewDBClientService(secrets)

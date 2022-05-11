@@ -3,7 +3,6 @@ package aws_client
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sfn"
+	"github.eagleview.com/engineering/assess-platform-library/log"
 )
 
 type IAWSClient interface {
@@ -74,22 +74,22 @@ func (ac *AWSClient) GetSecretString(ctx context.Context, secretManagerNameArn s
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			case secretsmanager.ErrCodeResourceNotFoundException:
-				fmt.Println(secretsmanager.ErrCodeResourceNotFoundException, aerr.Error())
+				log.Error(ctx, secretsmanager.ErrCodeResourceNotFoundException, aerr.Error())
 			case secretsmanager.ErrCodeInvalidParameterException:
-				fmt.Println(secretsmanager.ErrCodeInvalidParameterException, aerr.Error())
+				log.Error(ctx, secretsmanager.ErrCodeInvalidParameterException, aerr.Error())
 			case secretsmanager.ErrCodeInvalidRequestException:
-				fmt.Println(secretsmanager.ErrCodeInvalidRequestException, aerr.Error())
+				log.Error(ctx, secretsmanager.ErrCodeInvalidRequestException, aerr.Error())
 			case secretsmanager.ErrCodeDecryptionFailure:
-				fmt.Println(secretsmanager.ErrCodeDecryptionFailure, aerr.Error())
+				log.Error(ctx, secretsmanager.ErrCodeDecryptionFailure, aerr.Error())
 			case secretsmanager.ErrCodeInternalServiceError:
-				fmt.Println(secretsmanager.ErrCodeInternalServiceError, aerr.Error())
+				log.Error(ctx, secretsmanager.ErrCodeInternalServiceError, aerr.Error())
 			default:
-				fmt.Println(aerr.Error())
+				log.Error(ctx, aerr.Error())
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error(ctx, err.Error())
 		}
 		return "", err
 	}
@@ -108,13 +108,13 @@ func (ac *AWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string,
 
 	lambdaPayload, err := json.Marshal(payload)
 	if err != nil {
-		fmt.Println("Error marshalling payload request")
+		log.Error(ctx, "Error marshalling payload request")
 		return nil, err
 	}
 
 	result, err := client.Invoke(&lambda.InvokeInput{FunctionName: aws.String(lambdafunctionArn), Payload: lambdaPayload})
 	if err != nil {
-		fmt.Println("Error calling " + lambdafunctionArn)
+		log.Error(ctx, "Error calling "+lambdafunctionArn)
 	}
 
 	return result, err
@@ -140,12 +140,12 @@ func (ac *AWSClient) StoreDataToS3(ctx context.Context, bucketName, s3KeyPath st
 		if aerr, ok := err.(awserr.Error); ok {
 			switch aerr.Code() {
 			default:
-				fmt.Println(aerr.Error())
+				log.Error(ctx, aerr.Error())
 			}
 		} else {
 			// Print the error, cast err to awserr.Error to get the Code and
 			// Message from an error.
-			fmt.Println(err.Error())
+			log.Error(ctx, err.Error())
 		}
 		return err
 	}
