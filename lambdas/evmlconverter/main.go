@@ -8,6 +8,8 @@ import (
 	"os"
 	"time"
 
+	b64 "encoding/base64"
+
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/fatih/structs"
 	"github.com/google/uuid"
@@ -196,7 +198,7 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 	}
 
 	payload := map[string]interface{}{
-		"requestData":   fmt.Sprintf(`"%s"`, string(mlJson)),
+		"requestData":   b64.StdEncoding.EncodeToString(mlJson),
 		"url":           fmt.Sprintf("%s/UploadMLJson?reportId=%s", endpoint, reportId),
 		"requestMethod": "POST",
 		"header": map[string]string{
