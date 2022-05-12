@@ -49,7 +49,7 @@ generate-mocks:
 
 # Lambda
 build-lambda: clean
-	GOOS=linux go build -o ./bin/lambda ./lambdas/$(LAMBDA)/main.go
+	GOOS=linux go build -o ./bin/main ./lambdas/$(LAMBDA)/main.go
 
 #==================================================================================================
 # BUILDING DOCKER IMAGES
