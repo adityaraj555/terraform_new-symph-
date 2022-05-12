@@ -475,6 +475,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	}
 
 	if data.StoreDataToS3 != "" {
+		returnResponse = make(map[string]interface{})
 		err := storeDataToS3(ctx, data.StoreDataToS3, responseBody)
 		if err != nil {
 			returnResponse["status"] = failure
