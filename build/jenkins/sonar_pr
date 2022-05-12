@@ -9,17 +9,6 @@ pipeline {
   }
  
   stages {
-    stage('test'){
-        steps {
-            container('golang') {
-                withCredentials([string(credentialsId: "$GITHUB_CREDENTIALS", variable: "GITHUB_TOKEN")]) {
-                sh "git config --global url.https://${GITHUB_TOKEN}@github.eagleview.com/.insteadOf https://github.eagleview.com/"
-                sh "GOPRIVATE=github.eagleview.com make dep"
-                sh "GOPRIVATE=github.eagleview.com make test"
-          }
-        }
-        }
-    }
 
     stage('analysis') {
       steps {
