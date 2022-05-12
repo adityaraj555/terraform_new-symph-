@@ -466,7 +466,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		returnResponse["status"] = failure
 		return returnResponse, errors.New("Failure status code Received " + responseStatus)
 	}
-	if responseBody != nil {
+	if len(responseBody) != 0 {
 		err = json.Unmarshal(responseBody, &returnResponse)
 		if err != nil {
 			returnResponse["status"] = failure
