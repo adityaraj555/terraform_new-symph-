@@ -201,7 +201,7 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 		"requestData":   b64.StdEncoding.EncodeToString(mlJson),
 		"url":           fmt.Sprintf("%s/UploadMLJson?reportId=%s", endpoint, reportId),
 		"requestMethod": "POST",
-		"header": map[string]string{
+		"headers": map[string]string{
 			"Content-Type":  "application/json",
 			"Accept":        "application/json",
 			"Authorization": "Basic " + token,
