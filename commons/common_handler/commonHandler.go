@@ -9,22 +9,18 @@ import (
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
-	"github.eagleview.com/engineering/symphony-service/commons/legacy_client"
 )
 
 const (
-	DBSecretARN                    = "DBSecretARN"
-	envLegacyUploadToEvossEndpoint = "LEGACY_EVOSS_ENDPOINT"
-	envLegacyAuthSecret            = "LEGACY_AUTH_SECRET"
-	legacyAuthKey                  = "TOKEN"
-	region                         = "us-east-2"
+	DBSecretARN   = "DBSecretARN"
+	legacyAuthKey = "TOKEN"
+	region        = "us-east-2"
 )
 
 type CommonHandler struct {
-	AwsClient    aws_client.IAWSClient
-	HttpClient   httpservice.IHTTPClientV2
-	DBClient     documentDB_client.IDocDBClient
-	LegacyClient legacy_client.ILegacyClient
+	AwsClient  aws_client.IAWSClient
+	HttpClient httpservice.IHTTPClientV2
+	DBClient   documentDB_client.IDocDBClient
 }
 
 func New(awsClient, httpClient, dbClient, legacyClient bool) CommonHandler {
@@ -57,17 +53,6 @@ func New(awsClient, httpClient, dbClient, legacyClient bool) CommonHandler {
 			panic(err)
 		}
 	}
-	if legacyClient {
-		endpoint := os.Getenv(envLegacyUploadToEvossEndpoint)
-		authsecret := os.Getenv(envLegacyAuthSecret)
-		if CommonHandlerObject.AwsClient == nil {
-			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
-		}
-		secretMap, err := CommonHandlerObject.AwsClient.GetSecret(context.Background(), authsecret, region)
-		if err != nil {
-			panic(err)
-		}
-		CommonHandlerObject.LegacyClient = legacy_client.New(endpoint, secretMap[legacyAuthKey].(string), CommonHandlerObject.HttpClient)
-	}
+
 	return CommonHandlerObject
 }
