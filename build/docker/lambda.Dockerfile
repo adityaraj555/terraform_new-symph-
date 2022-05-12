@@ -4,5 +4,4 @@ COPY bin/main /main
 
 COPY build/assets/rds-combined-ca-bundle.pem /rds-combined-ca-bundle.pem
 
-# CMD ["/main"]
 ENTRYPOINT [ "/main" ]
