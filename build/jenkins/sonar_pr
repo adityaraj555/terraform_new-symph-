@@ -12,12 +12,15 @@ pipeline {
     stage('test'){
         steps {
             container('golang') {
-                sh "apt-get update"
+                withCredentials([string(credentialsId: "$GITHUB_CREDENTIALS", variable: "GITHUB_TOKEN")]) {
+                sh "git config --global url.https://${GITHUB_TOKEN}@github.eagleview.com/.insteadOf https://github.eagleview.com/"
+                sh "GOPRIVATE=github.eagleview.com make dep"
                 sh "GOPRIVATE=github.eagleview.com make test"
-            }
+          }
+        }
         }
     }
-    
+
     stage('analysis') {
       steps {
         script{
