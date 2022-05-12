@@ -49,23 +49,23 @@ type AuthData struct {
 }
 
 type MyEvent struct {
-	Payload       map[string]interface{} `json:"requestData"`
-	URL           string                 `json:"url" validate:"omitempty,url"`
-	RequestMethod enums.RequestMethod    `json:"requestMethod" validate:"omitempty,httpMethod"`
-	Headers       map[string]string      `json:"headers"`
-	IsWaitTask    bool                   `json:"isWaitTask"`
-	Timeout       int                    `json:"timeout"`
-	StoreDataToS3 string                 `json:"storeDataToS3"`
-	TaskName      string                 `json:"taskName"`
-	CallType      enums.CallType         `json:"callType" validate:"omitempty,callTypes"`
-	OrderID       string                 `json:"orderId"`
-	ReportID      string                 `json:"reportId" validate:"required"`
-	WorkflowID    string                 `json:"workflowId" validate:"required"`
-	TaskToken     string                 `json:"taskToken" validate:"required_if=IsWaitTask true"`
-	HipsterJobID  string                 `json:"hipsterJobId,omitempty"`
-	QueryParam    map[string]string      `json:"queryParam,omitempty"`
-	Auth          AuthData               `json:"auth"`
-	Status        string                 `json:"status"`
+	Payload       interface{}         `json:"requestData"`
+	URL           string              `json:"url" validate:"omitempty,url"`
+	RequestMethod enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
+	Headers       map[string]string   `json:"headers"`
+	IsWaitTask    bool                `json:"isWaitTask"`
+	Timeout       int                 `json:"timeout"`
+	StoreDataToS3 string              `json:"storeDataToS3"`
+	TaskName      string              `json:"taskName"`
+	CallType      enums.CallType      `json:"callType" validate:"omitempty,callTypes"`
+	OrderID       string              `json:"orderId"`
+	ReportID      string              `json:"reportId" validate:"required"`
+	WorkflowID    string              `json:"workflowId" validate:"required"`
+	TaskToken     string              `json:"taskToken" validate:"required_if=IsWaitTask true"`
+	HipsterJobID  string              `json:"hipsterJobId,omitempty"`
+	QueryParam    map[string]string   `json:"queryParam,omitempty"`
+	Auth          AuthData            `json:"auth"`
+	Status        string              `json:"status"`
 }
 
 // Currently not using because do not know how to handle runtime error lmbda
@@ -414,8 +414,11 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			CallbackID:  stepID,
 			CallbackURL: os.Getenv(envCallbackLambdaFunction),
 		}
-		data.Payload["meta"] = metaObj
 
+		if body, ok := data.Payload.(map[string]interface{}); ok {
+			body["meta"] = metaObj
+			data.Payload = body
+		}
 	}
 
 	json_data, err := json.Marshal(data.Payload)

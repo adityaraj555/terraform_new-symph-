@@ -73,7 +73,7 @@ type StepExecutionDataBody struct {
 	StartTime          int64                  `bson:"startTime"`
 	EndTime            int64                  `bson:"endTime"`
 	Url                string                 `bson:"url"`
-	Input              map[string]interface{} `bson:"input"`
+	Input              interface{}            `bson:"input"`
 	Output             map[string]interface{} `bson:"output"`
 	IntermediateOutput map[string]interface{} `bson:"intermediateOutput"`
 	Status             string                 `bson:"status"`
