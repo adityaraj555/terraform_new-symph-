@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	CaFilePath                    = "rds-combined-ca-bundle.pem"
+	CaFilePath                    = "/rds-combined-ca-bundle.pem"
 	ConnectTimeout                = 5
 	QueryTimeout                  = 30
 	ConnectionStringTemplate      = "mongodb://%s:%s@%s/%s?replicaSet=rs0&readpreference=%s"
