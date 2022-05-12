@@ -106,7 +106,6 @@ func TestHandler(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -122,7 +121,7 @@ func TestHandler(t *testing.T) {
 
 	expectedResp := map[string]interface{}{
 		"status":       success,
-		"legacyStatus": "HipsterQCCompleted",
+		"legacyStatus": "QCCompleted",
 	}
 
 	convertorOutput := lambda.InvokeOutput{
@@ -139,12 +138,11 @@ func TestHandler(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	legacyClient.Mock.On("GetLegacyBaseUrlAndAuthToken", mock.Anything).Return("endpoint", "secrets")
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.NoError(t, err)
@@ -155,7 +153,6 @@ func TestHandlerTwisterFlow(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -171,7 +168,7 @@ func TestHandlerTwisterFlow(t *testing.T) {
 
 	expectedResp := map[string]interface{}{
 		"status":       success,
-		"legacyStatus": "MLAutomationCompleted",
+		"legacyStatus": "MACompleted",
 	}
 	convertorOutput := lambda.InvokeOutput{
 		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
@@ -188,12 +185,11 @@ func TestHandlerTwisterFlow(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	legacyClient.Mock.On("GetLegacyBaseUrlAndAuthToken", mock.Anything).Return("endpoint", "secrets")
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.NoError(t, err)
@@ -204,7 +200,6 @@ func TestHandlerFailureCase(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -220,7 +215,7 @@ func TestHandlerFailureCase(t *testing.T) {
 
 	expectedResp := map[string]interface{}{
 		"status":       success,
-		"legacyStatus": "HipsterQCRejected",
+		"legacyStatus": "QCFailed",
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
@@ -242,12 +237,11 @@ func TestHandlerFailureCase(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	legacyClient.Mock.On("GetLegacyBaseUrlAndAuthToken", mock.Anything).Return("endpoint", "secrets")
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.NoError(t, err)
@@ -258,7 +252,6 @@ func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -293,12 +286,10 @@ func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	legacyClient.Mock.On("GetLegacyBaseUrlAndAuthToken", mock.Anything).Return("endpoint", "secrets")
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -310,7 +301,6 @@ func TestHandlerDocDbWorkflowDataError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -331,7 +321,6 @@ func TestHandlerDocDbWorkflowDataError(t *testing.T) {
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -343,7 +332,6 @@ func TestHandlerFetchStepExecutionDataError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -372,7 +360,6 @@ func TestHandlerFetchStepExecutionDataError(t *testing.T) {
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -384,7 +371,6 @@ func TestHandlerFetchS3BucketPathError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -414,11 +400,11 @@ func TestHandlerFetchS3BucketPathError(t *testing.T) {
 	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything).Return(&convertorOutput, nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -430,7 +416,6 @@ func TestHandlerGetDataFromS3Error(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -461,11 +446,11 @@ func TestHandlerGetDataFromS3Error(t *testing.T) {
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
 	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything).Return(&convertorOutput, nil)
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -477,7 +462,6 @@ func TestHandlerUploadMLJsonToEvossError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -505,11 +489,11 @@ func TestHandlerUploadMLJsonToEvossError(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
@@ -521,7 +505,6 @@ func TestHandlerDataFromPropertyModelNoLocationError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
-	legacyClient := new(mocks.ILegacyClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -552,11 +535,11 @@ func TestHandlerDataFromPropertyModelNoLocationError(t *testing.T) {
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
-	commonHandler.LegacyClient = legacyClient
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
