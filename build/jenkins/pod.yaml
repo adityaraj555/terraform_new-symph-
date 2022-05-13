@@ -6,7 +6,7 @@ metadata:
 spec:
   containers:
   - name: golang
-    image: 176992832580.dkr.ecr.us-east-2.amazonaws.com/golang:1.13                            # use golang container to run tests and build binaries
+    image: 176992832580.dkr.ecr.us-east-2.amazonaws.com/golang:1.17                           # use golang container to run tests and build binaries
     command: ['cat']                              # use cat to keep the container alive during jenkins build
     tty: true                                     # required for cat
   - name: kaniko
