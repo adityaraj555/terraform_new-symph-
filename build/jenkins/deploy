@@ -65,17 +65,17 @@ pipeline {
       }
     }
     
-    // stage('test') {
-    //   when {
-    //     expression { env.RUN_IMAGE_STAGE=='true' }
-    //   }
-    //   steps {
-    //     container('golang') {
-    //       sh "apt-get update"
-    //       sh "GOPRIVATE=github.eagleview.com make test"
-    //     }
-    //   }
-    // }
+    stage('test') {
+       when {
+         expression { env.RUN_IMAGE_STAGE=='true' }
+       }
+       steps {
+         container('golang') {
+           sh "apt-get update"
+           sh "GOPRIVATE=github.eagleview.com make test"
+         }
+       }
+     }
     
      stage('analysis') {
        when {
