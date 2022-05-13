@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
-	"github.eagleview.com/engineering/platform-gosdk/log"
+	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/legacy_client"
@@ -64,14 +64,18 @@ Output:
 func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 
 	if eventData.ReportID == "" {
+		log.Errorf(ctx, "reportId cannot be empty, body: %+v", eventData)
 		return nil, errors.New("reportId cannot be empty")
 	}
 
 	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
+	log.Info(ctx, "LegacyUpdate lambda reached...")
+	log.Debugf(ctx, "LegacyUpdate request body: %+v", eventData)
 
 	status, ok := status.StatusMap[eventData.Status]
 	if !ok {
-		return nil, errors.New("invalid status")
+		log.Error(ctx, "Invalid status: ", eventData.Status)
+		return nil, errors.New("invalid status: " + eventData.Status)
 	}
 
 	endpoint := os.Getenv(envLegacyEndpoint)
@@ -79,7 +83,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 
 	secretMap, err := awsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
-		log.Error(ctx, "error while fetching auth token from secret manager", err.Error())
+		log.Error(ctx, "error while fetching auth token from secret manager, error: ", err.Error())
 		return nil, err
 	}
 
@@ -90,14 +94,19 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		ReportID:     eventData.ReportID,
 		HipsterJobId: eventData.HipsterJobID,
 	}
+
+	log.Debugf(ctx, "Legacy Payload: %+v", payload)
 	err = client.UpdateReportStatus(ctx, &payload)
 	if err != nil {
+		log.Error(ctx, "Error while updating status in Legacy, error: ", err.Error())
 		return &LambdaOutput{
 			Status: failure,
 			//MessageCode: code,
 			Message: err.Error(),
 		}, err
 	}
+
+	log.Info(ctx, "LegacyUpdate lambda successful...")
 	return &LambdaOutput{
 		Status: success,
 		//MessageCode: code,
