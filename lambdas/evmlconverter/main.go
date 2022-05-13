@@ -261,6 +261,6 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 
 func main() {
 	log_config.InitLogging(logLevel)
-	commonHandler = common_handler.New(true, true, true, true)
+	commonHandler = common_handler.New(true, true, true)
 	lambda.Start(handler)
 }

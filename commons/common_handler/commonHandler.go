@@ -23,7 +23,7 @@ type CommonHandler struct {
 	DBClient   documentDB_client.IDocDBClient
 }
 
-func New(awsClient, httpClient, dbClient, legacyClient bool) CommonHandler {
+func New(awsClient, httpClient, dbClient bool) CommonHandler {
 	CommonHandlerObject := CommonHandler{}
 	if httpClient {
 		CommonHandlerObject.HttpClient = &httpservice.HTTPClientV2{}

@@ -66,6 +66,6 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(false, false, true, false)
+	commonHandler = common_handler.New(false, false, true)
 	lambda.Start(Handler)
 }

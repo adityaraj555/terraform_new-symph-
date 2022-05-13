@@ -39,20 +39,23 @@ type LegacyUpdateRequest struct {
 }
 
 func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error {
+	log.Info(ctx, "UpdateReportStatus reached...")
 
 	if req.ReportID == "" || req.Status == "" || req.SubStatus == "" {
+		log.Errorf(ctx, "invalid request body, req body: %+v", req)
 		return errors.New("invalid request body")
 	}
 
 	payload, _ := json.Marshal(req)
 	url := fmt.Sprintf("%s/UpdateReportStatus", lc.EndPoint)
+	log.Debug(ctx, "Endpoint: "+url)
 	headers := map[string]string{
 		"Authorization": "Basic " + lc.AuthToken,
 	}
 
 	response, err := lc.HTTPClient.Post(ctx, url, bytes.NewReader(payload), headers)
 	if err != nil {
-		log.Error(ctx, "error : ", err)
+		log.Error(ctx, "Error while making http call, error: ", err)
 		return err
 	}
 
@@ -60,5 +63,6 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 		log.Error(ctx, "response not ok: ", response.StatusCode)
 		return errors.New("response not ok from legacy")
 	}
+	log.Info(ctx, "UpdateReportStatus successful...")
 	return nil
 }
