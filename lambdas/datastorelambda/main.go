@@ -3,20 +3,17 @@ package main
 import (
 	"context"
 
-	"os"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.eagleview.com/engineering/assess-platform-library/log"
-	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
+	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var awsClient aws_client.AWSClient
-var newDBClient *documentDB_client.DocDBClient
+var commonHandler common_handler.CommonHandler
 
 const (
 	Success    = "success"
@@ -46,7 +43,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		data.Status = Inprogress
 		data.InitialInput = Request.Input
 		data.StepsPassedThrough = []documentDB_client.StepsPassedThroughBody{}
-		err = newDBClient.InsertWorkflowExecutionData(ctx, data)
+		err = commonHandler.DBClient.InsertWorkflowExecutionData(ctx, data)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -58,7 +55,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			},
 		}
 		query := bson.M{"_id": Request.WorkflowId}
-		err = newDBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
+		err := commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			return map[string]interface{}{"status": "failed"}, err
 		}
@@ -69,20 +66,6 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 
 func main() {
 	log_config.InitLogging(loglevel)
-	if newDBClient == nil {
-		SecretARN := os.Getenv(DBSecretARN)
-		log.Info(context.Background(), "fetching db secrets")
-		secrets, err := awsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-		if err != nil {
-			log.Error(context.Background(), "Unable to fetch DocumentDb in secret")
-		}
-		newDBClient = documentDB_client.NewDBClientService(secrets)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err = newDBClient.DBClient.Connect(ctx)
-		if err != nil {
-			log.Error(context.Background(), err)
-		}
-	}
+	commonHandler = common_handler.New(false, false, true, false)
 	lambda.Start(Handler)
 }
