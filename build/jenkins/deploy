@@ -23,6 +23,7 @@ pipeline {
     string(name: "ARGOCD_CREDENTIALS", defaultValue: "platform-argocd-token",        description: "Platform ArgoCD credentials")
     string(name: "SLACK_CREDENTIALS",  defaultValue: "slackintegration",             description: "Slack credentials for Graph Warehouse notifications")
     choice(name: "RUN_JENKINS_MIGRATION", choices: ["yes", "no"],                    description: "choice for running the mirgration stage from Jenkins")
+    choice(name: "RUN_R7_SCAN", choices: ["yes", "no"],                    description: "choice for running r7 scan")
     string(name: "BUILD_NOTES",        defaultValue: "property-data-orchestrator-api build", description: "notes for the current build in one line")
     gitParameter name: 'RELEASE_BRANCH' , description: 'select the release branch to deploy' , type: 'PT_BRANCH' , defaultValue:'origin/release-1.0.0', branchFilter:'origin/release-.*'
   }
@@ -113,7 +114,7 @@ pipeline {
     }
     stage('image scanner') {
        when {
-         expression { env.RUN_IMAGE_STAGE=='true' }
+         expression { env.RUN_IMAGE_STAGE=='true' && env.RUN_R7_SCAN == 'yes' }
        }
         agent {
             label 'rapid-7'
