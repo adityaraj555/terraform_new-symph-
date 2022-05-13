@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
-	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
+	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
@@ -27,7 +28,7 @@ type sfnInput struct {
 	ReportID string `json:"reportId" validate:"required"`
 }
 
-var awsClient aws_client.AWSClient
+var commonHandler common_handler.CommonHandler
 
 const (
 	StateMachineARN = "StateMachineARN"
@@ -36,6 +37,7 @@ const (
 
 func main() {
 	log_config.InitLogging(loglevel)
+	commonHandler = common_handler.New(true, false, false, false)
 	lambda.Start(Handler)
 }
 
@@ -45,7 +47,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
 		if err = validateInput(ctx, message.Body); err != nil {
 			return err
 		}
-		ExecutionArn, err := awsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
+		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
 		log.Infof(ctx, "executionARN of the  above execution  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)
@@ -59,6 +61,7 @@ func validateInput(ctx context.Context, input string) error {
 	log.Info(ctx, "input body:", input)
 	req := sfnInput{}
 	err := json.Unmarshal([]byte(input), &req)
+	fmt.Println(req)
 	if err != nil {
 		log.Error(ctx, "invalid input for sfn", input)
 		return err

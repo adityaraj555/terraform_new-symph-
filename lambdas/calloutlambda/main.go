@@ -19,7 +19,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
-	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
+	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
@@ -75,9 +75,7 @@ type LegacyLambdaOutput struct {
 	Message     string `json:"message"`
 }
 
-var AwsClient aws_client.IAWSClient
-var httpClient httpservice.IHTTPClientV2
-var newDBClient *documentDB_client.DocDBClient
+var commonHandler common_handler.CommonHandler
 
 const DBSecretARN = "DBSecretARN"
 const envLegacyUpdatefunction = "envLegacyUpdatefunction"
@@ -108,7 +106,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 			secretManagerArn := payoadAuthData.RequiredAuthData.SecretManagerArn
 			XAPIKeyKey := payoadAuthData.RequiredAuthData.XAPIKeyKey
 
-			secretString, err := AwsClient.GetSecretString(ctx, secretManagerArn)
+			secretString, err := commonHandler.AwsClient.GetSecretString(ctx, secretManagerArn)
 			if err != nil {
 				return err
 			}
@@ -119,7 +117,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		case "secret_manager_key":
 			XAPIKeyKey := payoadAuthData.RequiredAuthData.XAPIKeyKey
 			var err1 error
-			XAPIKey, err1 = AwsClient.GetSecretString(ctx, XAPIKeyKey)
+			XAPIKey, err1 = commonHandler.AwsClient.GetSecretString(ctx, XAPIKeyKey)
 
 			if err1 != nil {
 				return err1
@@ -176,9 +174,9 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	URL = u.String()
 	var resp *http.Response
 	if payload != nil {
-		resp, err = httpClient.Getwithbody(ctx, URL, bytes.NewReader(payload), headers)
+		resp, err = commonHandler.HttpClient.Getwithbody(ctx, URL, bytes.NewReader(payload), headers)
 	} else {
-		resp, err = httpClient.Get(ctx, URL, headers)
+		resp, err = commonHandler.HttpClient.Get(ctx, URL, headers)
 	}
 	if err != nil {
 		return nil, "", err
@@ -210,7 +208,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 
 	headers["Authorization"] = "Basic " + basicTokenEnc
 
-	resp, err := httpClient.Post(ctx, URL, payload, headers)
+	resp, err := commonHandler.HttpClient.Post(ctx, URL, payload, headers)
 	if err != nil {
 		log.Error(ctx, err)
 		return "", err
@@ -236,11 +234,11 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	var err error
 	switch httpMethod {
 	case enums.POST:
-		resp, err = httpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
+		resp, err = commonHandler.HttpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
 	case enums.PUT:
-		resp, err = httpClient.Put(ctx, URL, bytes.NewReader(payload), headers)
+		resp, err = commonHandler.HttpClient.Put(ctx, URL, bytes.NewReader(payload), headers)
 	case enums.DELETE:
-		resp, err = httpClient.Delete(ctx, URL, headers)
+		resp, err = commonHandler.HttpClient.Delete(ctx, URL, headers)
 	}
 
 	if err != nil {
@@ -269,7 +267,7 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		secretManagerArn := payoadAuthData.RequiredAuthData.SecretManagerArn
 		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
-		secretString, err := AwsClient.GetSecretString(ctx, secretManagerArn)
+		secretString, err := commonHandler.AwsClient.GetSecretString(ctx, secretManagerArn)
 		if err != nil {
 			return "", "", err
 		}
@@ -282,8 +280,8 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
 		var err1, err2 error
-		cllientId, err1 = AwsClient.GetSecretString(ctx, cllientIdKey)
-		clientSecret, err2 = AwsClient.GetSecretString(ctx, clientSecretKey)
+		cllientId, err1 = commonHandler.AwsClient.GetSecretString(ctx, cllientIdKey)
+		clientSecret, err2 = commonHandler.AwsClient.GetSecretString(ctx, clientSecretKey)
 
 		if err1 != nil {
 			return "", "", err1
@@ -303,7 +301,7 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 	if err != nil {
 		return err
 	}
-	err = AwsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
+	err = commonHandler.AwsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
 
 	if err != nil {
 		return err
@@ -314,7 +312,7 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{}) error {
 	legacyLambdaFunction := os.Getenv(envLegacyUpdatefunction)
 
-	result, err := AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
 
 	if err != nil {
 		return err
@@ -534,19 +532,19 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		StepExecutionData.Output = response
 		StepExecutionData.EndTime = time.Now().Unix()
 	}
-	err := newDBClient.InsertStepExecutionData(ctx, StepExecutionData)
+	err := commonHandler.DBClient.InsertStepExecutionData(ctx, StepExecutionData)
 	if err != nil {
 		log.Error(ctx, "Unable to insert Step Data in DocumentDB")
 		return response, err
 	}
 	filter := bson.M{"_id": data.WorkflowID}
 	if serviceerr != nil {
-		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, failure, starttime, data.IsWaitTask)
-		newDBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
+		update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, failure, starttime, data.IsWaitTask)
+		commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		return response, serviceerr
 	} else {
-		update := newDBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, success, starttime, data.IsWaitTask)
-		err := newDBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
+		update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, success, starttime, data.IsWaitTask)
+		err := commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			response["status"] = failure
 		}
@@ -557,22 +555,6 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 
 func main() {
 	log_config.InitLogging(loglevel)
-	httpClient = &httpservice.HTTPClientV2{}
-	AwsClient = &aws_client.AWSClient{}
-	if newDBClient == nil {
-		SecretARN := os.Getenv(DBSecretARN)
-		log.Error(context.Background(), "fetching db secrets")
-		secrets, err := AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-		if err != nil {
-			log.Error(context.Background(), "Unable to fetch DocumentDb in secret")
-		}
-		newDBClient = documentDB_client.NewDBClientService(secrets)
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err = newDBClient.DBClient.Connect(ctx)
-		if err != nil {
-			log.Error(ctx, err)
-		}
-	}
+	commonHandler = common_handler.New(true, true, true, true)
 	lambda.Start(HandleRequest)
 }
