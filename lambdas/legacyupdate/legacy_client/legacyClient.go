@@ -28,7 +28,6 @@ type LegacyClient struct {
 
 type ILegacyClient interface {
 	UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error
-	GetLegacyBaseUrlAndAuthToken(ctx context.Context) (string, string)
 }
 
 type LegacyUpdateRequest struct {
@@ -37,10 +36,6 @@ type LegacyUpdateRequest struct {
 	SubStatus    string
 	Notes        string
 	HipsterJobId string
-}
-
-func (lc *LegacyClient) GetLegacyBaseUrlAndAuthToken(ctx context.Context) (string, string) {
-	return lc.EndPoint, lc.AuthToken
 }
 
 func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdateRequest) error {

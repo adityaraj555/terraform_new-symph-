@@ -17,6 +17,8 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/log"
 )
 
+const success = "success"
+
 type IAWSClient interface {
 	GetSecret(ctx context.Context, secretName, region string) (map[string]interface{}, error)
 	GetSecretString(ctx context.Context, secretManagerNameArn string) (string, error)
@@ -25,6 +27,7 @@ type IAWSClient interface {
 	InvokeSFN(Input, StateMachineArn *string) (string, error)
 	GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error)
 	FetchS3BucketPath(s3Path string) (string, string, error)
+	CloseWaitTask(ctx context.Context, status, TaskToken, Output, Cause, Error string) error
 }
 
 type AWSClient struct{}
@@ -193,4 +196,29 @@ func (ac *AWSClient) FetchS3BucketPath(s3Path string) (string, string, error) {
 		return "", "", err
 	}
 	return u.Host, u.Path, nil
+}
+
+func (ac *AWSClient) CloseWaitTask(ctx context.Context, status, TaskToken, Output, Cause, Error string) error {
+	mySession := session.Must(session.NewSession())
+	svc := sfn.New(mySession)
+	if status == success {
+		taskoutput, err := svc.SendTaskSuccess(&sfn.SendTaskSuccessInput{
+			TaskToken: &TaskToken,
+			Output:    &Output,
+		})
+		if err != nil {
+			log.Error(ctx, "Unable to Mark Task as Success", taskoutput, err)
+		}
+		return err
+	} else {
+		taskoutput, err := svc.SendTaskFailure(&sfn.SendTaskFailureInput{
+			TaskToken: &TaskToken,
+			Cause:     &Cause,
+			Error:     &Error,
+		})
+		if err != nil {
+			log.Error(ctx, "Unable to Mark Task as Failure", taskoutput, err)
+		}
+		return err
+	}
 }
