@@ -26,12 +26,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "UpdateLegacyMLAutomationStart"
+      "Next": "UpdateLegacyMLAutomationStart",
+      "TimeoutSeconds": 30
     },
     "UpdateLegacyMLAutomationStart": {
       "Type": "Task",
@@ -60,12 +61,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "MeasurementAutomation"
+      "Next": "MeasurementAutomation",
+      "TimeoutSeconds": 30
     },
     "MeasurementAutomation": {
       "Type": "Parallel",
@@ -85,18 +87,19 @@
               "Parameters": {
                 "Payload": {
                   "requestData": {},
-                  "url": "https://mustangs.free.beeceptor.com/GetImageMetaData",
+                  "url.$": "States.Format('https://intranetrest.cmh.reportstest.evinternal.net/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.reportId)",
                   "requestMethod": "GET",
-                  "headers": {},
+                  "headers": {
+                    "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
+                  },
                   "isWaitTask": false,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 5,
-                  "storeDataToS3": "",
+                  "storeDataToS3": "s3://app-dev-1x0-s3-property-data-orchestrator/44823954/imageMetadata.json",
                   "taskName": "GetImageMetaData",
                   "orderId.$": "$$.Execution.Input.orderId",
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
-                  "callType": "Service",
                   "auth": {}
                 },
                 "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
@@ -108,12 +111,13 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
-              "Next": "ImageSelection"
+              "Next": "ImageSelection",
+              "TimeoutSeconds": 30
             },
             "ImageSelection": {
               "Type": "Task",
@@ -129,7 +133,7 @@
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
                     "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
+                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation"
                   },
                   "url": "https://api.cmh.platform-dev2.evinternal.net/factory-automeasure/ma-image-selector/v2/image-selection",
                   "requestMethod": "POST",
@@ -143,7 +147,6 @@
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
                   "taskToken.$": "$$.Task.Token",
-                  "callType": "Service",
                   "auth": {}
                 }
               },
@@ -154,12 +157,13 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
-              "Next": "FacetKeyPointDetection"
+              "Next": "FacetKeyPointDetection",
+              "TimeoutSeconds": 180
             },
             "FacetKeyPointDetection": {
               "Type": "Task",
@@ -174,10 +178,10 @@
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
                     "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.GetImageMetaDataLocation",
+                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation"
                   },
-                  "url": "https://api.cmh.platform-test2.evinternal.net/factory-automeasure/measurement-automation/v2/measurement-automation",
+                  "url": "https://api.cmh.platform-dev2.evinternal.net/factory-automeasure/measurement-automation/v2/measurement-automation",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -189,7 +193,6 @@
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
                   "taskToken.$": "$$.Task.Token",
-                  "callType": "Service",
                   "auth": {}
                 },
                 "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
@@ -201,12 +204,13 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
-              "Next": "3DModellingService"
+              "Next": "3DModellingService",
+              "TimeoutSeconds": 180
             },
             "3DModellingService": {
               "Type": "Task",
@@ -222,11 +226,11 @@
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
                     "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.GetImageMetaDataLocation",
+                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
                     "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
                   },
-                  "url": "https://measurement-service.cmh.imageproc.evinternal.net/v2/runs",
+                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/3dmodelling",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -238,7 +242,6 @@
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
                   "taskToken.$": "$$.Task.Token",
-                  "callType": "Service",
                   "auth": {}
                 }
               },
@@ -249,12 +252,13 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
-              "End": true
+              "End": true,
+              "TimeoutSeconds": 180
             }
           }
         }
@@ -268,7 +272,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "updateMLAutomationRejected"
+          "Next": "updateMLAutomationRejected",
+          "ResultPath": "$.MAError"
         }
       ]
     },
@@ -286,7 +291,7 @@
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name"
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:test1234:$LATEST"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-throttleservice:$LATEST"
       },
       "Retry": [
         {
@@ -295,12 +300,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "Hipster/Twister"
+      "Next": "Hipster/Twister",
+      "TimeoutSeconds": 30
     },
     "Hipster/Twister": {
       "Type": "Choice",
@@ -341,12 +347,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "Hipster"
+      "Next": "Hipster",
+      "TimeoutSeconds": 30
     },
     "Hipster": {
       "Type": "Parallel",
@@ -373,7 +380,7 @@
                     "orderType.$": "$$.Execution.Input.orderType",
                     "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
                   },
-                  "url": "http://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/hipster",
+                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/hipster",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -398,9 +405,9 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
               "Next": "UpdateHipsterMeasurementCompleteInLegacy"
@@ -432,12 +439,13 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
-              "Next": "UpdateHipsterJobAndWaitForQC"
+              "Next": "UpdateHipsterJobAndWaitForQC",
+              "TimeoutSeconds": 30
             },
             "UpdateHipsterJobAndWaitForQC": {
               "Type": "Task",
@@ -453,7 +461,7 @@
                   "requestData": {
                     "mode": "QC"
                   },
-                  "url": "http://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/qc",
+                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/qc",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -478,9 +486,9 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
               "Next": "Rework"
@@ -515,7 +523,7 @@
                   "requestData": {
                     "mode": "Measurement"
                   },
-                  "url": "http://4b39-2405-201-c013-cd02-148d-d693-3453-fe2d.ngrok.io/hipster",
+                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/hipster",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -540,9 +548,9 @@
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 1
                 }
               ],
               "Next": "UpdateHipsterMeasurementCompleteInLegacy"
@@ -559,7 +567,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "EVMLJsonConverter_UploadToEvoss"
+          "Next": "EVMLJsonConverter_UploadToEvoss",
+          "ResultPath": "$.HipsterError"
         }
       ]
     },
@@ -590,12 +599,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "updateWorkflowDataToDocDB"
+      "Next": "updateWorkflowDataToDocDB",
+      "TimeoutSeconds": 30
     },
     "EVMLJsonConverter_UploadToEvoss": {
       "Type": "Task",
@@ -610,7 +620,7 @@
         "Payload": {
           "workflowId.$": "$$.Execution.Name",
           "reportId.$": "$$.Execution.Input.reportId",
-          "getImageMetaDataLocation.$": "$.GetImageMetaData.response.GetImageMetaDataLocation"
+          "getImageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
         }
       },
       "Retry": [
@@ -620,12 +630,21 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "UpdateLegacyStatus"
+      "Next": "UpdateLegacyStatus",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "updateMLAutomationRejected"
+        }
+      ],
+      "TimeoutSeconds": 30
     },
     "UpdateLegacyStatus": {
       "Type": "Task",
@@ -654,12 +673,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "Next": "updateWorkflowDataToDocDB"
+      "Next": "updateWorkflowDataToDocDB",
+      "TimeoutSeconds": 30
     },
     "updateWorkflowDataToDocDB": {
       "Type": "Task",
@@ -685,12 +705,13 @@
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
-      "End": true
+      "End": true,
+      "TimeoutSeconds": 30
     }
   }
 }
