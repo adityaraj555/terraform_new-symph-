@@ -85,7 +85,9 @@ const failure = "failure"
 const loglevel = "info"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
+	log.Info(ctx, "handleAuth reached...")
 	authType := strings.ToLower(strings.TrimSpace(payoadAuthData.Type.String()))
+	log.Info(ctx, "Auth type: ", authType)
 	switch authType {
 	case "", enums.AuthNone:
 		return nil
@@ -130,7 +132,6 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 	case enums.AuthBearer:
 		cllientId, clientSecret, err := fetchClientIdSecret(ctx, payoadAuthData)
 		if err != nil {
-			log.Error(ctx, "unable to fetch cllientId, clientSecret")
 			return err
 		}
 
@@ -141,6 +142,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		}
 		headers["Authorization"] = "Bearer " + authToken
 	}
+	log.Info(ctx, "handleAuth successful...")
 	return nil
 }
 
@@ -172,6 +174,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 	u.RawQuery = q.Encode()
 	URL = u.String()
+	log.Debug(ctx, "Endpoint: ", URL)
 	var resp *http.Response
 	if payload != nil {
 		resp, err = commonHandler.HttpClient.Getwithbody(ctx, URL, bytes.NewReader(payload), headers)
@@ -179,16 +182,18 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 		resp, err = commonHandler.HttpClient.Get(ctx, URL, headers)
 	}
 	if err != nil {
+		log.Error(ctx, "Error while making http call: ", err.Error())
 		return nil, "", err
 	}
 
 	defer resp.Body.Close()
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Error(ctx, err)
+		log.Error(ctx, "Unable to read response body: ", err)
 	}
 
 	if resp.StatusCode != 200 {
+		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
 
@@ -242,18 +247,18 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	}
 
 	if err != nil {
-		log.Error(ctx, err)
+		log.Error(ctx, "Error while making http request: ", err.Error())
 		return nil, "", err
 	}
 
 	defer resp.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(resp.Body)
-
 	if err != nil {
-		log.Error(ctx, err)
+		log.Error(ctx, "Error while reading response body: ", err.Error())
 	}
 	if resp.StatusCode != 200 {
+		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
 	return responseBody, resp.Status, nil
@@ -299,10 +304,10 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 
 	bucketName, s3KeyPath, err := FetchS3BucketPath(s3Path)
 	if err != nil {
+		log.Error(ctx, "Error while parsing s3 path, error: ", err.Error())
 		return err
 	}
 	err = commonHandler.AwsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
-
 	if err != nil {
 		return err
 	}
@@ -310,10 +315,10 @@ func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) erro
 }
 
 func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{}) error {
+	log.Infof(ctx, "callLegacyStatusUpdate reached...")
 	legacyLambdaFunction := os.Getenv(envLegacyUpdatefunction)
 
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
-
 	if err != nil {
 		return err
 	}
@@ -327,20 +332,23 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 
 	errorType, ok := resp["errorType"]
 	if ok {
-		log.Info(ctx, errorType)
+		log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 		return errors.New("error occured while executing lambda ")
 	}
 
 	legacyStatus, ok := resp["status"]
 	if !ok {
+		log.Errorf(ctx, "legacy Response should have status")
 		return errors.New("legacy Response should have status")
 	}
 	legacyStatusString := strings.ToLower(fmt.Sprintf("%v", legacyStatus))
 
 	if legacyStatusString == "failure" {
+		log.Errorf(ctx, "legacy returned with status as failure")
 		return errors.New("legacy returned with status as failure")
 	}
 
+	log.Info(ctx, "callLegacyStatusUpdate successful...")
 	return nil
 }
 
@@ -371,7 +379,7 @@ func validate(ctx context.Context, data MyEvent) error {
 }
 
 func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
-
+	log.Info(ctx, "CallService reached...")
 	returnResponse := make(map[string]interface{})
 
 	if err := validate(ctx, data); err != nil {
@@ -388,6 +396,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	})
 
 	callType := data.CallType.String()
+	log.Info(ctx, "CallType: ", callType)
 
 	if callType == enums.LegacyCT {
 		req := map[string]interface{}{
@@ -398,16 +407,15 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 		err := callLegacyStatusUpdate(ctx, req)
 		if err != nil {
-			log.Error(ctx, err)
 			returnResponse["status"] = failure
 			return returnResponse, err
 		}
 		returnResponse["status"] = "success"
+		log.Info(ctx, "CallService successfull...")
 		return returnResponse, err
 	}
 
 	if data.IsWaitTask {
-
 		metaObj := Meta{
 			CallbackID:  stepID,
 			CallbackURL: os.Getenv(envCallbackLambdaFunction),
@@ -421,6 +429,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	json_data, err := json.Marshal(data.Payload)
 	if err != nil {
+		log.Error(ctx, "Error while marshalling callout payload, error: ", err.Error())
 		returnResponse["status"] = failure
 		return returnResponse, err
 	}
@@ -439,7 +448,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	switch requestMethod {
 	case enums.GET:
 		responseBody, responseStatus, responseError = makeGetCall(ctx, data.URL, headers, json_data, data.QueryParam)
-		log.Info(ctx, string(responseBody))
+		log.Info(ctx, "http response:", string(responseBody))
 		if responseError != nil {
 			returnResponse["status"] = failure
 			return returnResponse, responseError
@@ -447,7 +456,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	case enums.POST, enums.PUT, enums.DELETE:
 		responseBody, responseStatus, responseError = makePutPostDeleteCall(ctx, requestMethod, data.URL, headers, json_data)
-		log.Info(ctx, string(responseBody))
+		log.Info(ctx, "http response: ", string(responseBody))
 
 		if responseError != nil {
 			returnResponse["status"] = failure
@@ -455,18 +464,20 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 
 	default:
-		log.Info(ctx, "Unknown request method, can not proceed")
+		log.Error(ctx, "Unknown request method, can not proceed, RequestMethod: ", requestMethod)
 		returnResponse["status"] = failure
 		return returnResponse, responseError
 
 	}
 	if !strings.HasPrefix(responseStatus, "20") {
 		returnResponse["status"] = failure
+		log.Error(ctx, "Failure status code Received ", responseStatus)
 		return returnResponse, errors.New("Failure status code Received " + responseStatus)
 	}
 	if len(responseBody) != 0 {
 		err = json.Unmarshal(responseBody, &returnResponse)
 		if err != nil {
+			log.Error(ctx, "Unable to unmarshall response: ", err.Error())
 			returnResponse["status"] = failure
 			return returnResponse, err
 		}
@@ -490,13 +501,16 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			err := json.Unmarshal(responseBody, &hipsterOutput)
 			if err != nil {
 				returnResponse["status"] = failure
+				log.Error(ctx, "Error while unmarshalling response, error: ", err.Error())
 				return returnResponse, err
 			}
 			if jobID, ok = hipsterOutput["jobId"]; !ok {
 				returnResponse["status"] = failure
+				log.Error(ctx, "Hipster JobId missing in hipster output")
 				return returnResponse, errors.New("Hipster JobId missing in hipster output")
 			}
 		}
+		log.Info(ctx, "hipster jobId: ", jobID)
 		err := handleHipster(ctx, data.ReportID, data.Status, jobID)
 		if err != nil {
 			returnResponse["status"] = failure
@@ -512,6 +526,10 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
 	ctx = log_config.SetTraceIdInContext(ctx, data.ReportID, data.WorkflowID)
+
+	log.Info(ctx, "callout lambda reached...")
+	log.Debugf(ctx, "Req body: %+v", data)
+
 	response, serviceerr := CallService(ctx, data, stepID)
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
 		StepId:     stepID,
@@ -550,7 +568,6 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		}
 		return response, err
 	}
-
 }
 
 func main() {
