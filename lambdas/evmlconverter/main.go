@@ -29,8 +29,8 @@ const (
 	taskName                   = "EVMLJsonConverter_UploadToEvoss"
 	envCalloutLambdaFunction   = "envCalloutLambdaFunction"
 	envEvJsonConvertorEndpoint = "envEvJsonConvertorEndpoint"
-	envMLJsonUploadEndpoint    = "envMLJsonUploadEndpoint"
-	envLegacyAuthSecret        = "envLegacyAuthSecret"
+	envLegacyEndpoint          = "envLegacyEndpoint"
+	DBSecretARN                = "DBSecretARN"
 	legacyAuthKey              = "TOKEN"
 )
 
@@ -182,8 +182,8 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 
 func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJson []byte) (map[string]string, error) {
 	calloutLambdaFunction := os.Getenv(envCalloutLambdaFunction)
-	authsecret := os.Getenv(envLegacyAuthSecret)
-	endpoint := os.Getenv(envMLJsonUploadEndpoint)
+	authsecret := os.Getenv(DBSecretARN)
+	endpoint := os.Getenv(envLegacyEndpoint)
 
 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
