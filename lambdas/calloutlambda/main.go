@@ -555,6 +555,6 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, true, true, true)
+	commonHandler = common_handler.New(true, true, true)
 	lambda.Start(HandleRequest)
 }
