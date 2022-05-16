@@ -66,7 +66,26 @@ func TestLegacyClientinvalidStatusCode(t *testing.T) {
 	err := LegacyClient.UpdateReportStatus(context.Background(), &LegacyRequest)
 	assert.Error(t, err)
 }
+func TestLegacyClientinvalidStatusCode400(t *testing.T) {
+	http_Client := new(mocks.MockHTTPClient)
 
+	LegacyClient := main.New("legacyURL", "AuthToken", http_Client)
+	LegacyRequest := main.LegacyUpdateRequest{
+		ReportID:     "12345",
+		Status:       "inProcess",
+		SubStatus:    "HipsterQCCompleted",
+		HipsterJobId: "HipsterJobId",
+	}
+	http_Client.Mock.On("Post").Return(&http.Response{
+		StatusCode: 400,
+		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
+			"Success": true,
+			"Message": "Report Status updated for ReportId: "
+		}`))),
+	}, nil)
+	err := LegacyClient.UpdateReportStatus(context.Background(), &LegacyRequest)
+	assert.Error(t, err)
+}
 func TestLegacyClientErrorMakingAppiCall(t *testing.T) {
 	http_Client := new(mocks.MockHTTPClient)
 
