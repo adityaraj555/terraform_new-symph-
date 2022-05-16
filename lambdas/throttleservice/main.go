@@ -9,10 +9,17 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 var commonHandler common_handler.CommonHandler
+
+const (
+	Success  = "success"
+	loglevel = "info"
+	failed   = "failed"
+)
 
 type eventData struct {
 	ReportID   string `json:"reportId"`
@@ -27,13 +34,13 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
 	if err != nil {
 		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failed}, err
 	}
 	// if totalcount>50 return twister else Hipster
 	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
 	if err != nil {
 		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
-		return map[string]interface{}{"status": "failed"}, err
+		return map[string]interface{}{"status": failed}, err
 	}
 	if count <= threshold {
 		query := bson.M{"_id": eventData.WorkflowID}
@@ -43,7 +50,7 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 			}}
 
 		commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
-		return map[string]interface{}{"Path": "Hipster"}, nil
+		return map[string]interface{}{"Path": "Hipster", "status": Success}, nil
 	} else {
 		query := bson.M{"_id": eventData.WorkflowID}
 		setrecord := bson.M{
@@ -52,12 +59,13 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 			}}
 
 		commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
-		return map[string]interface{}{"Path": "Twister"}, nil
+		return map[string]interface{}{"Path": "Twister", "status": Success}, nil
 	}
 
 }
 
 func main() {
-
+	log_config.InitLogging(loglevel)
+	commonHandler = common_handler.New(false, false, true)
 	lambda.Start(handler)
 }
