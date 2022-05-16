@@ -132,7 +132,16 @@ pipeline {
           }
       }
     }
-    
+    /*
+    stage('AutomatedTestSuit'){
+      steps {
+            script {
+              println "Calling testrun pipeline.... "
+              code = load 'build/jenkins/testCases.groovy'
+              code.executeAPIRun()
+          }
+       }
+    }*/
   }
 
 
