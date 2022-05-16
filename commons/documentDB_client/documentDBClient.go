@@ -48,6 +48,7 @@ type IDocDBClient interface {
 	BuildQueryForCallBack(ctx context.Context, event, status, workflowID, stepID, TaskName string, callbackResponse map[string]interface{}) (interface{}, interface{})
 	BuildQueryForUpdateWorkflowDataCallout(ctx context.Context, TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
 	CheckConnection(ctx context.Context) error
+	GetHipsterCountPerDay(ctx context.Context) (int64, error)
 }
 
 type DocDBClient struct {
@@ -265,4 +266,20 @@ func getCustomTLSConfig(caFile string) (*tls.Config, error) {
 		return tlsConfig, errors.New("Failed parsing pem file")
 	}
 	return tlsConfig, nil
+}
+
+func (DBClient *DocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, error) {
+	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
+	defer cancel()
+	endedTime := time.Now().Unix()
+	startTime := endedTime - 24*60*60
+	count, err := collection.CountDocuments(ctx, bson.M{"createdAt": bson.M{"$gt": startTime, "$lt": endedTime}, "flowType": "Hipster"})
+	log.Infof(ctx, "No of documents with flowtype as hipster = %v", count)
+	if err != nil {
+		log.Errorf(ctx, "Failed to run find query: %v", err)
+		return 0, err
+	}
+	return count, nil
 }
