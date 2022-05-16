@@ -21,7 +21,7 @@
       },
       "Retry": [
         {
-          "ErrorEquals": [ 
+          "ErrorEquals": [
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -57,7 +57,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
@@ -105,7 +108,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -149,7 +155,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -194,7 +203,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -240,7 +252,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -286,7 +301,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
@@ -331,7 +349,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
@@ -387,7 +408,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -419,7 +443,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -464,7 +491,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -524,7 +554,10 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError"
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
                   "MaxAttempts": 3,
@@ -573,7 +606,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
@@ -602,7 +638,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
@@ -643,7 +682,10 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError"
+            "RetriableError",
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
           "MaxAttempts": 3,
