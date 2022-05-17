@@ -16,6 +16,7 @@ import (
 	ctxlog "github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
 	"go.mongodb.org/mongo-driver/bson"
@@ -32,6 +33,7 @@ const (
 	envLegacyEndpoint          = "envLegacyEndpoint"
 	DBSecretARN                = "DBSecretARN"
 	legacyAuthKey              = "TOKEN"
+	RetriableError             = "RetriableError"
 )
 
 var (
@@ -174,6 +176,9 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		if errorType == RetriableError {
+			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+		}
 		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
 	}
 
@@ -226,6 +231,9 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		if errorType == RetriableError {
+			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+		}
 		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
 	}
 

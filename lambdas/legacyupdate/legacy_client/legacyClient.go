@@ -10,6 +10,7 @@ import (
 
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/assess-platform-library/log"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 )
 
 func New(endpoint, authtoken string, httpClient httpservice.IHTTPClientV2) *LegacyClient {
@@ -59,6 +60,9 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 		return err
 	}
 
+	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
+		return &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", response.StatusCode)}
+	}
 	if response.StatusCode != http.StatusOK {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
 		return errors.New("response not ok from legacy")
