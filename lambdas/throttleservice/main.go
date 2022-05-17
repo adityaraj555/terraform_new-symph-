@@ -19,6 +19,7 @@ const (
 	Success  = "success"
 	loglevel = "info"
 	failed   = "failed"
+	hipster  = "Hipster"
 )
 
 type eventData struct {
@@ -30,42 +31,39 @@ type eventData struct {
 const AllowedHipsterCount = "AllowedHipsterCount"
 
 func handler(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
-	// Get the count of data from documnetDB for last 24 hours
+	// Get the count of data from documnetDB for last 24 hours UTC
+	var Path = hipster
 	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
 	if err != nil {
 		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
 		return map[string]interface{}{"status": failed}, err
 	}
-	// if totalcount>50 return twister else Hipster
+	// if totalcount > 50 return twister else Hipster
 	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
 	if err != nil {
 		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
 		return map[string]interface{}{"status": failed}, err
 	}
-	if count <= threshold {
-		query := bson.M{"_id": eventData.WorkflowID}
-		setrecord := bson.M{
-			"$set": bson.M{
-				"flowType": "Hipster",
-			}}
-
-		commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
-		return map[string]interface{}{"Path": "Hipster", "status": Success}, nil
-	} else {
-		query := bson.M{"_id": eventData.WorkflowID}
-		setrecord := bson.M{
-			"$set": bson.M{
-				"flowType": "Twister",
-			}}
-
-		commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
-		return map[string]interface{}{"Path": "Twister", "status": Success}, nil
+	if count > threshold {
+		Path = "Twister"
 	}
+	query := bson.M{"_id": eventData.WorkflowID}
+	setrecord := bson.M{
+		"$set": bson.M{
+			"flowType": Path,
+		}}
 
+	err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+		return map[string]interface{}{"status": failed}, err
+	}
+	return map[string]interface{}{"Path": Path, "status": Success}, nil
 }
 
 func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true)
 	lambda.Start(handler)
+
 }
