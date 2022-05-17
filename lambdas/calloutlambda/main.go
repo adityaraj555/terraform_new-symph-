@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	b64 "encoding/base64"
@@ -197,7 +198,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
 		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
 	}
-	if resp.StatusCode != 200 {
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
@@ -232,7 +233,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 		return "", err
 	}
 
-	if resp.StatusCode != 200 {
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		return "", errors.New("invalid http status code received")
 	}
 
@@ -267,7 +268,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
 		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
 	}
-	if resp.StatusCode != 200 {
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}

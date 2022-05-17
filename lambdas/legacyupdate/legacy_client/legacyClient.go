@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/assess-platform-library/log"
@@ -63,7 +65,7 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
 		return &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", response.StatusCode)}
 	}
-	if response.StatusCode != http.StatusOK {
+	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
 		return errors.New("response not ok from legacy")
 	}
