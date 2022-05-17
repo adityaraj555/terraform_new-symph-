@@ -16,13 +16,14 @@ pipeline {
   parameters {
     string(name: "DOMAIN",             defaultValue: "property-data-orchestrator",      description: "Platform Domain Name")
     choice(name: "ENV",                choices: ["platform-dev", "platform-test", "platform-stage", "platform-prod"],                    description: "Select the environment for deploy")
-    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter"],    description: "Select the lambda for deploy")
+    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter","throttleservice"],    description: "Select the lambda for deploy")
     choice(name: "ECR_ACCOUNT_ID",     choices: "176992832580",                      description: "ECR account ID (default: platform-ci)")
     choice(name: "ECR_REGION",         choices: "us-east-2",                         description: "ECR region")
     string(name: "GITHUB_CREDENTIALS", defaultValue: "platform-github-token",        description: "Platform GitHub credentials")
     string(name: "ARGOCD_CREDENTIALS", defaultValue: "platform-argocd-token",        description: "Platform ArgoCD credentials")
     string(name: "SLACK_CREDENTIALS",  defaultValue: "slackintegration",             description: "Slack credentials for Graph Warehouse notifications")
     choice(name: "RUN_JENKINS_MIGRATION", choices: ["yes", "no"],                    description: "choice for running the mirgration stage from Jenkins")
+    choice(name: "RUN_R7_SCAN", choices: ["yes", "no"],                    description: "choice for running r7 scan")
     string(name: "BUILD_NOTES",        defaultValue: "property-data-orchestrator-api build", description: "notes for the current build in one line")
     gitParameter name: 'RELEASE_BRANCH' , description: 'select the release branch to deploy' , type: 'PT_BRANCH' , defaultValue:'origin/release-1.0.0', branchFilter:'origin/release-.*'
   }
@@ -64,30 +65,31 @@ pipeline {
       }
     }
     
-    // stage('test') {
-    //   when {
-    //     expression { env.RUN_IMAGE_STAGE=='true' }
-    //   }
-    //   steps {
-    //     container('golang') {
-    //       sh "apt-get update"
-    //       sh "GOPRIVATE=github.eagleview.com make test"
-    //     }
-    //   }
-    // }
+    stage('test') {
+       when {
+         expression { env.RUN_IMAGE_STAGE=='true' }
+       }
+       steps {
+         container('golang') {
+           sh "apt-get update"
+           sh "go version"
+           sh "GOPRIVATE=github.eagleview.com make test"
+         }
+       }
+     }
     
-    // stage('analysis') {
-    //   when {
-    //     expression { env.RUN_IMAGE_STAGE=='true' }
-    //   }
-    //   steps {
-    //     container('sonarqube') {
-    //       withCredentials([string(credentialsId: 'platform-sonarqube-token', variable: 'sonarLogin')]) {
-    //         sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=${sonarLogin}"
-    //       }
-    //     }
-    //   }
-    // }
+     stage('analysis') {
+       when {
+         expression { env.RUN_IMAGE_STAGE=='true' }
+       }
+       steps {
+         container('sonarqube') {
+           withCredentials([string(credentialsId: 'platform-sonarqube-token', variable: 'sonarLogin')]) {
+             sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=${sonarLogin}"
+           }
+         }
+      }
+    }
     stage('build') {
       when {
         expression { env.RUN_IMAGE_STAGE=='true' }
@@ -111,26 +113,35 @@ pipeline {
         }
       } 
     }
-    // stage('image scanner') {
-    //   when {
-    //     expression { env.RUN_IMAGE_STAGE=='true' }
-    //   }
-    //    agent {
-    //        label 'rapid-7'
-    //    }
-    //    steps { 
-    //      withCredentials([usernamePassword(credentialsId: 'JenkinsDeploymentUser', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-    //         sh "aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 176992832580.dkr.ecr.us-east-2.amazonaws.com"
-    //         sh  "docker pull ${ECR_IMAGE}"
-    //         assessContainerImage failOnPluginError: true,
-    //                                   imageId: "${ECR_IMAGE}",
-    //                                   thresholdRules: [totalVulnerabilities(action: 'Fail', threshold: '1')],
-    //                                   nameRules: [] 
-    //               sh  "docker rmi ${ECR_IMAGE}"
-    //      }
-    //   }
-    // }
-    
+    stage('image scanner') {
+       when {
+         expression { env.RUN_IMAGE_STAGE=='true' && env.RUN_R7_SCAN == 'yes' }
+       }
+        agent {
+            label 'rapid-7'
+        }
+        steps { 
+          withCredentials([usernamePassword(credentialsId: 'JenkinsDeploymentUser', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+             sh "aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 176992832580.dkr.ecr.us-east-2.amazonaws.com"
+             sh  "docker pull ${ECR_IMAGE}"
+             assessContainerImage failOnPluginError: true,
+                                       imageId: "${ECR_IMAGE}",
+                                       thresholdRules: [totalVulnerabilities(action: 'Fail', threshold: '1')],
+                                     nameRules: [] 
+                   sh  "docker rmi ${ECR_IMAGE}"
+          }
+      }
+    }
+    /*
+    stage('AutomatedTestSuit'){
+      steps {
+            script {
+              println "Calling testrun pipeline.... "
+              code = load 'build/jenkins/testCases.groovy'
+              code.executeAPIRun()
+          }
+       }
+    }*/
   }
 
 

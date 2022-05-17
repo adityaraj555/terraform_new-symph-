@@ -18,15 +18,15 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/log"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/google/uuid"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/google/uuid"
 )
 
 type Meta struct {
@@ -83,6 +83,7 @@ const envCallbackLambdaFunction = "envCallbackLambdaFunction"
 const success = "success"
 const failure = "failure"
 const loglevel = "info"
+const RetriableError = "RetriableError"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	log.Info(ctx, "handleAuth reached...")
@@ -193,6 +194,9 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 		log.Error(ctx, "Unable to read response body: ", err)
 	}
 
+	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
+		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
+	}
 	if resp.StatusCode != 200 {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
@@ -259,6 +263,9 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Error(ctx, "Error while reading response body: ", err.Error())
+	}
+	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
+		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
 	}
 	if resp.StatusCode != 200 {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
@@ -334,11 +341,12 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 		return err
 	}
 
-	// Do not know how to handle error result.FunctionError
-
 	errorType, ok := resp["errorType"]
+	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
-		log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
+		if errorType == RetriableError {
+			return &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+		}
 		return errors.New("error occured while executing lambda ")
 	}
 

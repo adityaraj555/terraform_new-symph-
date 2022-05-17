@@ -1,0 +1,28 @@
+pipeline {
+  agent {
+    kubernetes {
+      yamlFile 'build/jenkins/pod.yaml'
+    }
+  }
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '6'))
+  }
+ 
+  stages {
+
+    stage('analysis') {
+      steps {
+        script{
+          container('sonarqube') {
+            withCredentials([string(credentialsId: 'platform-sonarqube-token', variable: 'sonarLogin')]) {
+            echo "testing"
+            echo sh(script: 'env|sort', returnStdout: true)
+            sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=$sonarLogin -Dsonar.pullrequest.branch=$GITHUB_PR_SOURCE_BRANCH -Dsonar.pullrequest.base=$GITHUB_PR_TARGET_BRANCH -Dsonar.pullrequest.key=$GITHUB_PR_NUMBER"         
+
+            }   
+          }
+        }
+      }
+    }
+  }
+}
