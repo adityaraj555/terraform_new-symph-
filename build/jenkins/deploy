@@ -85,7 +85,7 @@ pipeline {
        steps {
          container('sonarqube') {
            withCredentials([string(credentialsId: 'platform-sonarqube-token', variable: 'sonarLogin')]) {
-             sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=${sonarLogin}"
+             sh "/opt/sonar-scanner/bin/sonar-scanner -e -Dproject.settings=${env.WORKSPACE}/build/sonarqube/sonar-project.properties -Dsonar.login=${sonarLogin} -Dsonar.branch.name=${env.GIT_BRANCH}"
            }
          }
       }
