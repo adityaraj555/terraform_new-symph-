@@ -264,7 +264,7 @@ func notificationWrapper(ctx context.Context, req eventData) (map[string]interfa
 	if err != nil {
 		commonHandler.SlackClient.SendErrorMessage("evmlconverter", err.Error())
 	}
-	return resp, nil
+	return resp, err
 }
 
 func main() {
