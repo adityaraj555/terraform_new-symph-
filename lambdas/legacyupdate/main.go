@@ -70,7 +70,6 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 
 	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
 	log.Info(ctx, "LegacyUpdate lambda reached...")
-	log.Debugf(ctx, "LegacyUpdate request body: %+v", eventData)
 
 	status, ok := status.StatusMap[eventData.Status]
 	if !ok {
@@ -95,7 +94,6 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		HipsterJobId: eventData.HipsterJobID,
 	}
 
-	log.Debugf(ctx, "Legacy Payload: %+v", payload)
 	err = client.UpdateReportStatus(ctx, &payload)
 	if err != nil {
 		log.Error(ctx, "Error while updating status in Legacy, error: ", err.Error())

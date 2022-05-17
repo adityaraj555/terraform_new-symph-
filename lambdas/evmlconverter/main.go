@@ -90,6 +90,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	}
 	ctxlog.Info(ctx, fmt.Sprintf("Last executed task: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
 
+	ctxlog.Info(ctx, "FLow type: ", workflowData.FlowType)
 	if lastCompletedTask.Status == success {
 		finalTaskStepID = lastCompletedTask.StepId
 		if workflowData.FlowType == "Twister" {
