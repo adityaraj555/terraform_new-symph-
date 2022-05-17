@@ -98,6 +98,24 @@ var mockWorkflowDetails = []byte(`{
             "status": "success",
             "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
             "taskName": "UpdateHipsterJobAndWaitForQC"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "success",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "ConvertPropertyModelToEVJson"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "failure",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "UploadMLJsonToEvoss"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "failure",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "EVMLJsonConverter_UploadToEvoss"
         }
     ],
     "updatedAt": 1651826267

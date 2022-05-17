@@ -23,17 +23,19 @@ import (
 )
 
 const (
-	success                    = "success"
-	failure                    = "failure"
-	logLevel                   = "info"
-	region                     = "us-east-2"
-	taskName                   = "EVMLJsonConverter_UploadToEvoss"
-	envCalloutLambdaFunction   = "envCalloutLambdaFunction"
-	envEvJsonConvertorEndpoint = "envEvJsonConvertorEndpoint"
-	envLegacyEndpoint          = "envLegacyEndpoint"
-	DBSecretARN                = "DBSecretARN"
-	legacyAuthKey              = "TOKEN"
-	RetriableError             = "RetriableError"
+	success                              = "success"
+	failure                              = "failure"
+	logLevel                             = "info"
+	region                               = "us-east-2"
+	taskName                             = "EVMLJsonConverter_UploadToEvoss"
+	envCalloutLambdaFunction             = "envCalloutLambdaFunction"
+	envEvJsonConvertorEndpoint           = "envEvJsonConvertorEndpoint"
+	envLegacyEndpoint                    = "envLegacyEndpoint"
+	DBSecretARN                          = "DBSecretARN"
+	legacyAuthKey                        = "TOKEN"
+	RetriableError                       = "RetriableError"
+	ConvertPropertyModelToEVJsonTaskName = "ConvertPropertyModelToEVJson"
+	UploadMLJsonToEvossTaskName          = "UploadMLJsonToEvoss"
 )
 
 var (
@@ -76,8 +78,16 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	}
 
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
-
-	lastCompletedTask := workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-1]
+	stepscount := len(workflowData.StepsPassedThrough)
+	var lastCompletedTask documentDB_client.StepsPassedThroughBody
+	for i := stepscount - 1; i >= 0; i-- {
+		if workflowData.StepsPassedThrough[i].TaskName != taskName &&
+			workflowData.StepsPassedThrough[i].TaskName != UploadMLJsonToEvossTaskName &&
+			workflowData.StepsPassedThrough[i].TaskName != ConvertPropertyModelToEVJsonTaskName {
+			lastCompletedTask = workflowData.StepsPassedThrough[i]
+			break
+		}
+	}
 	ctxlog.Info(ctx, fmt.Sprintf("Last executed task: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
 
 	if lastCompletedTask.Status == success {
@@ -92,9 +102,9 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 			return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
 		} else {
 			legacyStatus = failureOutput.StatusKey
-			for _, val := range workflowData.StepsPassedThrough {
-				if val.TaskName == failureOutput.FallbackTaskName {
-					finalTaskStepID = val.StepId
+			for i := stepscount - 1; i >= 0; i-- {
+				if workflowData.StepsPassedThrough[i].TaskName == failureOutput.FallbackTaskName {
+					finalTaskStepID = workflowData.StepsPassedThrough[i].StepId
 					break
 				}
 			}
@@ -159,7 +169,7 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 		"url":           evJsonConvertorEndpoint,
 		"requestMethod": "POST",
 		"IsWaitTask":    false,
-		"taskName":      "ConvertPropertyModelToEVJson",
+		"taskName":      ConvertPropertyModelToEVJsonTaskName,
 		"orderId":       reportId,
 		"reportId":      reportId,
 		"workflowId":    workflowId,
@@ -212,7 +222,7 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 			"Authorization": "Basic " + token,
 		},
 		"IsWaitTask": false,
-		"taskName":   "UploadMLJsonToEvoss",
+		"taskName":   UploadMLJsonToEvossTaskName,
 		"orderId":    reportId,
 		"reportId":   reportId,
 		"workflowId": workflowId,
