@@ -49,7 +49,7 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 
 	payload, _ := json.Marshal(req)
 	url := fmt.Sprintf("%s/UpdateReportStatus", lc.EndPoint)
-	log.Debug(ctx, "Endpoint: "+url)
+	log.Info(ctx, "Endpoint: "+url)
 	headers := map[string]string{
 		"Authorization": "Basic " + lc.AuthToken,
 	}

@@ -176,7 +176,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 	u.RawQuery = q.Encode()
 	URL = u.String()
-	log.Debug(ctx, "Endpoint: ", URL)
+	log.Info(ctx, "Endpoint: ", URL)
 	var resp *http.Response
 	if payload != nil {
 		resp, err = commonHandler.HttpClient.Getwithbody(ctx, URL, bytes.NewReader(payload), headers)
@@ -543,7 +543,6 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 	ctx = log_config.SetTraceIdInContext(ctx, data.ReportID, data.WorkflowID)
 
 	log.Info(ctx, "callout lambda reached...")
-	log.Debugf(ctx, "Req body: %+v", data)
 
 	response, serviceerr := CallService(ctx, data, stepID)
 	StepExecutionData := documentDB_client.StepExecutionDataBody{

@@ -45,7 +45,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
 	SFNStateMachineARN := os.Getenv(StateMachineARN)
 	for _, message := range sqsEvent.Records {
-		log.Debugf(ctx, "SQS Message: %+v", message)
+		log.Info(ctx, "SQS Message: %+v", message)
 		if err = validateInput(ctx, message.Body); err != nil {
 			return err
 		}
