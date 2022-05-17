@@ -163,6 +163,7 @@ func generateBasicToken(cllientId, clientSecret string) string {
 	return basicTokenEnc
 }
 func makeGetCall(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
+	log.Info(ctx, "makeGetCall reached...")
 	u, err := url.Parse(URL)
 	if err != nil {
 		log.Error(ctx, err)
@@ -197,6 +198,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
 
+	log.Info(ctx, "makeGetCall finished...")
 	return responseBody, resp.Status, nil
 }
 
@@ -234,9 +236,10 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 }
 
 func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers map[string]string, payload []byte) ([]byte, string, error) {
-
+	log.Info(ctx, "makePutPostDeleteCall reached...")
 	var resp *http.Response
 	var err error
+	log.Info(ctx, "Http Method: ", httpMethod)
 	switch httpMethod {
 	case enums.POST:
 		resp, err = commonHandler.HttpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
@@ -261,6 +264,8 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
 		return responseBody, resp.Status, errors.New("invalid http status code received")
 	}
+
+	log.Info(ctx, "makePutPostDeleteCall finished...")
 	return responseBody, resp.Status, nil
 }
 
@@ -325,6 +330,7 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	var resp map[string]interface{}
 	err = json.Unmarshal(result.Payload, &resp)
 	if err != nil {
+		log.Error(ctx, "Error while unmarshalling, errror: ", err.Error())
 		return err
 	}
 
@@ -383,6 +389,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	returnResponse := make(map[string]interface{})
 
 	if err := validate(ctx, data); err != nil {
+		log.Error(ctx, "Validation failed, error: ", err.Error())
 		return returnResponse, err
 	}
 
