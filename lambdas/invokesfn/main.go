@@ -37,8 +37,16 @@ const (
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, false)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(true, false, false, true)
+	lambda.Start(notificationWrapper)
+}
+
+func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
+	err := Handler(ctx, sqsEvent)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("invokesfn", err.Error())
+	}
+	return err
 }
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {

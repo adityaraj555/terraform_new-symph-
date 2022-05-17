@@ -64,8 +64,16 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 	return map[string]interface{}{"status": Success}, nil
 }
 
+func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+	resp, err := Handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("datastore", err.Error())
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(false, false, true)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(false, false, true, true)
+	lambda.Start(notificationWrapper)
 }

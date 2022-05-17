@@ -553,8 +553,16 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 
 }
 
+func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{}, error) {
+	resp, err := HandleRequest(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("callout", err.Error())
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, true, true)
-	lambda.Start(HandleRequest)
+	commonHandler = common_handler.New(true, true, true, true)
+	lambda.Start(notifcationWrapper)
 }
