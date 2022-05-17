@@ -36,7 +36,7 @@ func TestCallbacksuccess(t *testing.T) {
 	dBClient.Mock.On("UpdateDocumentDB", context.Background(), "filter", "query", mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, err := Handler(context.Background(), RequestBodyObj)
+	resp, err := notificationWrapper(context.Background(), RequestBodyObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -45,12 +45,14 @@ func TestCallbacksuccess(t *testing.T) {
 func TestCallbackvalidation(t *testing.T) {
 
 	RequestBodyObj := RequestBody{}
+	slackClient := &mocks.ISlackClient{}
+	slackClient.On("SendErrorMessage", "", "callbackId", "callback", "invalid status").Return(nil)
 	mydata := []byte(RequestBodyString)
 	json.Unmarshal(mydata, &RequestBodyObj)
 	RequestBodyObj.Status = "random"
 	expectedResp := map[string]interface{}{"status": failure}
-
-	resp, err := Handler(context.Background(), RequestBodyObj)
+	commonHandler.SlackClient = slackClient
+	resp, err := notificationWrapper(context.Background(), RequestBodyObj)
 	assert.Error(t, err)
 	assert.Equal(t, expectedResp, resp)
 

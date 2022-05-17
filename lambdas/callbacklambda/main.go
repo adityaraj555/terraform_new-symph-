@@ -86,6 +86,14 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, true)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(true, false, true, true)
+	lambda.Start(notificationWrapper)
+}
+
+func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+	resp, err := Handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("", req.CallbackID, "callback", err.Error())
+	}
+	return resp, err
 }

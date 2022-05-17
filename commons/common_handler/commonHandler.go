@@ -9,22 +9,28 @@ import (
 	"github.eagleview.com/engineering/platform-gosdk/log"
 	"github.eagleview.com/engineering/symphony-service/commons/aws_client"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/slack"
 )
 
 const (
 	DBSecretARN   = "DBSecretARN"
 	legacyAuthKey = "TOKEN"
 	region        = "us-east-2"
+	slackKey      = "SLACK_TOKEN"
+	slackChannel  = "SlackChannel"
 )
 
 type CommonHandler struct {
-	AwsClient  aws_client.IAWSClient
-	HttpClient httpservice.IHTTPClientV2
-	DBClient   documentDB_client.IDocDBClient
+	AwsClient   aws_client.IAWSClient
+	HttpClient  httpservice.IHTTPClientV2
+	DBClient    documentDB_client.IDocDBClient
+	SlackClient slack.ISlackClient
 }
 
-func New(awsClient, httpClient, dbClient bool) CommonHandler {
+func New(awsClient, httpClient, dbClient, slackClient bool) CommonHandler {
 	CommonHandlerObject := CommonHandler{}
+	var secrets map[string]interface{}
+	var err error
 	if httpClient {
 		CommonHandlerObject.HttpClient = &httpservice.HTTPClientV2{}
 		httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
@@ -41,7 +47,7 @@ func New(awsClient, httpClient, dbClient bool) CommonHandler {
 		if CommonHandlerObject.AwsClient == nil {
 			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
 		}
-		secrets, err := CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
 			log.Error("Unable to fetch DocumentDb in secret")
 			panic(err)
@@ -52,6 +58,19 @@ func New(awsClient, httpClient, dbClient bool) CommonHandler {
 		if err = CommonHandlerObject.DBClient.CheckConnection(ctx); err != nil {
 			panic(err)
 		}
+	}
+
+	if slackClient {
+		secretarn := os.Getenv(DBSecretARN)
+		slackErrChannel := os.Getenv(slackChannel)
+		if secrets == nil {
+			secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), secretarn, region)
+			if err != nil {
+				log.Error(context.Background(), err)
+				panic(err)
+			}
+		}
+		CommonHandlerObject.SlackClient = slack.NewSlackClient(secrets[slackKey].(string), slackErrChannel)
 	}
 
 	return CommonHandlerObject

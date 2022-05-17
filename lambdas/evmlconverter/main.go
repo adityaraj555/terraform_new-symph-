@@ -278,8 +278,16 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 	return response
 }
 
+func notificationWrapper(ctx context.Context, req eventData) (map[string]interface{}, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "evmlconverter", err.Error())
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(logLevel)
-	commonHandler = common_handler.New(true, true, true)
-	lambda.Start(handler)
+	commonHandler = common_handler.New(true, true, true, true)
+	lambda.Start(notificationWrapper)
 }
