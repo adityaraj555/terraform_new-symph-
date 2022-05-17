@@ -27,7 +27,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -63,7 +63,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -114,7 +114,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -161,7 +161,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -209,7 +209,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -234,7 +234,7 @@
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
                     "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
                   },
-                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/3dmodelling",
+                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/3dmodelling",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -258,7 +258,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -307,7 +307,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -355,7 +355,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -387,7 +387,7 @@
                     "orderType.$": "$$.Execution.Input.orderType",
                     "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
                   },
-                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/hipster",
+                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/hipster",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -414,7 +414,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -449,7 +449,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -470,7 +470,7 @@
                   "requestData": {
                     "mode": "QC"
                   },
-                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/qc",
+                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/qc",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -497,7 +497,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -533,7 +533,7 @@
                   "requestData": {
                     "mode": "Measurement"
                   },
-                  "url": "http://0d76-2405-201-c013-cd02-dde9-7ae2-d0e9-9d90.ngrok.io/hipster",
+                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/hipster",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -560,7 +560,7 @@
                     "Lambda.SdkClientException"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
+                  "MaxAttempts": 2,
                   "BackoffRate": 1
                 }
               ],
@@ -612,7 +612,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -644,7 +644,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -688,7 +688,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
@@ -720,7 +720,7 @@
             "Lambda.SdkClientException"
           ],
           "IntervalSeconds": 60,
-          "MaxAttempts": 3,
+          "MaxAttempts": 2,
           "BackoffRate": 1
         }
       ],
