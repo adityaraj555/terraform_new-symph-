@@ -37,23 +37,34 @@ const (
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, false)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(true, false, false, true)
+	lambda.Start(notificationWrapper)
+}
+
+func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
+	err := Handler(ctx, sqsEvent)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error())
+	}
+	return err
 }
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
+	log.Infof(ctx, "Invokesfn Lambda reached...")
 	SFNStateMachineARN := os.Getenv(StateMachineARN)
 	for _, message := range sqsEvent.Records {
+		log.Info(ctx, "SQS Message: %+v", message)
 		if err = validateInput(ctx, message.Body); err != nil {
 			return err
 		}
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
-		log.Infof(ctx, "executionARN of the  above execution  %s", ExecutionArn)
+		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)
 			return err
 		}
 	}
+	log.Infof(ctx, "Invokesfn Lambda successful...")
 	return err
 }
 

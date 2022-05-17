@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
@@ -97,6 +98,24 @@ var mockWorkflowDetails = []byte(`{
             "status": "success",
             "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
             "taskName": "UpdateHipsterJobAndWaitForQC"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "success",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "ConvertPropertyModelToEVJson"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "failure",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "UploadMLJsonToEvoss"
+        },
+		{
+            "startTime": 1651826230,
+            "status": "failure",
+            "stepId": "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+            "taskName": "EVMLJsonConverter_UploadToEvoss"
         }
     ],
     "updatedAt": 1651826267
@@ -144,8 +163,56 @@ func TestHandler(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
 
-	resp, err := handler(context.Background(), eventDataObj)
+	resp, err := notificationWrapper(context.Background(), eventDataObj)
 	assert.NoError(t, err)
+	assert.Equal(t, expectedResp, resp)
+}
+
+func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	slackClient := new(mocks.ISlackClient)
+
+	eventDataObj := eventData{
+		WorkflowID:            "",
+		ImageMetaDataLocation: "",
+	}
+
+	taskdata := documentDB_client.StepExecutionDataBody{
+		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
+		Output: map[string]interface{}{
+			"propertyModelLocation": "s3Location",
+		},
+	}
+
+	expectedResp := map[string]interface{}{
+		"status": failure,
+	}
+
+	convertorOutput := lambda.InvokeOutput{
+		Payload: []byte(`{"errorType": "RetriableError"}`),
+	}
+	workflowData := documentDB_client.WorkflowExecutionDataBody{}
+	json.Unmarshal(mockWorkflowDetails, &workflowData)
+
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
+	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything).Return(&convertorOutput, nil)
+	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
+	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
+	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
+	slackClient.On("SendErrorMessage", "", "", "evmlconverter", mock.Anything).Return(nil)
+
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	commonHandler.HttpClient = httpClient
+	commonHandler.SlackClient = slackClient
+
+	resp, err := notificationWrapper(context.Background(), eventDataObj)
+	assert.Error(t, err)
+	assert.Equal(t, &error_handler.RetriableError{Message: "received RetriableError errorType while executing lambda"}, err)
 	assert.Equal(t, expectedResp, resp)
 }
 

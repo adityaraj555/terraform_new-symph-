@@ -63,7 +63,7 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(false, false, true)
+	commonHandler = common_handler.New(false, false, true, false)
 	lambda.Start(handler)
 
 }

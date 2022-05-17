@@ -38,6 +38,7 @@ var DataStoreRequest string = `{
 
 func TestDatastoreLambdainsert(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
+	slackClient := new(mocks.ISlackClient)
 
 	DataStoreRequestObj := RequestBody{}
 	mydata := []byte(DataStoreRequest)
@@ -47,13 +48,15 @@ func TestDatastoreLambdainsert(t *testing.T) {
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
-	resp, err := Handler(context.Background(), DataStoreRequestObj)
+	commonHandler.SlackClient = slackClient
+	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
 }
 func TestDatastoreLambdainserterror(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
+	slackClient := new(mocks.ISlackClient)
 
 	DataStoreRequestObj := RequestBody{}
 	mydata := []byte(DataStoreRequest)
@@ -62,8 +65,10 @@ func TestDatastoreLambdainserterror(t *testing.T) {
 	expectedResp := map[string]interface{}{"status": "failed"}
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(errors.New("some error"))
+	slackClient.On("SendErrorMessage", DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
-	resp, err := Handler(context.Background(), DataStoreRequestObj)
+	commonHandler.SlackClient = slackClient
+	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)
 	assert.Error(t, err)
 	assert.Equal(t, expectedResp, resp)
 

@@ -36,11 +36,14 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	if err := validator.ValidateCallBackRequest(ctx, CallbackRequest); err != nil {
 		return map[string]interface{}{"status": failure}, err
 	}
+	log.Info(ctx, "callbacklambda reached...")
 	StepExecutionData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, CallbackRequest.CallbackID)
-
 	if err != nil {
+		log.Error(ctx, "Error while Fetching Executing Data from DocDb, error:", err.Error())
 		return map[string]interface{}{"status": failure}, err
 	}
+
+	log.Info(ctx, "Callback Status: ", CallbackRequest.Status.String())
 	var stepstatus string = failure
 	if CallbackRequest.Status.String() == rework {
 		CallbackRequest.Response[isReworkRequired] = true
@@ -63,16 +66,19 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	filter, query := commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
+		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
 		return map[string]interface{}{"status": failure}, err
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
+		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
 		return map[string]interface{}{"status": failure}, err
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
+		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
 		return map[string]interface{}{"status": failure}, err
 	}
 	return map[string]interface{}{"status": success}, nil
@@ -80,6 +86,14 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, true)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(true, false, true, true)
+	lambda.Start(notificationWrapper)
+}
+
+func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+	resp, err := Handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage("", req.CallbackID, "callback", err.Error())
+	}
+	return resp, err
 }

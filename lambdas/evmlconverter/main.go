@@ -16,22 +16,26 @@ import (
 	ctxlog "github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
-	success                    = "success"
-	failure                    = "failure"
-	logLevel                   = "info"
-	region                     = "us-east-2"
-	taskName                   = "EVMLJsonConverter_UploadToEvoss"
-	envCalloutLambdaFunction   = "envCalloutLambdaFunction"
-	envEvJsonConvertorEndpoint = "envEvJsonConvertorEndpoint"
-	envMLJsonUploadEndpoint    = "envMLJsonUploadEndpoint"
-	envLegacyAuthSecret        = "envLegacyAuthSecret"
-	legacyAuthKey              = "TOKEN"
+	success                              = "success"
+	failure                              = "failure"
+	logLevel                             = "info"
+	region                               = "us-east-2"
+	taskName                             = "EVMLJsonConverter_UploadToEvoss"
+	envCalloutLambdaFunction             = "envCalloutLambdaFunction"
+	envEvJsonConvertorEndpoint           = "envEvJsonConvertorEndpoint"
+	envLegacyEndpoint                    = "envLegacyEndpoint"
+	DBSecretARN                          = "DBSecretARN"
+	legacyAuthKey                        = "TOKEN"
+	RetriableError                       = "RetriableError"
+	ConvertPropertyModelToEVJsonTaskName = "ConvertPropertyModelToEVJson"
+	UploadMLJsonToEvossTaskName          = "UploadMLJsonToEvoss"
 )
 
 var (
@@ -74,10 +78,19 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	}
 
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
-
-	lastCompletedTask := workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-1]
+	stepscount := len(workflowData.StepsPassedThrough)
+	var lastCompletedTask documentDB_client.StepsPassedThroughBody
+	for i := stepscount - 1; i >= 0; i-- {
+		if workflowData.StepsPassedThrough[i].TaskName != taskName &&
+			workflowData.StepsPassedThrough[i].TaskName != UploadMLJsonToEvossTaskName &&
+			workflowData.StepsPassedThrough[i].TaskName != ConvertPropertyModelToEVJsonTaskName {
+			lastCompletedTask = workflowData.StepsPassedThrough[i]
+			break
+		}
+	}
 	ctxlog.Info(ctx, fmt.Sprintf("Last executed task: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
 
+	ctxlog.Info(ctx, "FLow type: ", workflowData.FlowType)
 	if lastCompletedTask.Status == success {
 		finalTaskStepID = lastCompletedTask.StepId
 		if workflowData.FlowType == "Twister" {
@@ -90,9 +103,9 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 			return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
 		} else {
 			legacyStatus = failureOutput.StatusKey
-			for _, val := range workflowData.StepsPassedThrough {
-				if val.TaskName == failureOutput.FallbackTaskName {
-					finalTaskStepID = val.StepId
+			for i := stepscount - 1; i >= 0; i-- {
+				if workflowData.StepsPassedThrough[i].TaskName == failureOutput.FallbackTaskName {
+					finalTaskStepID = workflowData.StepsPassedThrough[i].StepId
 					break
 				}
 			}
@@ -157,7 +170,7 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 		"url":           evJsonConvertorEndpoint,
 		"requestMethod": "POST",
 		"IsWaitTask":    false,
-		"taskName":      "ConvertPropertyModelToEVJson",
+		"taskName":      ConvertPropertyModelToEVJsonTaskName,
 		"orderId":       reportId,
 		"reportId":      reportId,
 		"workflowId":    workflowId,
@@ -174,6 +187,9 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		if errorType == RetriableError {
+			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+		}
 		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
 	}
 
@@ -182,8 +198,8 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 
 func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJson []byte) (map[string]string, error) {
 	calloutLambdaFunction := os.Getenv(envCalloutLambdaFunction)
-	authsecret := os.Getenv(envLegacyAuthSecret)
-	endpoint := os.Getenv(envMLJsonUploadEndpoint)
+	authsecret := os.Getenv(DBSecretARN)
+	endpoint := os.Getenv(envLegacyEndpoint)
 
 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
@@ -207,7 +223,7 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 			"Authorization": "Basic " + token,
 		},
 		"IsWaitTask": false,
-		"taskName":   "UploadMLJsonToEvoss",
+		"taskName":   UploadMLJsonToEvossTaskName,
 		"orderId":    reportId,
 		"reportId":   reportId,
 		"workflowId": workflowId,
@@ -226,6 +242,9 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		if errorType == RetriableError {
+			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+		}
 		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
 	}
 
@@ -259,8 +278,16 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 	return response
 }
 
+func notificationWrapper(ctx context.Context, req eventData) (map[string]interface{}, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "evmlconverter", err.Error())
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(logLevel)
-	commonHandler = common_handler.New(true, true, true)
-	lambda.Start(handler)
+	commonHandler = common_handler.New(true, true, true, true)
+	lambda.Start(notificationWrapper)
 }

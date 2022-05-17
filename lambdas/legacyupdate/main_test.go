@@ -108,7 +108,7 @@ func TestLegacyStatusUpdateErrorMakingApiCall(t *testing.T) {
 	}
 	aws_Client.Mock.On("GetSecret", testContext, mock.Anything, mock.Anything).Return(map[string]interface{}{"TOKEN": "authToken"}, nil)
 	http_Client.Mock.On("Post").Return(&http.Response{
-		StatusCode: http.StatusServiceUnavailable,
+		StatusCode: 400,
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
 			"Success": true,
 			"Message": "Report Status updated for ReportId: "

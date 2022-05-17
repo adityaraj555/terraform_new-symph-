@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
@@ -34,6 +35,8 @@ const DBSecretARN = "DBSecretARN"
 func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, error) {
 	var err error
 	ctx = log_config.SetTraceIdInContext(ctx, Request.OrderId, Request.WorkflowId)
+
+	log.Info(ctx, "Datastorelambda reached...")
 	switch Request.Action {
 	case "insert":
 		var data documentDB_client.WorkflowExecutionDataBody
@@ -45,6 +48,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		data.StepsPassedThrough = []documentDB_client.StepsPassedThroughBody{}
 		err = commonHandler.DBClient.InsertWorkflowExecutionData(ctx, data)
 		if err != nil {
+			log.Error(ctx, "Error while inserting workflowExecutionData, error: ", err.Error())
 			return map[string]interface{}{"status": "failed"}, err
 		}
 	case "update":
@@ -57,15 +61,25 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		query := bson.M{"_id": Request.WorkflowId}
 		err := commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
+			log.Error(ctx, "Error while updating workflowExecutionData, error: ", err.Error())
 			return map[string]interface{}{"status": "failed"}, err
 		}
 	}
 
+	log.Info(ctx, "Datastorelambda successful...")
 	return map[string]interface{}{"status": Success}, nil
+}
+
+func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+	resp, err := Handler(ctx, req)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", err.Error())
+	}
+	return resp, err
 }
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(false, false, true)
-	lambda.Start(Handler)
+	commonHandler = common_handler.New(false, false, true, true)
+	lambda.Start(notificationWrapper)
 }
