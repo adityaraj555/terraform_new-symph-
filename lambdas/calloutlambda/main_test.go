@@ -161,7 +161,7 @@ func TestCompleteCalloutSuccess(t *testing.T) {
 	req = MyEvent{ReportID: reportID, IsWaitTask: false, TaskToken: "taskToken", WorkflowID: workflowId, CallType: "", RequestMethod: "POST", URL: "http://google.com", Payload: map[string]interface{}{"key": "value"}}
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, success, mock.Anything, req.IsWaitTask).Return("update")
 	commonHandler.DBClient = dBClient
-	_, err = HandleRequest(context.Background(), req)
+	_, err = notifcationWrapper(context.Background(), req)
 	assert.NoError(t, err)
 
 }
@@ -170,6 +170,7 @@ func TestCompleteCalloutFailure(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
+	slackClient := new(mocks.ISlackClient)
 	reportID := "1241243"
 	workflowId := "some-id"
 	// 3. failed POST Call with  wait taask
@@ -182,16 +183,18 @@ func TestCompleteCalloutFailure(t *testing.T) {
 			"Message": "Report Status updated for ReportId: "
 		}`))),
 	}, nil)
-
+	slackClient.On("SendErrorMessage", reportID, workflowId, "callout", "500 status code received").Return(nil)
 	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, failure, mock.Anything, req.IsWaitTask).Return("update")
 	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
 	commonHandler.HttpClient = httpClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
-	_, err := HandleRequest(context.Background(), req)
+	commonHandler.SlackClient = slackClient
+	_, err := notifcationWrapper(context.Background(), req)
 	assert.Error(t, err)
 }
+
 func TestCompleteCalloutFailureInsertinginDB(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)

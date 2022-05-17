@@ -87,7 +87,7 @@ func main() {
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("callback", err.Error())
+		commonHandler.SlackClient.SendErrorMessage("", req.CallbackID, "callback", err.Error())
 	}
 	return resp, err
 }

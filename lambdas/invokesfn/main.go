@@ -44,7 +44,7 @@ func main() {
 func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 	err := Handler(ctx, sqsEvent)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("invokesfn", err.Error())
+		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error())
 	}
 	return err
 }

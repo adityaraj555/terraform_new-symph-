@@ -67,7 +67,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("datastore", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", err.Error())
 	}
 	return resp, err
 }

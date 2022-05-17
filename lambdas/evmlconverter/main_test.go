@@ -145,7 +145,7 @@ func TestHandler(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
 
-	resp, err := handler(context.Background(), eventDataObj)
+	resp, err := notificationWrapper(context.Background(), eventDataObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 }
@@ -154,6 +154,7 @@ func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
+	slackClient := new(mocks.ISlackClient)
 
 	eventDataObj := eventData{
 		WorkflowID:            "",
@@ -184,12 +185,14 @@ func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
 	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
+	slackClient.On("SendErrorMessage", "", "", "evmlconverter", mock.Anything).Return(nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
 	commonHandler.HttpClient = httpClient
+	commonHandler.SlackClient = slackClient
 
-	resp, err := handler(context.Background(), eventDataObj)
+	resp, err := notificationWrapper(context.Background(), eventDataObj)
 	assert.Error(t, err)
 	assert.Equal(t, &error_handler.RetriableError{Message: "received RetriableError errorType while executing lambda"}, err)
 	assert.Equal(t, expectedResp, resp)
