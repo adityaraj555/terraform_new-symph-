@@ -31,6 +31,8 @@ type eventData struct {
 const AllowedHipsterCount = "AllowedHipsterCount"
 
 func handler(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
+
+	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
 	// Get the count of data from documnetDB for last 24 hours UTC
 	var Path = hipster
 	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
@@ -61,9 +63,17 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 	return map[string]interface{}{"Path": Path, "status": Success}, nil
 }
 
+func notifcationWrapper(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
+	resp, err := handler(ctx, eventData)
+	if err != nil {
+		commonHandler.SlackClient.SendErrorMessage(eventData.ReportID, eventData.WorkflowID, "throttle", err.Error())
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true, false)
-	lambda.Start(handler)
+	lambda.Start(notifcationWrapper)
 
 }
