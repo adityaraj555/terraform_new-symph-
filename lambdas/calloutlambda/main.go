@@ -554,6 +554,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 		TaskToken:  data.TaskToken,
 		WorkflowId: data.WorkflowID,
 		TaskName:   data.TaskName,
+		ReportId:   data.ReportID,
 	}
 	if serviceerr != nil {
 		StepExecutionData.Status = failure

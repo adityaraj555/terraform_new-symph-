@@ -13,9 +13,16 @@ type ISlackClient struct {
 	mock.Mock
 }
 
-// SendErrorMessage provides a mock function with given fields: reportId, workflowId, lambdaName, msg
-func (_m *ISlackClient) SendErrorMessage(reportId string, workflowId string, lambdaName string, msg string) {
-	_m.Called(reportId, workflowId, lambdaName, msg)
+// SendErrorMessage provides a mock function with given fields: reportId, workflowId, lambdaName, msg, meta
+func (_m *ISlackClient) SendErrorMessage(reportId string, workflowId string, lambdaName string, msg string, meta ...string) {
+	_va := make([]interface{}, len(meta))
+	for _i := range meta {
+		_va[_i] = meta[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, reportId, workflowId, lambdaName, msg)
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
 }
 
 // NewISlackClient creates a new instance of ISlackClient. It also registers the testing.TB interface on the mock and a cleanup function to assert the mocks expectations.
