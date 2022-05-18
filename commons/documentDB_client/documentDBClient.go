@@ -80,6 +80,7 @@ type StepExecutionDataBody struct {
 	TaskToken          string                 `bson:"taskToken"`
 	WorkflowId         string                 `bson:"workflowId"`
 	TaskName           string                 `bson:"taskName"`
+	ReportId           string                 `bson:"reportId"`
 }
 
 type StepsPassedThroughBody struct {

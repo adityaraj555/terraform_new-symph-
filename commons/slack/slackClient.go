@@ -2,13 +2,14 @@ package slack
 
 import (
 	"context"
+	"fmt"
 
 	sdk "github.com/slack-go/slack"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 )
 
 type ISlackClient interface {
-	SendErrorMessage(reportId, workflowId, lambdaName, msg string)
+	SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta ...string)
 }
 
 type SlackClient struct {
@@ -23,14 +24,18 @@ func NewSlackClient(slackToken, channel string) *SlackClient {
 	}
 }
 
-func (sc *SlackClient) SendErrorMessage(reportId, workflowId, lambdaName, msg string) {
-	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(reportId, workflowId, msg, lambdaName)...)
+func (sc *SlackClient) SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta ...string) {
+	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(reportId, workflowId, msg, lambdaName, meta)...)
 	if err != nil {
 		log.Error(context.Background(), "error while sending slack notification", err)
 	}
 }
 
-func (sc *SlackClient) getErrorPayload(reportId, workflowId, msg, lambdaName string) []sdk.MsgOption {
+func (sc *SlackClient) getErrorPayload(reportId, workflowId, msg, lambdaName string, meta []string) []sdk.MsgOption {
+	metaBlock := ""
+	for _, v := range meta {
+		metaBlock = fmt.Sprintf("%s\n %s", metaBlock, v)
+	}
 	return []sdk.MsgOption{
 		sdk.MsgOptionText("Error while Lambda execution", true),
 		sdk.MsgOptionAttachments(
@@ -49,6 +54,10 @@ func (sc *SlackClient) getErrorPayload(reportId, workflowId, msg, lambdaName str
 			sdk.Attachment{
 				Title: "ErrorMessage",
 				Text:  msg,
+			},
+			sdk.Attachment{
+				Title: "Metadata",
+				Text:  metaBlock,
 			},
 		),
 	}
