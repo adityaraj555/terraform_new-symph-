@@ -39,8 +39,9 @@ const (
 )
 
 var (
-	legacyStatusMap = map[string]string{}
-	commonHandler   common_handler.CommonHandler
+	legacyStatusMap     = map[string]string{}
+	commonHandler       common_handler.CommonHandler
+	lambdaExecutonError = "error occured while executing lambda: %+v"
 )
 
 type eventData struct {
@@ -186,11 +187,11 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 	}
 	errorType, ok := resp["errorType"]
 	if ok {
-		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
 		if errorType == RetriableError {
 			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
 		}
-		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
+		return resp, errors.New(fmt.Sprintf(lambdaExecutonError, errorType))
 	}
 
 	return resp, nil
@@ -241,11 +242,11 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 
 	errorType, ok := resp["errorType"]
 	if ok {
-		ctxlog.Errorf(ctx, "error occured while executing lambda: %+v", errorType)
+		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
 		if errorType == RetriableError {
 			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
 		}
-		return resp, errors.New(fmt.Sprintf("error occured while executing lambda: %+v", errorType))
+		return resp, errors.New(fmt.Sprintf(lambdaExecutonError, errorType))
 	}
 
 	return resp, nil
