@@ -42,30 +42,31 @@ func main() {
 }
 
 func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
-	err := Handler(ctx, sqsEvent)
+	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error())
+		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error(), req...)
 	}
 	return err
 }
 
-func Handler(ctx context.Context, sqsEvent events.SQSEvent) (err error) {
+func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
 	SFNStateMachineARN := os.Getenv(StateMachineARN)
 	for _, message := range sqsEvent.Records {
 		log.Info(ctx, "SQS Message: %+v", message)
+		req = append(req, message.Body)
 		if err = validateInput(ctx, message.Body); err != nil {
-			return err
+			return req, err
 		}
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)
-			return err
+			return req, err
 		}
 	}
 	log.Infof(ctx, "Invokesfn Lambda successful...")
-	return err
+	return req, err
 }
 
 func validateInput(ctx context.Context, input string) error {
@@ -83,5 +84,6 @@ func validateInput(ctx context.Context, input string) error {
 		return err
 	}
 
+	log_config.SetTraceIdInContext(ctx, req.ReportID, "")
 	return nil
 }

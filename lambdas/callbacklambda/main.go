@@ -29,21 +29,25 @@ const failure = "failure"
 const rework = "rework"
 const isReworkRequired = "isReworkRequired"
 const loglevel = "info"
+const DocDBUpdateError = "Error while Updating documentDb, error: "
 
-func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]interface{}, error) {
+func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]interface{}, string, string, error) {
 	var err error
 
 	if err := validator.ValidateCallBackRequest(ctx, CallbackRequest); err != nil {
-		return map[string]interface{}{"status": failure}, err
+		return map[string]interface{}{"status": failure}, "", "", err
 	}
 	log.Info(ctx, "callbacklambda reached...")
 	StepExecutionData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, CallbackRequest.CallbackID)
 	if err != nil {
 		log.Error(ctx, "Error while Fetching Executing Data from DocDb, error:", err.Error())
-		return map[string]interface{}{"status": failure}, err
+		return map[string]interface{}{"status": failure}, StepExecutionData.ReportId, StepExecutionData.WorkflowId, err
 	}
 
+	reportId, workflowId := StepExecutionData.ReportId, StepExecutionData.WorkflowId
+	log_config.SetTraceIdInContext(ctx, reportId, workflowId)
 	log.Info(ctx, "Callback Status: ", CallbackRequest.Status.String())
+
 	var stepstatus string = failure
 	if CallbackRequest.Status.String() == rework {
 		CallbackRequest.Response[isReworkRequired] = true
@@ -61,27 +65,28 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	}
 	if err != nil {
 		log.Error(ctx, "Error Calling CloseWaitTask", err)
-		return map[string]interface{}{"status": failure}, err
+		return map[string]interface{}{"status": failure}, reportId, workflowId, err
 	}
+
 	filter, query := commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
-		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
-		return map[string]interface{}{"status": failure}, err
+		log.Error(ctx, DocDBUpdateError, err.Error())
+		return map[string]interface{}{"status": failure}, reportId, workflowId, err
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
-		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
-		return map[string]interface{}{"status": failure}, err
+		log.Error(ctx, DocDBUpdateError, err.Error())
+		return map[string]interface{}{"status": failure}, reportId, workflowId, err
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
-		log.Error(ctx, "Error while Updating documentDb, error: ", err.Error())
-		return map[string]interface{}{"status": failure}, err
+		log.Error(ctx, DocDBUpdateError, err.Error())
+		return map[string]interface{}{"status": failure}, reportId, workflowId, err
 	}
-	return map[string]interface{}{"status": success}, nil
+	return map[string]interface{}{"status": success}, reportId, workflowId, nil
 }
 
 func main() {
@@ -91,9 +96,9 @@ func main() {
 }
 
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
-	resp, err := Handler(ctx, req)
+	resp, reportId, workflowId, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("", req.CallbackID, "callback", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(reportId, workflowId, "callback", err.Error())
 	}
 	return resp, err
 }
