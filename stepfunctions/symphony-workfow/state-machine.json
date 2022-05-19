@@ -319,7 +319,7 @@
       "Choices": [
         {
           "Variable": "$.ThrottleService.response.Path",
-          "StringEquals": "twister",
+          "StringEquals": "Twister",
           "Comment": "twister flow",
           "Next": "EVMLJsonConverter_UploadToEvoss"
         }
