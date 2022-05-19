@@ -85,6 +85,7 @@ const success = "success"
 const failure = "failure"
 const loglevel = "info"
 const RetriableError = "RetriableError"
+const invalidHTTPStatusCodeError = "invalid http status code received"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	log.Info(ctx, "handleAuth reached...")
@@ -200,7 +201,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
-		return responseBody, resp.Status, errors.New("invalid http status code received")
+		return responseBody, resp.Status, errors.New(invalidHTTPStatusCodeError)
 	}
 
 	log.Info(ctx, "makeGetCall finished...")
@@ -234,7 +235,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 	}
 
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
-		return "", errors.New("invalid http status code received")
+		return "", errors.New(invalidHTTPStatusCodeError)
 	}
 
 	return fmt.Sprint(respJson["access_token"]), nil
@@ -270,7 +271,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 	}
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
-		return responseBody, resp.Status, errors.New("invalid http status code received")
+		return responseBody, resp.Status, errors.New(invalidHTTPStatusCodeError)
 	}
 
 	log.Info(ctx, "makePutPostDeleteCall finished...")
