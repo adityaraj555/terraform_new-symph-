@@ -275,9 +275,14 @@ func (DBClient *DocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	endedTime := time.Now().Unix()
-	startTime := endedTime - 24*60*60
+	y := time.Now().Year()
+	d := time.Now().Day()
+	m := time.Now().Month()
+	utc_midnight := time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Unix()
+	startTime := utc_midnight
+
 	count, err := collection.CountDocuments(ctx, bson.M{"createdAt": bson.M{"$gt": startTime, "$lt": endedTime}, "flowType": "Hipster"})
-	log.Infof(ctx, "No of documents with flowtype as hipster = %v", count)
+	log.Infof(ctx, "No of documents with flowtype as hipster = %v since  %+v = ", count, startTime)
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return 0, err
