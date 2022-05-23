@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
@@ -60,8 +61,8 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		jsonResponse := string(byteData)
 		err = commonHandler.AwsClient.CloseWaitTask(ctx, success, StepExecutionData.TaskToken, jsonResponse, "", "")
 	} else {
-		messageCode := CallbackRequest.MessageCode.(string)
-		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", CallbackRequest.Message, messageCode)
+		log.Info(ctx, CallbackRequest.MessageCode)
+		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", CallbackRequest.Message, fmt.Sprintf("%s failed at %s", CallbackRequest.CallbackID, StepExecutionData.TaskName))
 	}
 	if err != nil {
 		log.Error(ctx, "Error Calling CloseWaitTask", err)
