@@ -11,7 +11,8 @@
       "ResultPath": "$.InsertWorkflowDataToDocDB",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-datastorelambda",
+        
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
         "Payload": {
           "input.$": "$$.Execution.Input",
           "orderId.$": "$$.Execution.Input.orderId",
@@ -52,12 +53,11 @@
           "status": "MAStarted",
           "requestData": {}
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
       },
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -88,7 +88,7 @@
               "Parameters": {
                 "Payload": {
                   "requestData": {},
-                  "url.$": "States.Format('https://intranetrest.cmh.reportstest.evinternal.net/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.reportId)",
+                  "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.reportId)",
                   "requestMethod": "GET",
                   "headers": {
                     "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
@@ -96,19 +96,19 @@
                   "isWaitTask": false,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 5,
-                  "storeDataToS3": "s3://app-dev-1x0-s3-property-data-orchestrator/44823954/imageMetadata.json",
+                  "storeDataToS3": "s3://${resource_name_prefix}-s3-property-data-orchestrator/44823954/imageMetadata.json",
                   "taskName": "GetImageMetaData",
                   "orderId.$": "$$.Execution.Input.orderId",
                   "reportId.$": "$$.Execution.Input.reportId",
                   "workflowId.$": "$$.Execution.Name",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -130,14 +130,14 @@
               "ResultPath": "$.ImageSelection",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                "FunctionName":"arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
                     "address.$": "$$.Execution.Input.address",
                     "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation"
                   },
-                  "url": "https://api.cmh.platform-dev2.evinternal.net/factory-automeasure/ma-image-selector/v2/image-selection",
+                  "url": "${ENDPOINT_URL_MA}/ma-image-selector/v2/image-selection",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -155,7 +155,6 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -184,7 +183,7 @@
                     "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation"
                   },
-                  "url": "https://api.cmh.platform-dev2.evinternal.net/factory-automeasure/measurement-automation/v2/measurement-automation",
+                  "url": "${ENDPOINT_URL_MA}/measurement-automation/v2/measurement-automation",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -198,12 +197,11 @@
                   "taskToken.$": "$$.Task.Token",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -225,7 +223,7 @@
               "ResultPath": "$.3DModellingService",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
@@ -234,7 +232,7 @@
                     "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
                     "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
                   },
-                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/3dmodelling",
+                  "url": "${ENDPOINT_URL_3DMODELLING}/runs",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -252,7 +250,6 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -296,12 +293,11 @@
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name"
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-throttleservice:$LATEST"
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"
       },
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -335,7 +331,7 @@
       "ResultPath": "$.UpdateLegacyMLAutomationComplete",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
         "Payload": {
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
@@ -349,7 +345,6 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -387,7 +382,7 @@
                     "orderType.$": "$$.Execution.Input.orderType",
                     "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
                   },
-                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/hipster",
+                  "url": "${ENDPOINT_URL_HIPSTER}/v2/job",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -403,12 +398,11 @@
                   "status": "MeasurementStarted",
                   "auth": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -438,12 +432,11 @@
                   "status": "MeasurementCompleted",
                   "requestData": {}
                 },
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -465,12 +458,12 @@
               "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "mode": "QC"
                   },
-                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/qc",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -491,7 +484,6 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -528,12 +520,12 @@
               "ResultPath": "$.UpdateHipsterJobAndWaitForMeasurement",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "mode": "Measurement"
                   },
-                  "url": "https://8dd9-2405-201-c013-cd02-dc47-41c8-d47-d9b0.ngrok.io/hipster",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -554,7 +546,6 @@
               "Retry": [
                 {
                   "ErrorEquals": [
-                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -592,7 +583,7 @@
       "ResultPath": "$.updateMLAutomationRejected",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST",
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
         "Payload": {
           "orderId.$": "$$.Execution.Input.orderId",
           "reportId.$": "$$.Execution.Input.reportId",
@@ -606,7 +597,6 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -628,7 +618,8 @@
       "ResultPath": "$.EVMLJsonConverter_UploadToEvoss",
       "OutputPath": "$",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-evmlconverter:$LATEST",
+        
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-evmlconverter:$LATEST",
         "Payload": {
           "workflowId.$": "$$.Execution.Name",
           "reportId.$": "$$.Execution.Input.reportId",
@@ -638,7 +629,6 @@
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -677,12 +667,11 @@
           "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
           "requestData": {}
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda:$LATEST"
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
       },
       "Retry": [
         {
           "ErrorEquals": [
-            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -710,7 +699,7 @@
           "workflowId.$": "$$.Execution.Name",
           "action": "update"
         },
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-datastorelambda"
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda"
       },
       "Retry": [
         {

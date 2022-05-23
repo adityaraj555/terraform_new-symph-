@@ -1,0 +1,10 @@
+kind: Pod
+metadata:
+  annotations:
+    iam.amazonaws.com/role: "Terraform-assume-evdata-role" # run pod in a role that is allowed to run terraform on accounts
+spec:
+  containers:
+    - name: terraform
+      image: hashicorp/terraform:latest # in platformci ecr
+      command: ["cat"] # use cat to keep the container alive during jenkins build
+      tty: true # required for cat

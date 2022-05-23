@@ -1,0 +1,56 @@
+@Library('JenkinsUtils')
+import TerraformDeployment
+import org.eagleview.TerraformChoices
+
+def deploymentTargetChoices = TerraformChoices.getdeploymentTargetChoices()
+def fullTestDeploymentManualVerificationTimeChoices = TerraformChoices.getfullTestDeploymentManualVerificationTimeChoices()
+def deploymentTargetBranchMapOverrides = [
+    sandbox: "develop",
+    test:"develop",
+    stage: "develop"
+]
+
+String deploymentStack = "terraform/symphony"
+
+properties([
+  buildDiscarder(
+    logRotator(
+      daysToKeepStr: '30',
+      numToKeepStr: '30'
+    )
+  ),
+  parameters([
+    choice(name: 'DeploymentTarget',
+      choices: deploymentTargetChoices,
+      description: 'Deployment Target Environment'),
+
+    string(name: 'TestConfigBranch',
+      defaultValue: '',
+      description: 'Use this to test against a config branch that has not been merge to master (e.g. ?ref=feature/config-updates)'),
+
+    booleanParam(name: 'FullTest',
+      defaultValue: false,
+      description: 'Run a full test? (otherwise run a quick test)\n' +
+      "Full test will deploy temporary infrastructure in sandbox with the 'tb-${currentBuild.number}' prefix"),
+
+    choice(name: 'FullTestDeploymentManualVerificationTime',
+      choices: fullTestDeploymentManualVerificationTimeChoices,
+      description: 'Time (in minutes) that you want for verify the deployed test-build infrastructure ' +
+      'if a full test was selected, after this time this will be deleted'),
+
+    booleanParam(name: 'CleanupErrorWait',
+      defaultValue: false,
+      description: 'If temporary deployment fails should the build wait ' +
+      'for an approval before destroying the deployment?')
+  ])
+])
+
+TerraformDeployment(
+    DeploymentStack: deploymentStack,
+    DeploymentTarget: params.DeploymentTarget,
+    TestConfigBranch: params.TestConfigBranch,
+    FullTest: params.FullTest,
+    FullTestDeploymentManualVerificationTime: params.FullTestDeploymentManualVerificationTime,
+    CleanupErrorWait: params.CleanupErrorWait,
+    DeploymentTargetBranchMapOverrides: deploymentTargetBranchMapOverrides
+)
