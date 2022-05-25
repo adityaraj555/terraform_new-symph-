@@ -24,6 +24,7 @@ module "lambda" {
   lambda_inline_policy  = try(each.value.lambda_inline_policy, null)
   schedule_time_trigger = try(each.value.schedule_time_trigger, null)
   aws_lambda_permission = try(each.value.aws_lambda_permission, [])
+  lambda_assume_role_policy = try(each.value.lambda_assume_role_policy, null)
   timeout               = try(each.value.timeout, 3)
   memory_size           = try(each.value.memory_size, 128)
   source_path           = null
