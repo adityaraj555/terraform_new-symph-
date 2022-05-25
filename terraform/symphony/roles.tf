@@ -50,3 +50,26 @@ POLICY
     Description = "AWS IAM role to allow cross account access from EV Factory account to callback lambda."
   }
 }
+
+
+
+
+resource "aws_iam_role" "platform-data-orchestrator-callback-lambda-s3" {
+  assume_role_policy = module.config.environment_config_map.trust_relashionships_external_service
+
+  inline_policy {
+    name   = "platform-data-orchestrator-resources-access-policy"
+    policy = module.config.environment_config_map.inline_policy_external_service
+  }
+
+  managed_policy_arns = []
+
+  max_session_duration = "3600"
+  name                 = "${local.resource_name_prefix}-role-pdo-access"
+  path                 = "/"
+
+  tags = {
+    Name        = "${local.resource_name_prefix}-role-pdo-access"
+    Description = "AWS IAM role to allow services to access platform-data-orchestrator common resources like s3 and callback Lambda"
+  }
+}
