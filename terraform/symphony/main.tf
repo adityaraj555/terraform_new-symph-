@@ -4,7 +4,7 @@ module "config" {
 }
 
 module "lambda" {
-  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-lambda.git//lambda?ref=CL-21"
+  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-lambda.git//lambda?ref=3.1.0"
 
   providers = {
     aws = aws
@@ -14,6 +14,7 @@ module "lambda" {
 
   resource_name_prefix  = local.resource_name_prefix
   image_uri             = try(each.value.image_uri, null)
+  package_type          = try(each.value.package_type, "Image")
   vpc_id                = each.value.vpc_id
   environment_variables = try(each.value.environment_variables, null)
   lambda_name           = each.key
@@ -29,7 +30,7 @@ module "lambda" {
 }
 
 module "invokesfn_lambda" {
-  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-lambda.git//lambda?ref=CL-21"
+  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-lambda.git//lambda?ref=3.1.0"
 
   providers = {
     aws = aws
@@ -39,6 +40,7 @@ module "invokesfn_lambda" {
 
   resource_name_prefix      = local.resource_name_prefix
   image_uri                 = try(each.value.image_uri, null)
+  package_type              = try(each.value.package_type, "Image")
   vpc_id                    = each.value.vpc_id
   environment_variables     = try(each.value.environment_variables, null)
   lambda_name               = each.key
