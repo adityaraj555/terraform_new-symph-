@@ -96,7 +96,7 @@
                   "isWaitTask": false,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 5,
-                  "storeDataToS3": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
+                  "storeDataToS3.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
                   "taskName": "GetImageMetaData",
                   "orderId.$": "$$.Execution.Input.orderId",
                   "reportId.$": "$$.Execution.Input.reportId",
