@@ -56,7 +56,7 @@ POLICY
 
 resource "aws_iam_role" "platform-data-orchestrator-callback-lambda-s3" {
   assume_role_policy = <<POLICY
-    ${module.config.environment_config_map.trust_relashionships_external_service}
+${module.config.environment_config_map.trust_relashionships_external_service}
   POLICY
 
   inline_policy {
