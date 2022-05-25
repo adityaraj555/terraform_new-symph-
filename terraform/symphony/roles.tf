@@ -56,21 +56,8 @@ POLICY
 
 resource "aws_iam_role" "platform-data-orchestrator-callback-lambda-s3" {
   assume_role_policy = <<POLICY
-{
-   "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "AWS": [
-                    "${module.config.environment_config_map.cross_account_callback_lambda}"
-                ]
-            },
-            "Action": "sts:AssumeRole"
-        }
-    ]
-}
-POLICY
+    ${module.config.environment_config_map.trust_relashionships_external_service}
+  POLICY
 
   inline_policy {
     name   = "platform-data-orchestrator-resources-access-policy"
