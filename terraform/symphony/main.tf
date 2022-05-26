@@ -73,7 +73,7 @@ module "step_function" {
 }
 
 module "s3" {
-  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-s3-bucket.git//s3"
+  source = "git::https://github.eagleview.com/infrastructure/terraform-cloudops-module-s3-bucket.git//s3/?ref=1.0.0"
   providers = {
     aws = aws
   }
