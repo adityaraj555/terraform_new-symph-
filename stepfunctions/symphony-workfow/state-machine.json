@@ -389,7 +389,7 @@
                     "orderType.$": "$$.Execution.Input.orderType",
                     "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
                   },
-                  "url": "${ENDPOINT_URL_HIPSTER}/v2/job",
+                  "url": "${ENDPOINT_URL_HIPSTER}/hipster/v2/job",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -472,7 +472,7 @@
                   "requestData": {
                     "mode": "QC"
                   },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
                   "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
@@ -535,7 +535,7 @@
                   "requestData": {
                     "mode": "Measurement"
                   },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
                   "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
