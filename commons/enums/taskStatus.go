@@ -8,10 +8,11 @@ const (
 	StatusSuccess = "success"
 	StatusFailure = "failure"
 	StatusRework  = "rework"
+	StatusFailed  = "failed"
 )
 
 func TaskStatusList() []string {
-	return []string{StatusSuccess, StatusFailure, StatusRework}
+	return []string{StatusSuccess, StatusFailure, StatusRework, StatusFailed}
 }
 
 func (ts TaskStatus) String() string {
