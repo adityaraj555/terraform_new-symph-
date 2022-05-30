@@ -58,6 +58,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -109,6 +110,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -155,6 +157,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -202,6 +205,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -250,6 +254,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -298,6 +303,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -345,6 +351,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -403,6 +410,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -437,6 +445,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -484,6 +493,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -546,6 +556,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -597,6 +608,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -629,6 +641,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -672,6 +685,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
