@@ -473,7 +473,7 @@
                     "mode": "QC"
                   },
                   "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "POST",
+                  "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -536,7 +536,7 @@
                     "mode": "Measurement"
                   },
                   "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "POST",
+                  "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
