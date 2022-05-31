@@ -9,6 +9,7 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/enums"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -20,35 +21,30 @@ const (
 	loglevel = "info"
 	failed   = "failed"
 	hipster  = "Hipster"
+	twister  = "Twister"
 )
 
 type eventData struct {
-	ReportID   string `json:"reportId"`
-	OrderID    string `json:"orderId"`
-	WorkflowID string `json:"workflowId"`
+	ReportID      string `json:"reportId"`
+	OrderID       string `json:"orderId"`
+	WorkflowID    string `json:"workflowId"`
+	OrderType     string `json:"orderType"`
+	IsPenetration bool   `json:"isPenetration"`
 }
 
 const AllowedHipsterCount = "AllowedHipsterCount"
 
 func handler(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
 
+	log.Infof(ctx, "Reached throttle logic handler")
 	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
-	// Get the count of data from documnetDB for last 24 hours UTC
-	var Path = hipster
-	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
+
+	// set the execution to twister or hipster
+	Path, err := getWorkflowExecutionPath(ctx, eventData)
 	if err != nil {
-		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
 		return map[string]interface{}{"status": failed}, err
 	}
-	// if totalcount > 50 return twister else Hipster
-	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
-	if err != nil {
-		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
-		return map[string]interface{}{"status": failed}, err
-	}
-	if count > threshold {
-		Path = "Twister"
-	}
+
 	query := bson.M{"_id": eventData.WorkflowID}
 	setrecord := bson.M{
 		"$set": bson.M{
@@ -61,6 +57,38 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 		return map[string]interface{}{"status": failed}, err
 	}
 	return map[string]interface{}{"Path": Path, "status": Success}, nil
+}
+
+func getWorkflowExecutionPath(ctx context.Context, eventData *eventData) (string, error) {
+
+	// Get the count of data from documnetDB for last 24 hours UTC
+	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
+	if err != nil {
+		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
+		return "", err
+	}
+
+	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
+	if err != nil {
+		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
+		return "", err
+	}
+
+	// Move to hipster only when count is less than threshold and product matches
+	if (count < threshold) && hipsterAllowed(ctx, eventData) {
+		log.Infof(ctx, "Path is set as hipster", err)
+		return hipster, nil
+	}
+	log.Infof(ctx, "Path is set as twister", err)
+	return twister, nil
+}
+
+func hipsterAllowed(ctx context.Context, eventData *eventData) bool {
+	log.Infof(ctx, "Checking Hipster is allowed or not")
+	if eventData.IsPenetration || !enums.IsHipsterCompatible(eventData.OrderType) {
+		return false
+	}
+	return true
 }
 
 func notifcationWrapper(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {

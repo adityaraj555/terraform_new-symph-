@@ -15,7 +15,9 @@ import (
 var eventTestData string = `{
 	"reportId": "44825849",
 	"orderId": "44825849",
-	"workflowId": "9cabffdf-e980-0bbf-b481-0048f7a88bef"
+	"workflowId": "9cabffdf-e980-0bbf-b481-0048f7a88bef",
+	"isPenetration":true,
+	"orderType": "PremiumResidential"
   }`
 
 var testContext = log_config.SetTraceIdInContext(context.Background(), "44825849", "9cabffdf-e980-0bbf-b481-0048f7a88bef")
@@ -98,6 +100,46 @@ func TestThrottleLambdaUpdateDocumentDBError(t *testing.T) {
 	slackclient.Mock.On("SendErrorMessage", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	resp, err := notifcationWrapper(context.Background(), eventDataRequestObj)
 	assert.Error(t, err)
+	assert.Equal(t, expectedResp, resp)
+
+}
+
+func TestGetWorkflowExecutionPathHipster(t *testing.T) {
+	dBClient := new(mocks.IDocDBClient)
+	slackclient := new(mocks.ISlackClient)
+	eventDataRequestObj := eventData{}
+	mydata := []byte(eventTestData)
+	json.Unmarshal(mydata, &eventDataRequestObj)
+
+	expectedResp := "Hipster"
+	commonHandler.DBClient = dBClient
+	commonHandler.SlackClient = slackclient
+	var count int64 = 20
+	t.Setenv("AllowedHipsterCount", "50")
+	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
+
+	eventDataRequestObj.IsPenetration = false
+	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResp, resp)
+
+}
+
+func TestGetWorkflowExecutionPathHTwister(t *testing.T) {
+	dBClient := new(mocks.IDocDBClient)
+	slackclient := new(mocks.ISlackClient)
+	eventDataRequestObj := eventData{}
+	mydata := []byte(eventTestData)
+	json.Unmarshal(mydata, &eventDataRequestObj)
+
+	expectedResp := "Twister"
+	commonHandler.DBClient = dBClient
+	commonHandler.SlackClient = slackclient
+	var count int64 = 20
+	t.Setenv("AllowedHipsterCount", "50")
+	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
+	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
 }
