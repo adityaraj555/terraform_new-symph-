@@ -265,7 +265,7 @@
                 }
               ],
               "End": true,
-              "TimeoutSeconds": 180
+              "TimeoutSeconds": 1200
             }
           }
         }
