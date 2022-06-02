@@ -294,9 +294,11 @@
       "OutputPath": "$",
       "Parameters": {
         "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name"
+            "orderId.$": "$$.Execution.Input.orderId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "isPenetration.$": "$$.Execution.Input.isPenetration",
+            "orderType.$": "$$.Execution.Input.orderType"
         },
         "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"
       },
