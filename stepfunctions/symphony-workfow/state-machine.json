@@ -58,6 +58,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -109,6 +110,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -155,6 +157,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -202,6 +205,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -250,6 +254,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -260,7 +265,7 @@
                 }
               ],
               "End": true,
-              "TimeoutSeconds": 180
+              "TimeoutSeconds": 1200
             }
           }
         }
@@ -298,6 +303,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -345,6 +351,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -382,7 +389,7 @@
                     "orderType.$": "$$.Execution.Input.orderType",
                     "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
                   },
-                  "url": "${ENDPOINT_URL_HIPSTER}/v2/job",
+                  "url": "${ENDPOINT_URL_HIPSTER}/hipster/v2/job",
                   "requestMethod": "POST",
                   "headers": {},
                   "isWaitTask": true,
@@ -403,6 +410,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -437,6 +445,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -463,8 +472,8 @@
                   "requestData": {
                     "mode": "QC"
                   },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "POST",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                  "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -484,6 +493,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -525,8 +535,8 @@
                   "requestData": {
                     "mode": "Measurement"
                   },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "POST",
+                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                  "requestMethod": "PUT",
                   "headers": {},
                   "isWaitTask": true,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -546,6 +556,7 @@
               "Retry": [
                 {
                   "ErrorEquals": [
+                    "RetriableError",
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
                     "Lambda.SdkClientException"
@@ -597,6 +608,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -629,6 +641,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
@@ -672,6 +685,7 @@
       "Retry": [
         {
           "ErrorEquals": [
+            "RetriableError",
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException"
