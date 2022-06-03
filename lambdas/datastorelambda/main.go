@@ -111,16 +111,7 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
 
 	//update stepsPassedThrough
-	filter := bson.M{
-		"_id":                       req.WorkflowId,
-		"stepsPassedThrough.stepId": timedOutStep.StepId,
-	}
-	update := bson.M{
-		"$set": bson.M{
-			"stepsPassedThrough.$.status": "failure",
-		},
-	}
-
+	filter, update := commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionSteps, "failure", req.WorkflowId, timedOutStep.StepId, timedOutStep.TaskName, nil)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		log.Error(ctx, "error updating db", err.Error())
@@ -128,16 +119,8 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	}
 
 	//update StepExecutionDataBody
-	filter = bson.M{
-		"_id": timedOutStep.StepId,
-	}
-	update = bson.M{
-		"$set": bson.M{
-			"status":  "failure",
-			"endtime": time.Now().Unix(),
-		},
-	}
-	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
+	filter, update = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateStepExecution, "failure", req.WorkflowId, timedOutStep.StepId, timedOutStep.TaskName, nil)
+	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.StepsDataCollection)
 	if err != nil {
 		log.Error(ctx, "error updating db", err.Error())
 		return err

@@ -130,6 +130,7 @@ func TestDatastoreLambdaupdateStepTimeOut(t *testing.T) {
 
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(nil).Times(3)
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(stepData, nil)
+	dBClient.Mock.On("BuildQueryForCallBack", testContext, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("filter", "query")
 	commonHandler.DBClient = dBClient
 	resp, err := Handler(context.Background(), DataStoreRequestObj)
 	assert.NoError(t, err)
