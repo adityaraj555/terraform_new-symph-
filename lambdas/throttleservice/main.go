@@ -66,7 +66,7 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 func notifcationWrapper(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
 	resp, err := handler(ctx, eventData)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(eventData.ReportID, eventData.WorkflowID, "throttle", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(eventData.ReportID, eventData.WorkflowID, "throttle", err.Error(), nil)
 	}
 	return resp, err
 }

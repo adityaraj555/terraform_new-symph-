@@ -20,6 +20,7 @@ const (
 	Success    = "success"
 	Inprogress = "inprogress"
 	Finished   = "finished"
+	Timedout   = "timedout"
 	loglevel   = "info"
 )
 
@@ -52,6 +53,12 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			return map[string]interface{}{"status": "failed"}, err
 		}
 	case "update":
+		// handle timeout
+		err := handleTimeout(ctx, Request)
+		if err != nil {
+			log.Error(ctx, "error handling timeout, error: ", err.Error())
+			return map[string]interface{}{"status": "failed"}, err
+		}
 		update := bson.M{
 			"$set": bson.M{
 				"finishedAt": time.Now().Unix(),
@@ -59,7 +66,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			},
 		}
 		query := bson.M{"_id": Request.WorkflowId}
-		err := commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
+		err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			log.Error(ctx, "Error while updating workflowExecutionData, error: ", err.Error())
 			return map[string]interface{}{"status": "failed"}, err
@@ -73,7 +80,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", err.Error(), nil)
 	}
 	return resp, err
 }
@@ -82,4 +89,62 @@ func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true, true)
 	lambda.Start(notificationWrapper)
+}
+
+func handleTimeout(ctx context.Context, req RequestBody) error {
+	wfExecData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, req.WorkflowId)
+	if err != nil {
+		//running,
+		return err
+	}
+	var timedOutStep *documentDB_client.StepsPassedThroughBody
+	for _, state := range wfExecData.StepsPassedThrough {
+		if state.Status == "running" {
+			timedOutStep = &state
+			break
+		}
+	}
+
+	if timedOutStep == nil {
+		return nil
+	}
+	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
+
+	//update stepsPassedThrough
+	filter := bson.M{
+		"_id":                       req.WorkflowId,
+		"stepsPassedThrough.stepId": timedOutStep.StepId,
+	}
+	update := bson.M{
+		"$set": bson.M{
+			"stepsPassedThrough.$.status": "failure",
+		},
+	}
+
+	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		log.Error(ctx, "error updating db", err.Error())
+		return err
+	}
+
+	//update StepExecutionDataBody
+	filter = bson.M{
+		"_id": timedOutStep.StepId,
+	}
+	update = bson.M{
+		"$set": bson.M{
+			"status":  "failure",
+			"endtime": time.Now().Unix(),
+		},
+	}
+	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
+	if err != nil {
+		log.Error(ctx, "error updating db", err.Error())
+		return err
+	}
+	commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", "Task Timed Out", map[string]string{
+		"Task":   timedOutStep.TaskName,
+		"StepId": timedOutStep.StepId,
+	})
+	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -44,7 +45,9 @@ func main() {
 func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error(), req...)
+		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error(), map[string]string{
+			"request": strings.Join(req, " : "),
+		})
 	}
 	return err
 }

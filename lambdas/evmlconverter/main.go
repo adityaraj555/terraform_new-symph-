@@ -282,7 +282,7 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 func notificationWrapper(ctx context.Context, req eventData) (map[string]interface{}, error) {
 	resp, err := handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "evmlconverter", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "evmlconverter", err.Error(), map[string]string(nil))
 	}
 	return resp, err
 }

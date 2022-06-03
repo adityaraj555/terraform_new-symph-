@@ -82,6 +82,7 @@ const DBSecretARN = "DBSecretARN"
 const envLegacyUpdatefunction = "envLegacyUpdatefunction"
 const envCallbackLambdaFunction = "envCallbackLambdaFunction"
 const success = "success"
+const running = "running"
 const failure = "failure"
 const loglevel = "info"
 const RetriableError = "RetriableError"
@@ -563,6 +564,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 	}
 	if data.IsWaitTask {
 		StepExecutionData.IntermediateOutput = response
+		StepExecutionData.Status = running
 	} else {
 		StepExecutionData.Output = response
 		StepExecutionData.EndTime = time.Now().Unix()
@@ -590,7 +592,7 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{}, error) {
 	resp, err := HandleRequest(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "callout", err.Error())
+		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "callout", err.Error(), nil)
 	}
 	return resp, err
 }
