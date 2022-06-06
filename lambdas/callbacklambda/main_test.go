@@ -46,7 +46,7 @@ func TestCallbackvalidation(t *testing.T) {
 
 	RequestBodyObj := RequestBody{}
 	slackClient := &mocks.ISlackClient{}
-	slackClient.On("SendErrorMessage", "", "", "callback", "invalid status").Return(nil)
+	slackClient.On("SendErrorMessage", "", "", "callback", "invalid status", map[string]string(nil)).Return(nil)
 	mydata := []byte(RequestBodyString)
 	json.Unmarshal(mydata, &RequestBodyObj)
 	RequestBodyObj.Status = "random"

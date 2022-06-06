@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
@@ -47,6 +48,7 @@ func TestDatastoreLambdainsert(t *testing.T) {
 	expectedResp := map[string]interface{}{"status": "success"}
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(nil)
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.SlackClient = slackClient
 	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)
@@ -65,7 +67,8 @@ func TestDatastoreLambdainserterror(t *testing.T) {
 	expectedResp := map[string]interface{}{"status": "failed"}
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(errors.New("some error"))
-	slackClient.On("SendErrorMessage", DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything).Return(nil)
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
+	slackClient.On("SendErrorMessage", DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything, mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.SlackClient = slackClient
 	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)
@@ -83,6 +86,7 @@ func TestDatastoreLambdaupdate(t *testing.T) {
 	expectedResp := map[string]interface{}{"status": "success"}
 
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
 	commonHandler.DBClient = dBClient
 	resp, err := Handler(context.Background(), DataStoreRequestObj)
 	assert.NoError(t, err)
@@ -99,9 +103,37 @@ func TestDatastoreLambdaupdateerror(t *testing.T) {
 	expectedResp := map[string]interface{}{"status": "failed"}
 
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("some error"))
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
 	commonHandler.DBClient = dBClient
 	resp, err := Handler(context.Background(), DataStoreRequestObj)
 	assert.Error(t, err)
+	assert.Equal(t, expectedResp, resp)
+
+}
+
+func TestDatastoreLambdaupdateStepTimeOut(t *testing.T) {
+	dBClient := new(mocks.IDocDBClient)
+
+	DataStoreRequestObj := RequestBody{}
+	mydata := []byte(DataStoreRequest)
+	json.Unmarshal(mydata, &DataStoreRequestObj)
+	DataStoreRequestObj.Action = "update"
+	expectedResp := map[string]interface{}{"status": "success"}
+	stepData := documentDB_client.WorkflowExecutionDataBody{
+		StepsPassedThrough: []documentDB_client.StepsPassedThroughBody{
+			{
+				Status: "running",
+				StepId: "1234",
+			},
+		},
+	}
+
+	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(nil).Times(3)
+	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(stepData, nil)
+	dBClient.Mock.On("BuildQueryForCallBack", testContext, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("filter", "query")
+	commonHandler.DBClient = dBClient
+	resp, err := Handler(context.Background(), DataStoreRequestObj)
+	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
 }

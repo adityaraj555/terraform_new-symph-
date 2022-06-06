@@ -9,7 +9,7 @@ import (
 )
 
 type ISlackClient interface {
-	SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta ...string)
+	SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta map[string]string)
 }
 
 type SlackClient struct {
@@ -24,18 +24,19 @@ func NewSlackClient(slackToken, channel string) *SlackClient {
 	}
 }
 
-func (sc *SlackClient) SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta ...string) {
+func (sc *SlackClient) SendErrorMessage(reportId, workflowId, lambdaName, msg string, meta map[string]string) {
 	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(reportId, workflowId, msg, lambdaName, meta)...)
 	if err != nil {
 		log.Error(context.Background(), "error while sending slack notification", err)
 	}
 }
 
-func (sc *SlackClient) getErrorPayload(reportId, workflowId, msg, lambdaName string, meta []string) []sdk.MsgOption {
+func (sc *SlackClient) getErrorPayload(reportId, workflowId, msg, lambdaName string, meta map[string]string) []sdk.MsgOption {
 	metaBlock := ""
-	for _, v := range meta {
-		metaBlock = fmt.Sprintf("%s\n %s", metaBlock, v)
+	for k, v := range meta {
+		metaBlock = fmt.Sprintf("%s\n %s : %s", metaBlock, k, v)
 	}
+
 	return []sdk.MsgOption{
 		sdk.MsgOptionText("Error while Lambda execution", true),
 		sdk.MsgOptionAttachments(
