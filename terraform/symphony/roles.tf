@@ -81,7 +81,9 @@ ${module.config.environment_config_map.trust_relashionships_external_service}
                 ],
                 "Resource": [
                     "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.callback_lambda_name}",
-                    "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator"
+                    "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator",
+                    "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*"
+
                 ],
                 "Effect": "Allow",
                 "Sid": "AccessCallback2"
