@@ -136,9 +136,9 @@ resource "aws_lambda_event_source_mapping" "event_trigger_sqs" {
 //
 
 resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
-      topic_arn = "arn:aws:sns:us-east-2:356071200662:DomainEvents"
+      topic_arn = "arn:aws:sns:${local.region}:${local.account_id}:DomainEvents"
       protocol  = "sqs"
-      endpoint  = "arn:aws:sqs:us-east-2:356071200662:app-dev-1x0-sqs-receiveLegacyOrder"
+      endpoint  = "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-${module.config.environment_config_map.receive_legacy_order_queue_name}"
       raw_message_delivery = true
       filter_policy = <<EOF
       {
