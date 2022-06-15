@@ -135,6 +135,13 @@ resource "aws_lambda_event_source_mapping" "event_trigger_sqs" {
 }
 //
 
+resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
+      topic_arn = "arn:aws:sns:us-east-2:356071200662:DomainEvents"
+      protocol  = "sqs"
+      endpoint  = "arn:aws:sqs:us-east-2:356071200662:app-dev-1x0-sqs-receiveLegacyOrder"
+      filter_policy = "${jsonencode(map("Company",list("eagleview")))}"
+      raw_message_delivery = true
+}
 
 data "aws_caller_identity" "current" {}
 
