@@ -140,6 +140,19 @@ resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
       protocol  = "sqs"
       endpoint  = "arn:aws:sqs:us-east-2:356071200662:app-dev-1x0-sqs-receiveLegacyOrder"
       raw_message_delivery = true
+      filter_policy = <<EOF
+      {
+        "Company": [
+          "eagleview"
+        ],
+        "Event": [
+          "sfn_measurement_automation_workflow"
+        ],
+        "Domain": [
+          "sfn_measurement_automation"
+        ]
+      }
+      EOF
 }
 
 data "aws_caller_identity" "current" {}
