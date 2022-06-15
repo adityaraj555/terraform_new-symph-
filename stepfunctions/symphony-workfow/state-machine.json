@@ -637,7 +637,7 @@
         "Payload": {
           "workflowId.$": "$$.Execution.Name",
           "reportId.$": "$$.Execution.Input.reportId",
-          "getImageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
+          "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
         }
       },
       "Retry": [
