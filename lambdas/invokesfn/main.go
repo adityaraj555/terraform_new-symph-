@@ -25,8 +25,9 @@ type sfnInput struct {
 		Street    string  `json:"street" validate:"required"`
 		Zip       string  `json:"zip" validate:"required"`
 	}
-	OrderID  string `json:"orderId"`
-	ReportID string `json:"reportId" validate:"required"`
+	OrderID    string `json:"orderId"`
+	ReportID   string `json:"reportId" validate:"required"`
+	WorkflowId string `json:"workflowId"`
 }
 
 var commonHandler common_handler.CommonHandler
@@ -61,7 +62,14 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		if err = validateInput(ctx, message.Body); err != nil {
 			return req, err
 		}
-		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN)
+		sfnreq := sfnInput{}
+		err := json.Unmarshal([]byte(message.Body), &sfnreq)
+		if err != nil {
+			log.Error(ctx, err)
+			return req, err
+		}
+		sfnName := fmt.Sprintf("%s-%s", sfnreq.ReportID, sfnreq.WorkflowId)
+		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)

@@ -18,7 +18,7 @@ func TestInvokeSFN(t *testing.T) {
 	commonHandler.AwsClient = awsclient
 	InvokeSFNRequestObj := events.SQSEvent{}
 	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequest}}
-	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything).Return("ExecutionARN", nil)
+	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", nil)
 	err := notificationWrapper(context.Background(), InvokeSFNRequestObj)
 	assert.NoError(t, err)
 }
@@ -39,7 +39,7 @@ func TestInvokeSFNerror(t *testing.T) {
 	commonHandler.AwsClient = awsclient
 	InvokeSFNRequestObj := events.SQSEvent{}
 	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequest}}
-	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything).Return("ExecutionARN", errors.New("some error"))
+	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", errors.New("some error"))
 	_, err := Handler(context.Background(), InvokeSFNRequestObj)
 	assert.Error(t, err)
 }
@@ -51,7 +51,7 @@ func TestInvokeSFNerrorValidation(t *testing.T) {
 	commonHandler.AwsClient = awsclient
 	InvokeSFNRequestObj := events.SQSEvent{}
 	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequestaddressmissing}}
-	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything).Return("ExecutionARN", nil)
+	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", nil)
 	_, err := Handler(context.Background(), InvokeSFNRequestObj)
 	assert.Error(t, err)
 }

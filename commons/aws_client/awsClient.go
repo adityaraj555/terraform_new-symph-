@@ -24,7 +24,7 @@ type IAWSClient interface {
 	GetSecretString(ctx context.Context, secretManagerNameArn string) (string, error)
 	InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}) (*lambda.InvokeOutput, error)
 	StoreDataToS3(ctx context.Context, bucketName, s3KeyPath string, responseBody []byte) error
-	InvokeSFN(Input, StateMachineArn *string) (string, error)
+	InvokeSFN(Input, StateMachineArn, Name *string) (string, error)
 	GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error)
 	FetchS3BucketPath(s3Path string) (string, string, error)
 	CloseWaitTask(ctx context.Context, status, TaskToken, Output, Cause, Error string) error
@@ -155,12 +155,13 @@ func (ac *AWSClient) StoreDataToS3(ctx context.Context, bucketName, s3KeyPath st
 	return nil
 }
 
-func (ac *AWSClient) InvokeSFN(Input, StateMachineArn *string) (string, error) {
+func (ac *AWSClient) InvokeSFN(Input, StateMachineArn, Name *string) (string, error) {
 	mySession := session.Must(session.NewSession())
 	svc := sfn.New(mySession)
 	out, err := svc.StartExecution(&sfn.StartExecutionInput{
 		Input:           Input,
 		StateMachineArn: StateMachineArn,
+		Name:            Name,
 	})
 	if err != nil {
 		return "", err
