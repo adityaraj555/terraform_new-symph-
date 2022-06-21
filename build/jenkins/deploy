@@ -16,7 +16,7 @@ pipeline {
   parameters {
     string(name: "DOMAIN",             defaultValue: "property-data-orchestrator",      description: "Platform Domain Name")
     choice(name: "ENV",                choices: ["platform-dev", "platform-test", "platform-stage", "platform-prod"],                    description: "Select the environment for deploy")
-    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter","throttleservice"],    description: "Select the lambda for deploy")
+    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter","throttleservice", "uploadimage"],    description: "Select the lambda for deploy")
     choice(name: "ECR_ACCOUNT_ID",     choices: "176992832580",                      description: "ECR account ID (default: platform-ci)")
     choice(name: "ECR_REGION",         choices: "us-east-2",                         description: "ECR region")
     string(name: "GITHUB_CREDENTIALS", defaultValue: "platform-github-token",        description: "Platform GitHub credentials")
