@@ -117,7 +117,7 @@ func main() {
 	httpClient = &httpservice.HTTPClientV2{}
 	awsClient = &aws_client.AWSClient{}
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
-		APITimeout: 90,
+		// APITimeout: 90,
 	})
 	lambda.Start(handler)
 }
