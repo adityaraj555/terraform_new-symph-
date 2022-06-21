@@ -146,7 +146,8 @@ resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
           "eagleview"
         ],
         "Event": [
-          "sfn_measurement_automation_workflow"
+          "sfn_measurement_automation_workflow",
+          "sfn_automated_image_selection_workflow"
         ],
         "Domain": [
           "sfn_measurement_automation"
