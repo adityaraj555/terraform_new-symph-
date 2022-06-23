@@ -16,6 +16,7 @@ import (
 	ctxlog "github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/lambdas/legacyupdate/status"
@@ -75,7 +76,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	workflowData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, eventData.WorkflowID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching workflow data from DocumentDb: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.ErrorFetchingWorkflowExecutionDataFromDB, err.Error())
 	}
 
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
@@ -101,7 +102,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	} else {
 		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
 			ctxlog.Error(ctx, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
-			return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New(lastCompletedTask.TaskName + " record not found in failureTaskOutputMap map")
+			return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.TaskRecordNotFoundInFailureTaskOutputMap, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
 		} else {
 			legacyStatus = failureOutput.StatusKey
 			for i := stepscount - 1; i >= 0; i-- {
@@ -116,13 +117,13 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, finalTaskStepID)
 	if err != nil {
 		ctxlog.Error(ctx, "Error in fetching steo data from DocumentDb: ", err.Error())
-		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.ErrorFetchingStepExecutionDataFromDB, err.Error())
 	}
 	if taskOutput, ok = taskData.Output["propertyModelLocation"]; !ok {
-		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New("propertyModelLocation missing from task output")
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.PropertyModelLocationMissingInTaskOutput, "propertyModelLocation missing from task output")
 	}
 	if propertyModelS3Path, ok = taskOutput.(string); !ok {
-		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
+		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.InvalidTypeForPropertyModelLocation, "propertyModelLocation should be a string")
 	}
 
 	evjsonS3Path, err := CovertPropertyModelToEVJson(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelS3Path, eventData.ImageMetaDataLocation)
@@ -178,20 +179,20 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 	}
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload)
 	if err != nil {
-		return nil, err
+		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
 	}
 	var resp map[string]string
 	err = json.Unmarshal(result.Payload, &resp)
 	if err != nil {
-		return nil, err
+		return nil, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
 	}
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
 		if errorType == RetriableError {
-			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+			return resp, error_handler.NewRetriableError(error_codes.RetriableCallOutHTTPError, fmt.Sprintf("received %s errorType while executing lambda", errorType))
 		}
-		return resp, errors.New(fmt.Sprintf(lambdaExecutonError, errorType))
+		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
 	}
 
 	return resp, nil
@@ -205,13 +206,13 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
 		ctxlog.Error(ctx, "error while fetching auth token from secret manager", err.Error())
-		return nil, err
+		return nil, error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
 	}
 
 	token, ok := secretMap[legacyAuthKey].(string)
 	if !ok {
 		ctxlog.Error(ctx, "Issue with parsing Auth Token: ", secretMap[legacyAuthKey])
-		return nil, errors.New(fmt.Sprintf("Issue with parsing Auth Token: %+v", secretMap[legacyAuthKey]))
+		return nil, error_handler.NewServiceError(error_codes.ErrorParsingLegacyAuthToken, fmt.Sprintf("Issue with parsing Auth Token: %+v", secretMap[legacyAuthKey]))
 	}
 
 	payload := map[string]interface{}{
@@ -232,21 +233,21 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload)
 	if err != nil {
-		return nil, err
+		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
 	}
 	var resp map[string]string
 	err = json.Unmarshal(result.Payload, &resp)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
 	}
 
 	errorType, ok := resp["errorType"]
 	if ok {
 		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
 		if errorType == RetriableError {
-			return resp, &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+			return resp, error_handler.NewRetriableError(error_codes.RetriableCallOutHTTPError, fmt.Sprintf("received %s errorType while executing lambda", errorType))
 		}
-		return resp, errors.New(fmt.Sprintf(lambdaExecutonError, errorType))
+		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
 	}
 
 	return resp, nil
@@ -282,7 +283,8 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, w
 func notificationWrapper(ctx context.Context, req eventData) (map[string]interface{}, error) {
 	resp, err := handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "evmlconverter", err.Error(), map[string]string(nil))
+		cerr := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.ReportID, req.WorkflowID, "evmlconverter", err.Error(), map[string]string(nil))
 	}
 	return resp, err
 }
