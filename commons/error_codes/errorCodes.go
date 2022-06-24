@@ -14,40 +14,40 @@ const (
 	ErrorInvokingStepFunction                   = 4010
 
 	// DocumentDB Errors
-	ErrorFetchingStepExecutionDataFromDB     = 4010
-	ErrorFetchingWorkflowExecutionDataFromDB = 4011
-	ErrorUpdatingStepsDataInDB               = 4012
-	ErrorUpdatingWorkflowDataInDB            = 4013
-	ErrorInsertingStepExecutionDataInDB      = 4014
-	ErrorInsertingWorkflowDataInDB           = 4015
-	ErrorFetchingHipsterCountFromDB          = 4016
+	ErrorFetchingStepExecutionDataFromDB     = 4011
+	ErrorFetchingWorkflowExecutionDataFromDB = 4012
+	ErrorUpdatingStepsDataInDB               = 4013
+	ErrorUpdatingWorkflowDataInDB            = 4014
+	ErrorInsertingStepExecutionDataInDB      = 4015
+	ErrorInsertingWorkflowDataInDB           = 4016
+	ErrorFetchingHipsterCountFromDB          = 4017
 
 	//Service Errors
-	ErrorWhileUpdatingLegacy                    = 4017
-	StatusNotFoundInLegacyUpdateResponse        = 4018
-	LegacyStatusFailed                          = 4019
-	UnsupportedRequestMethodCallOutLambda       = 4020
-	ErrorDecodingHipsterOutput                  = 4021
-	JobIDMissingInHipsterOutput                 = 4022
-	StepFunctionTaskTimedOut                    = 4023
-	TaskRecordNotFoundInFailureTaskOutputMap    = 4024
-	ErrorParsingLegacyAuthToken                 = 4025
-	ErrorConvertingAllowedHipsterCountToInteger = 4026
+	ErrorWhileUpdatingLegacy                    = 4018
+	StatusNotFoundInLegacyUpdateResponse        = 4019
+	LegacyStatusFailed                          = 4020
+	UnsupportedRequestMethodCallOutLambda       = 4021
+	ErrorDecodingHipsterOutput                  = 4022
+	JobIDMissingInHipsterOutput                 = 4023
+	StepFunctionTaskTimedOut                    = 4024
+	TaskRecordNotFoundInFailureTaskOutputMap    = 4025
+	ErrorParsingLegacyAuthToken                 = 4026
+	ErrorConvertingAllowedHipsterCountToInteger = 4027
 
 	// Validation Errors
-	ErrorValidatingCallBackLambdaRequest     = 4027
-	ErrorValidatingCallOutLambdaRequest      = 4028
-	ErrorSerializingCallOutPayload           = 4029
-	ErrorDecodingCallOutResponse             = 4030
-	PropertyModelLocationMissingInTaskOutput = 4031
-	InvalidTypeForPropertyModelLocation      = 4032
-	ErrorDecodingInvokeSFNInput              = 4033
-	ErrorValidatingInvokeSFNInput            = 4034
+	ErrorValidatingCallBackLambdaRequest     = 4028
+	ErrorValidatingCallOutLambdaRequest      = 4029
+	ErrorSerializingCallOutPayload           = 4030
+	ErrorDecodingCallOutResponse             = 4031
+	PropertyModelLocationMissingInTaskOutput = 4032
+	InvalidTypeForPropertyModelLocation      = 4033
+	ErrorDecodingInvokeSFNInput              = 4034
+	ErrorValidatingInvokeSFNInput            = 4035
 
 	// HTTP Errors
-	ReceivedInternalServerErrorInCallout      = 4035
-	ReceivedInvalidHTTPStatusCodeInCallout    = 4036
-	ErrorWhileFetchingAuthToken               = 4037
-	ErrorUnableToDecodeAuthServiceResponse    = 4038
-	ErrorUnSuccessfullResponseFromAuthService = 4039
+	ReceivedInternalServerErrorInCallout      = 4036
+	ReceivedInvalidHTTPStatusCodeInCallout    = 4037
+	ErrorWhileFetchingAuthToken               = 4038
+	ErrorUnableToDecodeAuthServiceResponse    = 4039
+	ErrorUnSuccessfullResponseFromAuthService = 4040
 )
