@@ -11,6 +11,8 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
@@ -30,7 +32,10 @@ type sfnInput struct {
 	WorkflowId string `json:"workflowId"`
 }
 
-var commonHandler common_handler.CommonHandler
+var (
+	commonHandler        common_handler.CommonHandler
+	reportId, workflowId string
+)
 
 const (
 	StateMachineARN = "StateMachineARN"
@@ -46,7 +51,8 @@ func main() {
 func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage("", "", "invokesfn", err.Error(), map[string]string{
+		cerr := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), reportId, workflowId, "invokesfn", err.Error(), map[string]string{
 			"request": strings.Join(req, " : "),
 		})
 	}
@@ -66,14 +72,15 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		err := json.Unmarshal([]byte(message.Body), &sfnreq)
 		if err != nil {
 			log.Error(ctx, err)
-			return req, err
+			return req, error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 		}
+
 		sfnName := fmt.Sprintf("%s-%s", sfnreq.ReportID, sfnreq.WorkflowId)
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)
-			return req, err
+			return req, error_handler.NewServiceError(error_codes.ErrorInvokingStepFunction, err.Error())
 		}
 	}
 	log.Infof(ctx, "Invokesfn Lambda successful...")
@@ -84,15 +91,18 @@ func validateInput(ctx context.Context, input string) error {
 	log.Info(ctx, "input body:", input)
 	req := sfnInput{}
 	err := json.Unmarshal([]byte(input), &req)
-	fmt.Println(req)
+	log.Info(ctx, req)
 	if err != nil {
 		log.Error(ctx, "invalid input for sfn", input)
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 	}
+
+	reportId = req.ReportID
+	workflowId = req.WorkflowId
 
 	if err := validator.ValidateInvokeSfnRequest(ctx, req); err != nil {
 		log.Error(ctx, "error in validation: ", err)
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error())
 	}
 
 	log_config.SetTraceIdInContext(ctx, req.ReportID, "")

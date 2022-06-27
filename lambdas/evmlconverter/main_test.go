@@ -203,7 +203,7 @@ func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
 	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-	slackClient.On("SendErrorMessage", "", "", "evmlconverter", mock.Anything, mock.Anything).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, "", "", "evmlconverter", mock.Anything, mock.Anything).Return(nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -212,7 +212,7 @@ func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
 
 	resp, err := notificationWrapper(context.Background(), eventDataObj)
 	assert.Error(t, err)
-	assert.Equal(t, &error_handler.RetriableError{Message: "received RetriableError errorType while executing lambda"}, err)
+	assert.Equal(t, &error_handler.RetriableError{ServiceError: error_handler.ServiceError{ErrorCode: 4008, ErrorMessage: "received RetriableError errorType while executing lambda"}}, err)
 	assert.Equal(t, expectedResp, resp)
 }
 

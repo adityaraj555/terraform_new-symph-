@@ -148,20 +148,20 @@ func (_m *IAWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string
 	return r0, r1
 }
 
-// InvokeSFN provides a mock function with given fields: Input, StateMachineArn
+// InvokeSFN provides a mock function with given fields: Input, StateMachineArn, Name
 func (_m *IAWSClient) InvokeSFN(Input *string, StateMachineArn *string, Name *string) (string, error) {
-	ret := _m.Called(Input, StateMachineArn)
+	ret := _m.Called(Input, StateMachineArn, Name)
 
 	var r0 string
-	if rf, ok := ret.Get(0).(func(*string, *string) string); ok {
-		r0 = rf(Input, StateMachineArn)
+	if rf, ok := ret.Get(0).(func(*string, *string, *string) string); ok {
+		r0 = rf(Input, StateMachineArn, Name)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*string, *string) error); ok {
-		r1 = rf(Input, StateMachineArn)
+	if rf, ok := ret.Get(1).(func(*string, *string, *string) error); ok {
+		r1 = rf(Input, StateMachineArn, Name)
 	} else {
 		r1 = ret.Error(1)
 	}

@@ -68,7 +68,7 @@ func TestDatastoreLambdainserterror(t *testing.T) {
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(errors.New("some error"))
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
-	slackClient.On("SendErrorMessage", DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything, mock.Anything).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything, mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.SlackClient = slackClient
 	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)

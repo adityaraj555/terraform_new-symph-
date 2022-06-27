@@ -12,6 +12,7 @@ import (
 
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/assess-platform-library/log"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 )
 
@@ -63,7 +64,7 @@ func (lc *LegacyClient) UpdateReportStatus(ctx context.Context, req *LegacyUpdat
 	}
 
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
-		return &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", response.StatusCode)}
+		return error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("%d status code received", response.StatusCode))
 	}
 	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)

@@ -9,6 +9,8 @@ import (
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -50,7 +52,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		err = commonHandler.DBClient.InsertWorkflowExecutionData(ctx, data)
 		if err != nil {
 			log.Error(ctx, "Error while inserting workflowExecutionData, error: ", err.Error())
-			return map[string]interface{}{"status": "failed"}, err
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorInsertingWorkflowDataInDB, err.Error())
 		}
 	case "update":
 		// handle timeout
@@ -69,7 +71,7 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			log.Error(ctx, "Error while updating workflowExecutionData, error: ", err.Error())
-			return map[string]interface{}{"status": "failed"}, err
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	}
 
@@ -80,7 +82,8 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", err.Error(), nil)
+		cerr := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.OrderId, req.WorkflowId, "datastore", err.Error(), nil)
 	}
 	return resp, err
 }
@@ -95,7 +98,7 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	wfExecData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, req.WorkflowId)
 	if err != nil {
 		//running,
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorFetchingWorkflowExecutionDataFromDB, err.Error())
 	}
 	var timedOutStep *documentDB_client.StepsPassedThroughBody
 	for _, state := range wfExecData.StepsPassedThrough {
@@ -115,7 +118,7 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		log.Error(ctx, "error updating db", err.Error())
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 	}
 
 	//update StepExecutionDataBody
@@ -123,9 +126,9 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.StepsDataCollection)
 	if err != nil {
 		log.Error(ctx, "error updating db", err.Error())
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorUpdatingStepsDataInDB, err.Error())
 	}
-	commonHandler.SlackClient.SendErrorMessage(req.OrderId, req.WorkflowId, "datastore", "Task Timed Out", map[string]string{
+	commonHandler.SlackClient.SendErrorMessage(error_codes.StepFunctionTaskTimedOut, req.OrderId, req.WorkflowId, "datastore", "Task Timed Out", map[string]string{
 		"Task":   timedOutStep.TaskName,
 		"StepId": timedOutStep.StepId,
 	})
