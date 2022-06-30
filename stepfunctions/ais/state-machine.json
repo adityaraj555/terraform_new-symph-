@@ -25,12 +25,12 @@
                                         "latitude.$": "$$.Execution.Input.address.latitude",
                                         "longitude.$": "$$.Execution.Input.address.longitude"
                                     },
-                                    "url": "https://26fc-103-77-0-214.ngrok.io/imageryCheck",
+                                    "url": "https://d377-103-77-1-225.ngrok.io/imageryCheck",
                                     "requestMethod": "POST",
                                     "headers": {},
                                     "isWaitTask": true,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 15,
+                                    "timeout": 10,
                                     "storeDataToS3": "",
                                     "taskName": "ImageryCheck",
                                     "orderId.$": "$$.Execution.Input.orderId",
@@ -43,16 +43,18 @@
                             "Retry": [
                                 {
                                     "ErrorEquals": [
+                                        "RetriableError",
                                         "Lambda.ServiceException",
                                         "Lambda.AWSLambdaException",
                                         "Lambda.SdkClientException"
                                     ],
-                                    "IntervalSeconds": 2,
-                                    "MaxAttempts": 6,
-                                    "BackoffRate": 2
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
                                 }
                             ],
-                            "Next": "BuildingDetection"
+                            "Next": "BuildingDetection",
+                            "TimeoutSeconds": 10
                         },
                         "BuildingDetection": {
                             "Type": "Task",
@@ -72,12 +74,12 @@
                                         "imageCheckOutput": "$.ImageryCheck.response.imageCheckOutput",
                                         "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput"
                                     },
-                                    "url": "https://26fc-103-77-0-214.ngrok.io/buildingDetection",
+                                    "url": "https://d377-103-77-1-225.ngrok.io/buildingDetection",
                                     "requestMethod": "POST",
                                     "headers": {},
                                     "isWaitTask": true,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 15,
+                                    "timeout": 10,
                                     "storeDataToS3": "",
                                     "taskName": "BuildingDetection",
                                     "orderId.$": "$$.Execution.Input.orderId",
@@ -90,16 +92,18 @@
                             "Retry": [
                                 {
                                     "ErrorEquals": [
+                                        "RetriableError",
                                         "Lambda.ServiceException",
                                         "Lambda.AWSLambdaException",
                                         "Lambda.SdkClientException"
                                     ],
-                                    "IntervalSeconds": 2,
-                                    "MaxAttempts": 6,
-                                    "BackoffRate": 2
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
                                 }
                             ],
-                            "Next": "ImageSelection"
+                            "Next": "ImageSelection",
+                            "TimeoutSeconds": 10
                         },
                         "ImageSelection": {
                             "Type": "Task",
@@ -121,12 +125,12 @@
                                         "orthoImagePath": "$.BuildingDetection.response.orthoImagePath",
                                         "cropImagePath": "$.BuildingDetection.response.cropImagePath"
                                     },
-                                    "url": "https://26fc-103-77-0-214.ngrok.io/imageSelection",
+                                    "url": "https://d377-103-77-1-225.ngrok.io/imageSelection",
                                     "requestMethod": "POST",
                                     "headers": {},
                                     "isWaitTask": true,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 15,
+                                    "timeout": 10,
                                     "storeDataToS3": "",
                                     "taskName": "ImageSelection",
                                     "orderId.$": "$$.Execution.Input.orderId",
@@ -139,16 +143,18 @@
                             "Retry": [
                                 {
                                     "ErrorEquals": [
+                                        "RetriableError",
                                         "Lambda.ServiceException",
                                         "Lambda.AWSLambdaException",
                                         "Lambda.SdkClientException"
                                     ],
-                                    "IntervalSeconds": 2,
-                                    "MaxAttempts": 6,
-                                    "BackoffRate": 2
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
                                 }
                             ],
-                            "Next": "RetrieveandStoreImagesMetadata"
+                            "Next": "RetrieveandStoreImagesMetadata",
+                            "TimeoutSeconds": 7
                         },
                         "RetrieveandStoreImagesMetadata": {
                             "Type": "Task",
@@ -167,12 +173,12 @@
                                         "S3URI.$": "$.ImageSelection.response.S3URI",
                                         "selectedImages.$": "$.ImageSelection.response.selectedImages"
                                     },
-                                    "url": "https://26fc-103-77-0-214.ngrok.io/retrieveandStoreImagesMetadata",
+                                    "url": "https://d377-103-77-1-225.ngrok.io/retrieveandStoreImagesMetadata",
                                     "requestMethod": "POST",
                                     "headers": {},
                                     "isWaitTask": false,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 15,
+                                    "timeout": 10,
                                     "storeDataToS3": "",
                                     "taskName": "RetrieveandStoreImagesMetadata",
                                     "orderId.$": "$$.Execution.Input.orderId",
@@ -185,16 +191,18 @@
                             "Retry": [
                                 {
                                     "ErrorEquals": [
+                                        "RetriableError",
                                         "Lambda.ServiceException",
                                         "Lambda.AWSLambdaException",
                                         "Lambda.SdkClientException"
                                     ],
-                                    "IntervalSeconds": 2,
-                                    "MaxAttempts": 6,
-                                    "BackoffRate": 2
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
                                 }
                             ],
-                            "End": true
+                            "End": true,
+                            "TimeoutSeconds": 10
                         }
                     }
                 }
@@ -225,6 +233,7 @@
             "Retry": [
                 {
                     "ErrorEquals": [
+                        "RetriableError",
                         "Lambda.ServiceException",
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
@@ -255,6 +264,7 @@
             "Retry": [
                 {
                     "ErrorEquals": [
+                        "RetriableError",
                         "Lambda.ServiceException",
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
