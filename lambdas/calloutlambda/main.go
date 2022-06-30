@@ -407,13 +407,13 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		return returnResponse, error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error())
 	}
 
-	// timeout := 30
-	// if data.Timeout != 0 {
-	// 	timeout = data.Timeout
-	// }
+	timeout := 45
+	if data.Timeout != 0 {
+		timeout = data.Timeout
+	}
 
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
-		// APITimeout: timeout,
+		APITimeout: timeout,
 	})
 
 	callType := data.CallType.String()
