@@ -27,6 +27,7 @@ type sfnInput struct {
 		Street    string  `json:"street" validate:"required"`
 		Zip       string  `json:"zip" validate:"required"`
 	}
+	Source     string `json:"source"`
 	OrderID    string `json:"orderId"`
 	ReportID   string `json:"reportId" validate:"required"`
 	WorkflowId string `json:"workflowId"`
@@ -38,8 +39,9 @@ var (
 )
 
 const (
-	StateMachineARN = "StateMachineARN"
-	loglevel        = "info"
+	StateMachineARN    = "StateMachineARN"
+	AISStateMachineARN = "AISStateMachineARN"
+	loglevel           = "info"
 )
 
 func main() {
@@ -62,6 +64,7 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
 	SFNStateMachineARN := os.Getenv(StateMachineARN)
+
 	for _, message := range sqsEvent.Records {
 		log.Info(ctx, "SQS Message: %+v", message)
 		req = append(req, message.Body)
@@ -75,7 +78,11 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			return req, error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 		}
 
-		sfnName := fmt.Sprintf("%s-%s", sfnreq.ReportID, sfnreq.WorkflowId)
+		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
+		if sfnreq.Source == "AIS" {
+			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
+		}
+
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
