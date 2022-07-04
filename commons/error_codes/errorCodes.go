@@ -12,6 +12,7 @@ const (
 	RetriableCallOutHTTPError                   = 4008
 	LambdaExecutionError                        = 4009
 	ErrorInvokingStepFunction                   = 4010
+	ErrorInvokingLambda                         = 4041
 
 	// DocumentDB Errors
 	ErrorFetchingStepExecutionDataFromDB     = 4011

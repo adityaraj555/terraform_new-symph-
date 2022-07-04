@@ -53,6 +53,7 @@ type AuthData struct {
 type MyEvent struct {
 	Payload       interface{}         `json:"requestData"`
 	URL           string              `json:"url" validate:"omitempty,url"`
+	ARN           string              `json:"arn"`
 	RequestMethod enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
 	Headers       map[string]string   `json:"headers"`
 	IsWaitTask    bool                `json:"isWaitTask"`
@@ -372,6 +373,32 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	return nil
 }
 
+func callLambda(ctx context.Context, payload interface{}, LambdaFunction string) (map[string]interface{}, error) {
+	log.Infof(ctx, "callLambda reached...")
+
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, LambdaFunction, payload.(map[string]interface{}))
+	if err != nil {
+		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, err.Error())
+	}
+	var resp map[string]interface{}
+	err = json.Unmarshal(result.Payload, &resp)
+	if err != nil {
+		log.Error(ctx, "Error while unmarshalling, errror: ", err.Error())
+		return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
+	}
+
+	errorType, ok := resp["errorType"]
+	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
+	if ok {
+		if errorType == RetriableError {
+			return resp, error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("received %s errorType while updating legacy", errorType))
+		}
+		return resp, error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, "error while executing update legacy lamdba")
+	}
+	log.Info(ctx, "callLambda successful...")
+	return resp, nil
+}
+
 func handleHipster(ctx context.Context, reportId, status, jobID string) error {
 	legacyRequestPayload := map[string]interface{}{
 		"status":       status,
@@ -446,6 +473,19 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			body["meta"] = metaObj
 			data.Payload = body
 		}
+	}
+
+	if callType == enums.LambdaCT {
+		req := data.Payload
+		responseBody, err := callLambda(ctx, req, data.ARN)
+		if err != nil {
+			returnResponse["status"] = failure
+			return returnResponse, err
+		}
+
+		responseBody["status"] = "success"
+		log.Info(ctx, "CallService successfull...")
+		return responseBody, err
 	}
 
 	json_data, err := json.Marshal(data.Payload)

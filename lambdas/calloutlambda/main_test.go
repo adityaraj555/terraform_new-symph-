@@ -678,3 +678,68 @@ func TestCallLegacyErrorMissingStatus(t *testing.T) {
 	err := callLegacyStatusUpdate(context.Background(), map[string]interface{}{})
 	assert.Error(t, err)
 }
+
+func TestCompleteCalloutSuccessLambdaCall(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"key\": \"value\"\n}")}, nil)
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	reportID := "1241243"
+	workflowId := "some-id"
+	// 3. Valid POST Call with  wait taask
+	req := MyEvent{ReportID: reportID, IsWaitTask: false, TaskToken: "taskToken", WorkflowID: workflowId, ARN: "lambda function arn", CallType: "lambda", Payload: map[string]interface{}{"key": "value"}}
+
+	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, success, mock.Anything, req.IsWaitTask).Return("update")
+	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
+	commonHandler.HttpClient = httpClient
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	_, err := HandleRequest(context.Background(), req)
+	assert.NoError(t, err)
+}
+func TestCompleteCalloutFailureLambdaCall(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"key\": \"value\"\n}")}, errors.New("error"))
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	reportID := "1241243"
+	workflowId := "some-id"
+	// 3. Valid POST Call with  wait taask
+	req := MyEvent{ReportID: reportID, IsWaitTask: false, TaskToken: "taskToken", WorkflowID: workflowId, ARN: "lambda function arn", CallType: "lambda", Payload: map[string]interface{}{"key": "value"}}
+
+	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, failure, mock.Anything, req.IsWaitTask).Return("update")
+	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
+	commonHandler.HttpClient = httpClient
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	_, err := HandleRequest(context.Background(), req)
+	assert.Error(t, err)
+}
+func TestFailureLambdaCallRetriableError(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"RetriableError\"\n}")}, nil)
+	commonHandler.AwsClient = awsClient
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	assert.Error(t, err)
+}
+func TestFailureLambdaCallServiceError(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"ServiceError\"\n}")}, nil)
+	commonHandler.AwsClient = awsClient
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	assert.Error(t, err)
+}
+func TestFailureLambdaCallunmarshalError(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+		Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
+	commonHandler.AwsClient = awsClient
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	assert.Error(t, err)
+}
