@@ -5,12 +5,12 @@ import "strings"
 type Sources string
 
 const (
-	PropertyDataOrchestrator = "PDO"
-	AutoImageSelection       = "AIS"
+	MeasurementAutomation = "MA"
+	AutoImageSelection    = "AIS"
 )
 
 func SourcesList() []string {
-	return []string{PropertyDataOrchestrator, AutoImageSelection}
+	return []string{MeasurementAutomation, AutoImageSelection}
 }
 
 func (s Sources) String() string {
