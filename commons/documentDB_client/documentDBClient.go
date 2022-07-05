@@ -30,6 +30,7 @@ const (
 	UpdateStepExecution           = "UpdateStepExecution"
 	UpdateWorkflowExecutionSteps  = "UpdateWorkflowExecutionSteps"
 	UpdateWorkflowExecutionStatus = "UpdateWorkflowExecutionStatus"
+	PSTTimeZone                   = "America/Los_Angeles"
 )
 
 var (
@@ -275,11 +276,14 @@ func (DBClient *DocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	endedTime := time.Now().Unix()
-	y := time.Now().Year()
-	d := time.Now().Day()
-	m := time.Now().Month()
-	utc_midnight := time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Unix()
-	startTime := utc_midnight
+	loc, err := time.LoadLocation(PSTTimeZone)
+	if err != nil {
+		log.Errorf(ctx, "Failed to load time location: %v", err)
+		return 0, err
+	}
+	y, m, d := (time.Now().In(loc).Date())
+	pst_midnight := time.Date(y, m, d, 0, 0, 1, 0, loc).Unix()
+	startTime := pst_midnight
 
 	count, err := collection.CountDocuments(ctx, bson.M{"createdAt": bson.M{"$gt": startTime, "$lt": endedTime}, "flowType": "Hipster"})
 	log.Infof(ctx, "No of documents with flowtype as hipster = %v since  %+v = ", count, startTime)
