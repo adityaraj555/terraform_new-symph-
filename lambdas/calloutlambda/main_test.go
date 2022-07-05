@@ -38,7 +38,7 @@ func TestRequestValidation(t *testing.T) {
 	assert.Equal(t, "status cannot be empty", err.Error())
 
 	//3.Eagleflow
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"success\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -111,7 +111,7 @@ func TestCallServiceValidationHipsterJob(t *testing.T) {
 	reportID := "1241243"
 	workflowId := "some-id"
 
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"success\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -487,7 +487,7 @@ func TestCallServiceLegacyCallError(t *testing.T) {
 	reportID := "1241243"
 	workflowId := "some-id"
 
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"RetriableError\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -626,7 +626,7 @@ func TestCallServiceValidationHipsterJobErrorUpdatingLegacy(t *testing.T) {
 	reportID := "1241243"
 	workflowId := "some-id"
 
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"success\"\n}")}, errors.New(""))
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -648,7 +648,7 @@ func TestCallServiceValidationHipsterJobErrorUpdatingLegacy(t *testing.T) {
 }
 func TestCallLegacyErrorType(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"errorString\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	err := callLegacyStatusUpdate(context.Background(), map[string]interface{}{})
@@ -656,7 +656,7 @@ func TestCallLegacyErrorType(t *testing.T) {
 }
 func TestCallLegacyErrorUnmarshalling(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
 	commonHandler.AwsClient = awsClient
 	err := callLegacyStatusUpdate(context.Background(), map[string]interface{}{})
@@ -664,7 +664,7 @@ func TestCallLegacyErrorUnmarshalling(t *testing.T) {
 }
 func TestCallLegacyErrorStatus(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"failure\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	err := callLegacyStatusUpdate(context.Background(), map[string]interface{}{})
@@ -672,7 +672,7 @@ func TestCallLegacyErrorStatus(t *testing.T) {
 }
 func TestCallLegacyErrorMissingStatus(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"key\": \"value\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	err := callLegacyStatusUpdate(context.Background(), map[string]interface{}{})
@@ -681,8 +681,8 @@ func TestCallLegacyErrorMissingStatus(t *testing.T) {
 
 func TestCompleteCalloutSuccessLambdaCall(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
-		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"key\": \"value\"\n}")}, nil)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything, false).
+		Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
 	reportID := "1241243"
@@ -701,7 +701,7 @@ func TestCompleteCalloutSuccessLambdaCall(t *testing.T) {
 }
 func TestCompleteCalloutFailureLambdaCall(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"key\": \"value\"\n}")}, errors.New("error"))
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
@@ -721,25 +721,25 @@ func TestCompleteCalloutFailureLambdaCall(t *testing.T) {
 }
 func TestFailureLambdaCallRetriableError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything, true).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"RetriableError\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
-	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn", true)
 	assert.Error(t, err)
 }
 func TestFailureLambdaCallServiceError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything, true).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"errorType\": \"ServiceError\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
-	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn", true)
 	assert.Error(t, err)
 }
 func TestFailureLambdaCallunmarshalError(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything).
-		Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
+	awsClient.Mock.On("InvokeLambda", mock.Anything, "lambda function arn", mock.Anything, true).
+		Return(&lambda.InvokeOutput{Payload: []byte("h")}, nil)
 	commonHandler.AwsClient = awsClient
-	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn")
+	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn", true)
 	assert.Error(t, err)
 }

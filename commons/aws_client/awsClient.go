@@ -22,7 +22,7 @@ const success = "success"
 type IAWSClient interface {
 	GetSecret(ctx context.Context, secretName, region string) (map[string]interface{}, error)
 	GetSecretString(ctx context.Context, secretManagerNameArn string) (string, error)
-	InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}) (*lambda.InvokeOutput, error)
+	InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}, isWaitTask bool) (*lambda.InvokeOutput, error)
 	StoreDataToS3(ctx context.Context, bucketName, s3KeyPath string, responseBody []byte) error
 	InvokeSFN(Input, StateMachineArn, Name *string) (string, error)
 	GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error)
@@ -100,9 +100,9 @@ func (ac *AWSClient) GetSecretString(ctx context.Context, secretManagerNameArn s
 	return *result.SecretString, nil
 }
 
-func (ac *AWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}) (*lambda.InvokeOutput, error) {
+func (ac *AWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}, isWaitTask bool) (*lambda.InvokeOutput, error) {
 	region := "us-east-2"
-
+	var InvocationType string
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
@@ -114,8 +114,13 @@ func (ac *AWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string,
 		log.Error(ctx, "Error marshalling payload request")
 		return nil, err
 	}
+	if isWaitTask {
+		InvocationType = "Event"
+	} else {
+		InvocationType = "RequestResponse"
+	}
 
-	result, err := client.Invoke(&lambda.InvokeInput{FunctionName: aws.String(lambdafunctionArn), Payload: lambdaPayload})
+	result, err := client.Invoke(&lambda.InvokeInput{FunctionName: aws.String(lambdafunctionArn), Payload: lambdaPayload, InvocationType: aws.String(InvocationType)})
 	if err != nil {
 		log.Error(ctx, "Error calling "+lambdafunctionArn)
 	}
