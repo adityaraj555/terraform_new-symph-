@@ -40,8 +40,9 @@ var (
 )
 
 const (
-	StateMachineARN = "StateMachineARN"
-	loglevel        = "info"
+	StateMachineARN    = "StateMachineARN"
+	AISStateMachineARN = "AISStateMachineARN"
+	loglevel           = "info"
 )
 
 func main() {
@@ -63,7 +64,8 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
-	SFNStateMachineARN := os.Getenv(StateMachineARN)
+	var SFNStateMachineARN string
+
 	for _, message := range sqsEvent.Records {
 		log.Info(ctx, "SQS Message: %+v", message)
 		req = append(req, message.Body)
@@ -77,7 +79,15 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			return req, error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 		}
 
-		sfnName := fmt.Sprintf("%s-%s", sfnreq.ReportID, sfnreq.WorkflowId)
+		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
+
+		switch sfnreq.Source {
+		case enums.AutoImageSelection:
+			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
+		default:
+			SFNStateMachineARN = os.Getenv(StateMachineARN)
+		}
+
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
