@@ -79,7 +79,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			return req, error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 		}
 
-		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
+		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source.String())
 
 		switch sfnreq.Source {
 		case enums.AutoImageSelection:
