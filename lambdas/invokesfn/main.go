@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
+	"github.eagleview.com/engineering/symphony-service/commons/enums"
 	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
@@ -63,7 +64,7 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
-	SFNStateMachineARN := os.Getenv(StateMachineARN)
+	var SFNStateMachineARN string
 
 	for _, message := range sqsEvent.Records {
 		log.Info(ctx, "SQS Message: %+v", message)
@@ -79,8 +80,12 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		}
 
 		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
-		if sfnreq.Source == "AIS" {
+
+		switch sfnreq.Source {
+		case enums.AIS:
 			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
+		default:
+			SFNStateMachineARN = os.Getenv(StateMachineARN)
 		}
 
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
