@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
+	"github.eagleview.com/engineering/symphony-service/commons/enums"
 	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
@@ -27,9 +28,10 @@ type sfnInput struct {
 		Street    string  `json:"street" validate:"required"`
 		Zip       string  `json:"zip" validate:"required"`
 	}
-	OrderID    string `json:"orderId"`
-	ReportID   string `json:"reportId" validate:"required"`
-	WorkflowId string `json:"workflowId"`
+	OrderID    string        `json:"orderId"`
+	ReportID   string        `json:"reportId" validate:"required"`
+	WorkflowId string        `json:"workflowId"`
+	Source     enums.Sources `json:"source" validate:"source"`
 }
 
 var (

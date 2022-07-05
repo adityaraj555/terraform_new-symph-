@@ -55,13 +55,13 @@ var StatusMap = map[string]status{
 		Status:    "InProcess",
 		SubStatus: "HipsterQCCompleted",
 	},
-	"ImageSelectionFailed": {
-		Status:    "InProcess",
-		SubStatus: "AutoImageSelectionFailed",
-	},
-	"ImageSelectionCompleted": {
+	"AISCompleted": {
 		Status:    "InProcess",
 		SubStatus: "AutoImageSelectionCompleted",
+	},
+	"AISFailed": {
+		Status:    "InProcess",
+		SubStatus: "AutoImageSelectionFailed",
 	},
 }
 
