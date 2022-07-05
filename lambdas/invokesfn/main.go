@@ -28,10 +28,10 @@ type sfnInput struct {
 		Street    string  `json:"street" validate:"required"`
 		Zip       string  `json:"zip" validate:"required"`
 	}
-	Source     string `json:"source"`
-	OrderID    string `json:"orderId"`
-	ReportID   string `json:"reportId" validate:"required"`
-	WorkflowId string `json:"workflowId"`
+	OrderID    string        `json:"orderId"`
+	ReportID   string        `json:"reportId" validate:"required"`
+	WorkflowId string        `json:"workflowId"`
+	Source     enums.Sources `json:"source" validate:"source"`
 }
 
 var (

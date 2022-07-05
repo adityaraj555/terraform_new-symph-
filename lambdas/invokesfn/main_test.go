@@ -11,7 +11,7 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
 
-var InvokeSFNRequest string = "{ \"address\": { \"city\": \"Gilroy\", \"country\": \"UnitedStates\", \"latitude\": 37.024966, \"longitude\": -121.583003, \"state\": \"CA\", \"street\": \"270 Ronan Ave\", \"zip\": \"95020\" }, \"reportId\": \"44825849\", \"orderId\": \"44825849\", \"customerNotes\": \"\", \"measurementInstructions\": {}, \"orderType\": \"\" }"
+var InvokeSFNRequest string = "{ \"address\": { \"city\": \"Gilroy\", \"country\": \"UnitedStates\", \"latitude\": 37.024966, \"longitude\": -121.583003, \"state\": \"CA\", \"street\": \"270 Ronan Ave\", \"zip\": \"95020\" }, \"reportId\": \"44825849\", \"orderId\": \"44825849\", \"customerNotes\": \"\", \"measurementInstructions\": {}, \"orderType\": \"\", \"source\": \"AIS\" }"
 
 func TestInvokeSFN(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)

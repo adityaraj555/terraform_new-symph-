@@ -55,6 +55,14 @@ var StatusMap = map[string]status{
 		Status:    "InProcess",
 		SubStatus: "HipsterQCCompleted",
 	},
+	"AISCompleted": {
+		Status:    "InProcess",
+		SubStatus: "AutoImageSelectionCompleted",
+	},
+	"AISFailed": {
+		Status:    "InProcess",
+		SubStatus: "AutoImageSelectionFailed",
+	},
 }
 
 var FailedTaskStatusMap = map[string]failedTaskMetaData{

@@ -7,8 +7,9 @@ def fullTestDeploymentManualVerificationTimeChoices = TerraformChoices.getfullTe
 def deploymentTargetBranchMapOverrides = [
     sandbox: "develop",
     test:"develop",
-    stage: "develop",
-    develop: "develop"
+    stage: "release-1.0.0",
+    develop: "develop",
+    prod: "release-1.0.0"
 ]
 
 String deploymentStack = "terraform/symphony"

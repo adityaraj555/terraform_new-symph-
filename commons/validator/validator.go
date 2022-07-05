@@ -99,6 +99,18 @@ func ValidateCallOutRequest(ctx context.Context, data interface{}) error {
 func ValidateInvokeSfnRequest(ctx context.Context, data interface{}) error {
 	v, trans := initStructValidation()
 
+	_ = v.RegisterValidation("source", func(fl validator.FieldLevel) bool {
+		_, ok := util.FindInStringArray(enums.SourcesList(), fl.Field().String(), true)
+		return ok
+	})
+
+	_ = v.RegisterTranslation("source", trans, func(ut ut.Translator) error {
+		return ut.Add("source", "unsupported authentication type", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		t, _ := ut.T("source", fe.Field())
+		return t
+	})
+
 	err := v.Struct(data)
 	errs := translateError(err, trans)
 	return combinedError(errs)

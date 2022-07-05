@@ -177,7 +177,7 @@ func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, Prop
 		"reportId":      reportId,
 		"workflowId":    workflowId,
 	}
-	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload)
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload, false)
 	if err != nil {
 		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
 	}
@@ -231,7 +231,7 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 		"workflowId": workflowId,
 	}
 
-	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload)
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload, false)
 	if err != nil {
 		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
 	}
