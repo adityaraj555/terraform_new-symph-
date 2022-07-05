@@ -53,6 +53,7 @@ type AuthData struct {
 type MyEvent struct {
 	Payload       interface{}         `json:"requestData"`
 	URL           string              `json:"url" validate:"omitempty,url"`
+	ARN           string              `json:"arn"`
 	RequestMethod enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
 	Headers       map[string]string   `json:"headers"`
 	IsWaitTask    bool                `json:"isWaitTask"`
@@ -336,7 +337,7 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	log.Infof(ctx, "callLegacyStatusUpdate reached...")
 	legacyLambdaFunction := os.Getenv(envLegacyUpdatefunction)
 
-	result, err := commonHandler.AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload, false)
 	if err != nil {
 		return error_handler.NewServiceError(error_codes.ErrorInvokingLambdaLegacyUpdateLambda, err.Error())
 	}
@@ -372,6 +373,33 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 	return nil
 }
 
+func callLambda(ctx context.Context, payload interface{}, LambdaFunction string, isWaitTask bool) (map[string]interface{}, error) {
+	log.Infof(ctx, "callLambda reached...")
+
+	result, err := commonHandler.AwsClient.InvokeLambda(ctx, LambdaFunction, payload.(map[string]interface{}), isWaitTask)
+	if err != nil {
+		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, err.Error())
+	}
+	var resp map[string]interface{}
+	if len(result.Payload) != 0 {
+		err = json.Unmarshal(result.Payload, &resp)
+		if err != nil {
+			log.Error(ctx, "Error while unmarshalling, errror: ", err.Error())
+			return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
+		}
+	}
+	errorType, ok := resp["errorType"]
+	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
+	if ok {
+		if errorType == RetriableError {
+			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s errorType while Invoking Lambda", errorType))
+		}
+		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, "error while invoking lamdba")
+	}
+	log.Info(ctx, "callLambda successful...")
+	return resp, nil
+}
+
 func handleHipster(ctx context.Context, reportId, status, jobID string) error {
 	legacyRequestPayload := map[string]interface{}{
 		"status":       status,
@@ -394,6 +422,9 @@ func validate(ctx context.Context, data MyEvent) error {
 	}
 	if (callType == enums.HipsterCT || callType == enums.LegacyCT) && (data.Status == "") {
 		return errors.New("status cannot be empty")
+	}
+	if (callType == enums.LambdaCT) && (data.ARN == "") {
+		return errors.New("Lambda ARN cannot be empty")
 	}
 	return nil
 }
@@ -446,6 +477,21 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			body["meta"] = metaObj
 			data.Payload = body
 		}
+	}
+
+	if callType == enums.LambdaCT {
+		req := data.Payload
+		responseBody, err := callLambda(ctx, req, data.ARN, data.IsWaitTask)
+		if err != nil {
+			returnResponse["status"] = failure
+			return returnResponse, err
+		}
+		if responseBody == nil {
+			responseBody = make(map[string]interface{})
+		}
+		responseBody["status"] = success
+		log.Info(ctx, "CallService successfull...")
+		return responseBody, err
 	}
 
 	json_data, err := json.Marshal(data.Payload)
