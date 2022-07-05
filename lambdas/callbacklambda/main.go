@@ -10,6 +10,8 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
@@ -36,13 +38,13 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	var err error
 
 	if err := validator.ValidateCallBackRequest(ctx, CallbackRequest); err != nil {
-		return map[string]interface{}{"status": failure}, "", "", err
+		return map[string]interface{}{"status": failure}, "", "", error_handler.NewServiceError(error_codes.ErrorValidatingCallBackLambdaRequest, err.Error())
 	}
 	log.Info(ctx, "callbacklambda reached...")
 	StepExecutionData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, CallbackRequest.CallbackID)
 	if err != nil {
 		log.Error(ctx, "Error while Fetching Executing Data from DocDb, error:", err.Error())
-		return map[string]interface{}{"status": failure}, StepExecutionData.ReportId, StepExecutionData.WorkflowId, err
+		return map[string]interface{}{"status": failure}, StepExecutionData.ReportId, StepExecutionData.WorkflowId, error_handler.NewServiceError(error_codes.ErrorFetchingStepExecutionDataFromDB, err.Error())
 	}
 
 	reportId, workflowId := StepExecutionData.ReportId, StepExecutionData.WorkflowId
@@ -66,26 +68,26 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	}
 	if err != nil {
 		log.Error(ctx, "Error Calling CloseWaitTask", err)
-		return map[string]interface{}{"status": failure}, reportId, workflowId, err
+		return map[string]interface{}{"status": failure}, reportId, workflowId, error_handler.NewServiceError(error_codes.ErrorWhileClosingWaitTaskInSFN, err.Error())
 	}
 
 	filter, query := commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateStepExecution, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.StepsDataCollection)
 	if err != nil {
 		log.Error(ctx, DocDBUpdateError, err.Error())
-		return map[string]interface{}{"status": failure}, reportId, workflowId, err
+		return map[string]interface{}{"status": failure}, reportId, workflowId, error_handler.NewServiceError(error_codes.ErrorUpdatingStepsDataInDB, err.Error())
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionSteps, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		log.Error(ctx, DocDBUpdateError, err.Error())
-		return map[string]interface{}{"status": failure}, reportId, workflowId, err
+		return map[string]interface{}{"status": failure}, reportId, workflowId, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 	}
 	filter, query = commonHandler.DBClient.BuildQueryForCallBack(ctx, documentDB_client.UpdateWorkflowExecutionStatus, stepstatus, StepExecutionData.WorkflowId, StepExecutionData.StepId, StepExecutionData.TaskName, CallbackRequest.Response)
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, filter, query, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		log.Error(ctx, DocDBUpdateError, err.Error())
-		return map[string]interface{}{"status": failure}, reportId, workflowId, err
+		return map[string]interface{}{"status": failure}, reportId, workflowId, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 	}
 	return map[string]interface{}{"status": success}, reportId, workflowId, nil
 }
@@ -99,7 +101,8 @@ func main() {
 func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
 	resp, reportId, workflowId, err := Handler(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(reportId, workflowId, "callback", err.Error(), nil)
+		errT := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), reportId, workflowId, "callback", err.Error(), nil)
 	}
 	return resp, err
 }

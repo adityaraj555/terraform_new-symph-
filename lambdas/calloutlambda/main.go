@@ -24,6 +24,7 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/validator"
@@ -166,6 +167,7 @@ func generateBasicToken(cllientId, clientSecret string) string {
 	basicTokenEnc := b64.StdEncoding.EncodeToString([]byte(tempString))
 	return basicTokenEnc
 }
+
 func makeGetCall(ctx context.Context, URL string, headers map[string]string, payload []byte, queryParam map[string]string) ([]byte, string, error) {
 	log.Info(ctx, "makeGetCall reached...")
 	u, err := url.Parse(URL)
@@ -198,11 +200,11 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 
 	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
-		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
+		return responseBody, resp.Status, error_handler.NewRetriableError(error_codes.ReceivedInternalServerErrorInCallout, fmt.Sprintf("%d status code received", resp.StatusCode))
 	}
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
-		return responseBody, resp.Status, errors.New(invalidHTTPStatusCodeError)
+		return responseBody, resp.Status, error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCodeInCallout, "received invalid http status code: "+strconv.Itoa(resp.StatusCode))
 	}
 
 	log.Info(ctx, "makeGetCall finished...")
@@ -225,18 +227,18 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 	resp, err := commonHandler.HttpClient.Post(ctx, URL, payload, headers)
 	if err != nil {
 		log.Error(ctx, err)
-		return "", err
+		return "", error_handler.NewServiceError(error_codes.ErrorWhileFetchingAuthToken, err.Error())
 	}
 	var respJson map[string]interface{}
 
 	err = json.NewDecoder(resp.Body).Decode(&respJson)
 	if err != nil {
 		log.Error(ctx, err)
-		return "", err
+		return "", error_handler.NewServiceError(error_codes.ErrorUnableToDecodeAuthServiceResponse, err.Error())
 	}
 
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
-		return "", errors.New(invalidHTTPStatusCodeError)
+		return "", error_handler.NewServiceError(error_codes.ErrorUnSuccessfullResponseFromAuthService, invalidHTTPStatusCodeError)
 	}
 
 	return fmt.Sprint(respJson["access_token"]), nil
@@ -268,11 +270,11 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 		log.Error(ctx, "Error while reading response body: ", err.Error())
 	}
 	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
-		return responseBody, resp.Status, &error_handler.RetriableError{Message: fmt.Sprintf("%d status code received", resp.StatusCode)}
+		return responseBody, resp.Status, error_handler.NewRetriableError(error_codes.ReceivedInternalServerErrorInCallout, fmt.Sprintf("%d status code received", resp.StatusCode))
 	}
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
 		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
-		return responseBody, resp.Status, errors.New(invalidHTTPStatusCodeError)
+		return responseBody, resp.Status, error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCodeInCallout, "received invalid http status code: "+strconv.Itoa(resp.StatusCode))
 	}
 
 	log.Info(ctx, "makePutPostDeleteCall finished...")
@@ -289,7 +291,7 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
 		secretString, err := commonHandler.AwsClient.GetSecretString(ctx, secretManagerArn)
 		if err != nil {
-			return "", "", err
+			return "", "", error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
 		}
 		secretStringMap := make(map[string]json.RawMessage)
 		json.Unmarshal([]byte(secretString), &secretStringMap)
@@ -304,10 +306,10 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		clientSecret, err2 = commonHandler.AwsClient.GetSecretString(ctx, clientSecretKey)
 
 		if err1 != nil {
-			return "", "", err1
+			return "", "", error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err1.Error())
 		}
 		if err2 != nil {
-			return "", "", err2
+			return "", "", error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err2.Error())
 		}
 
 	}
@@ -315,16 +317,17 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 	clientSecret = strings.Trim(string(clientSecret), "\"")
 	return cllientId, clientSecret, nil
 }
+
 func storeDataToS3(ctx context.Context, s3Path string, responseBody []byte) error {
 
 	bucketName, s3KeyPath, err := FetchS3BucketPath(s3Path)
 	if err != nil {
 		log.Error(ctx, "Error while parsing s3 path, error: ", err.Error())
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
 	}
 	err = commonHandler.AwsClient.StoreDataToS3(ctx, bucketName, s3KeyPath, responseBody)
 	if err != nil {
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorStoringDataToS3, err.Error())
 	}
 	return nil
 }
@@ -335,34 +338,34 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, legacyLambdaFunction, payload)
 	if err != nil {
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorInvokingLambdaLegacyUpdateLambda, err.Error())
 	}
 	var resp map[string]interface{}
 	err = json.Unmarshal(result.Payload, &resp)
 	if err != nil {
 		log.Error(ctx, "Error while unmarshalling, errror: ", err.Error())
-		return err
+		return error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
 	}
 
 	errorType, ok := resp["errorType"]
 	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
 		if errorType == RetriableError {
-			return &error_handler.RetriableError{Message: fmt.Sprintf("received %s errorType while executing lambda", errorType)}
+			return error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("received %s errorType while updating legacy", errorType))
 		}
-		return errors.New("error occured while executing lambda ")
+		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, "error while executing update legacy lamdba")
 	}
 
 	legacyStatus, ok := resp["status"]
 	if !ok {
 		log.Errorf(ctx, "legacy Response should have status")
-		return errors.New("legacy Response should have status")
+		return error_handler.NewServiceError(error_codes.StatusNotFoundInLegacyUpdateResponse, "legacy update lambda response doesnt have status")
 	}
 	legacyStatusString := strings.ToLower(fmt.Sprintf("%v", legacyStatus))
 
 	if legacyStatusString == "failure" {
 		log.Errorf(ctx, "legacy returned with status as failure")
-		return errors.New("legacy returned with status as failure")
+		return error_handler.NewServiceError(error_codes.LegacyStatusFailed, "legacy returned with status as failure")
 	}
 
 	log.Info(ctx, "callLegacyStatusUpdate successful...")
@@ -401,16 +404,16 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	if err := validate(ctx, data); err != nil {
 		log.Error(ctx, "Validation failed, error: ", err.Error())
-		return returnResponse, err
+		return returnResponse, error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error())
 	}
 
-	// timeout := 30
-	// if data.Timeout != 0 {
-	// 	timeout = data.Timeout
-	// }
+	timeout := 45
+	if data.Timeout != 0 {
+		timeout = data.Timeout
+	}
 
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
-		// APITimeout: timeout,
+		APITimeout: timeout,
 	})
 
 	callType := data.CallType.String()
@@ -449,7 +452,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	if err != nil {
 		log.Error(ctx, "Error while marshalling callout payload, error: ", err.Error())
 		returnResponse["status"] = failure
-		return returnResponse, err
+		return returnResponse, error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
 	}
 
 	headers := make(map[string]string)
@@ -484,20 +487,22 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	default:
 		log.Error(ctx, "Unknown request method, can not proceed, RequestMethod: ", requestMethod)
 		returnResponse["status"] = failure
-		return returnResponse, responseError
+		return returnResponse, error_handler.NewServiceError(error_codes.UnsupportedRequestMethodCallOutLambda, "unknown request method, can not proceed, requestMethod: "+requestMethod)
 
 	}
+
 	if !strings.HasPrefix(responseStatus, "20") {
 		returnResponse["status"] = failure
 		log.Error(ctx, "Failure status code Received ", responseStatus)
-		return returnResponse, errors.New("Failure status code Received " + responseStatus)
+		return returnResponse, error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCodeInCallout, "received failure status code")
 	}
+
 	if len(responseBody) != 0 {
 		err = json.Unmarshal(responseBody, &returnResponse)
 		if err != nil {
 			log.Error(ctx, "Unable to unmarshall response: ", err.Error())
 			returnResponse["status"] = failure
-			return returnResponse, err
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
 		}
 	}
 
@@ -520,12 +525,12 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			if err != nil {
 				returnResponse["status"] = failure
 				log.Error(ctx, "Error while unmarshalling response, error: ", err.Error())
-				return returnResponse, err
+				return returnResponse, error_handler.NewServiceError(error_codes.ErrorDecodingHipsterOutput, err.Error())
 			}
 			if jobID, ok = hipsterOutput["jobId"]; !ok {
 				returnResponse["status"] = failure
 				log.Error(ctx, "Hipster JobId missing in hipster output")
-				return returnResponse, errors.New("Hipster JobId missing in hipster output")
+				return returnResponse, error_handler.NewServiceError(error_codes.JobIDMissingInHipsterOutput, "hipster jobId missing in hipster output")
 			}
 		}
 		log.Info(ctx, "hipster jobId: ", jobID)
@@ -540,6 +545,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 	return returnResponse, responseError
 }
+
 func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, error) {
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
@@ -572,27 +578,30 @@ func HandleRequest(ctx context.Context, data MyEvent) (map[string]interface{}, e
 	err := commonHandler.DBClient.InsertStepExecutionData(ctx, StepExecutionData)
 	if err != nil {
 		log.Error(ctx, "Unable to insert Step Data in DocumentDB")
-		return response, err
+		return response, error_handler.NewServiceError(error_codes.ErrorInsertingStepExecutionDataInDB, err.Error())
 	}
 	filter := bson.M{"_id": data.WorkflowID}
 	if serviceerr != nil {
 		update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, failure, starttime, data.IsWaitTask)
 		commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		return response, serviceerr
+		// Have to handle this
 	} else {
 		update := commonHandler.DBClient.BuildQueryForUpdateWorkflowDataCallout(ctx, data.TaskName, stepID, success, starttime, data.IsWaitTask)
 		err := commonHandler.DBClient.UpdateDocumentDB(ctx, filter, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			response["status"] = failure
+			return response, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
-		return response, err
+		return response, nil
 	}
 }
 
 func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{}, error) {
 	resp, err := HandleRequest(ctx, req)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(req.ReportID, req.WorkflowID, "callout", err.Error(), nil)
+		errT := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), req.ReportID, req.WorkflowID, "callout", err.Error(), nil)
 	}
 	return resp, err
 }

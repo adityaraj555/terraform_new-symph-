@@ -26,7 +26,7 @@ func TestInvokeSFN(t *testing.T) {
 func TestInvokeSFNerrorNoBody(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	slackClient.On("SendErrorMessage", "", "", "invokesfn", mock.Anything, mock.Anything).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, "44825849", "", "invokesfn", mock.Anything, mock.Anything).Return(nil)
 	commonHandler.AwsClient = awsclient
 	commonHandler.SlackClient = slackClient
 	InvokeSFNRequestObj := events.SQSEvent{}

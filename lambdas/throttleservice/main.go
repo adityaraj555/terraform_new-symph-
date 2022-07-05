@@ -10,6 +10,8 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
 	"github.eagleview.com/engineering/symphony-service/commons/enums"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -54,7 +56,7 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 	err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
 	if err != nil {
 		log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
-		return map[string]interface{}{"status": failed}, err
+		return map[string]interface{}{"status": failed}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 	}
 	return map[string]interface{}{"Path": Path, "status": Success}, nil
 }
@@ -65,13 +67,13 @@ func getWorkflowExecutionPath(ctx context.Context, eventData *eventData) (string
 	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
 	if err != nil {
 		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
-		return "", err
+		return "", error_handler.NewServiceError(error_codes.ErrorFetchingHipsterCountFromDB, err.Error())
 	}
 
 	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
 	if err != nil {
 		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
-		return "", err
+		return "", error_handler.NewServiceError(error_codes.ErrorConvertingAllowedHipsterCountToInteger, err.Error())
 	}
 
 	// Move to hipster only when count is less than threshold and product matches
@@ -94,7 +96,8 @@ func hipsterAllowed(ctx context.Context, eventData *eventData) bool {
 func notifcationWrapper(ctx context.Context, eventData *eventData) (map[string]interface{}, error) {
 	resp, err := handler(ctx, eventData)
 	if err != nil {
-		commonHandler.SlackClient.SendErrorMessage(eventData.ReportID, eventData.WorkflowID, "throttle", err.Error(), nil)
+		cerr := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), eventData.ReportID, eventData.WorkflowID, "throttle", err.Error(), nil)
 	}
 	return resp, err
 }
