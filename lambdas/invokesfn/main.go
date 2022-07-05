@@ -82,7 +82,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
 
 		switch sfnreq.Source {
-		case enums.AIS:
+		case enums.AutoImageSelection:
 			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
 		default:
 			SFNStateMachineARN = os.Getenv(StateMachineARN)
