@@ -257,7 +257,7 @@
             "workflowId.$": "$$.Execution.Name",
             "taskName": "AutomatedImageSelectionCompleted",
             "callType": "eagleflow",
-            "status": "ImageSelectionCompleted",
+            "status": "AISCompleted",
             "requestData": {}
           }
         },
@@ -288,7 +288,7 @@
             "workflowId.$": "$$.Execution.Name",
             "taskName": "AutomatedImageSelectionFailed",
             "callType": "eagleflow",
-            "status": "ImageSelectionFailed",
+            "status": "AISFailed",
             "requestData": {}
           }
         },
