@@ -282,7 +282,7 @@ func (DBClient *DocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, 
 		return 0, err
 	}
 	y, m, d := (time.Now().In(loc).Date())
-	utc_midnight := time.Date(y, m, d, 0, 0, 0, 1, loc).Unix()
+	utc_midnight := time.Date(y, m, d, 0, 0, 1, 0, loc).Unix()
 	startTime := utc_midnight
 
 	count, err := collection.CountDocuments(ctx, bson.M{"createdAt": bson.M{"$gt": startTime, "$lt": endedTime}, "flowType": "Hipster"})
