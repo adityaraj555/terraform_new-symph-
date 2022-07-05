@@ -392,9 +392,9 @@ func callLambda(ctx context.Context, payload interface{}, LambdaFunction string,
 	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
 		if errorType == RetriableError {
-			return resp, error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("received %s errorType while updating legacy", errorType))
+			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s errorType while Invoking Lambda", errorType))
 		}
-		return resp, error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, "error while executing update legacy lamdba")
+		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, "error while invoking lamdba")
 	}
 	log.Info(ctx, "callLambda successful...")
 	return resp, nil
@@ -422,6 +422,9 @@ func validate(ctx context.Context, data MyEvent) error {
 	}
 	if (callType == enums.HipsterCT || callType == enums.LegacyCT) && (data.Status == "") {
 		return errors.New("status cannot be empty")
+	}
+	if (callType == enums.LambdaCT) && (data.ARN == "") {
+		return errors.New("Lambda ARN cannot be empty")
 	}
 	return nil
 }

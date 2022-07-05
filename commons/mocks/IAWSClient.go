@@ -126,12 +126,12 @@ func (_m *IAWSClient) GetSecretString(ctx context.Context, secretManagerNameArn 
 }
 
 // InvokeLambda provides a mock function with given fields: ctx, lambdafunctionArn, payload
-func (_m *IAWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}, isWaitTask bool) (*lambda.InvokeOutput, error) {
-	ret := _m.Called(ctx, lambdafunctionArn, payload,isWaitTask)
+func (_m *IAWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string, payload map[string]interface{}, isAsyncInvocation bool) (*lambda.InvokeOutput, error) {
+	ret := _m.Called(ctx, lambdafunctionArn, payload,isAsyncInvocation)
 
 	var r0 *lambda.InvokeOutput
 	if rf, ok := ret.Get(0).(func(context.Context, string, map[string]interface{},bool) *lambda.InvokeOutput); ok {
-		r0 = rf(ctx, lambdafunctionArn, payload,isWaitTask)
+		r0 = rf(ctx, lambdafunctionArn, payload,isAsyncInvocation)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*lambda.InvokeOutput)
@@ -140,7 +140,7 @@ func (_m *IAWSClient) InvokeLambda(ctx context.Context, lambdafunctionArn string
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, map[string]interface{},bool) error); ok {
-		r1 = rf(ctx, lambdafunctionArn, payload,isWaitTask)
+		r1 = rf(ctx, lambdafunctionArn, payload,isAsyncInvocation)
 	} else {
 		r1 = ret.Error(1)
 	}
