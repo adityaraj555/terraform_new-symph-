@@ -1,280 +1,338 @@
 {
     "Comment": "A description of my state machine",
-    "StartAt": "Parallel",
+    "StartAt": "InsertWorkflowDataToDocDB",
     "States": {
-        "Parallel": {
-            "Type": "Parallel",
-            "Next": "AutomatedImageSelectionCompleted",
-            "Branches": [
-                {
-                    "StartAt": "ImageryCheck",
-                    "States": {
-                        "ImageryCheck": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-                            "ResultSelector": {
-                                "response.$": "$"
-                            },
-                            "ResultPath": "$.ImageryCheck",
-                            "OutputPath": "$",
-                            "Parameters": {
-                                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
-                                "Payload": {
-                                    "requestData": {
-                                        "orderId.$": "$$.Execution.Input.orderId",
-                                        "latitude.$": "$$.Execution.Input.address.latitude",
-                                        "longitude.$": "$$.Execution.Input.address.longitude"
-                                    },
-                                    "url": "https://d377-103-77-1-225.ngrok.io/imageryCheck",
-                                    "requestMethod": "POST",
-                                    "headers": {},
-                                    "isWaitTask": true,
-                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 10,
-                                    "storeDataToS3": "",
-                                    "taskName": "ImageryCheck",
-                                    "orderId.$": "$$.Execution.Input.orderId",
-                                    "reportId.$": "$$.Execution.Input.reportId",
-                                    "workflowId.$": "$$.Execution.Name",
-                                    "taskToken.$": "$$.Task.Token",
-                                    "auth": {}
-                                }
-                            },
-                            "Retry": [
-                                {
-                                    "ErrorEquals": [
-                                        "RetriableError",
-                                        "Lambda.ServiceException",
-                                        "Lambda.AWSLambdaException",
-                                        "Lambda.SdkClientException"
-                                    ],
-                                    "IntervalSeconds": 60,
-                                    "MaxAttempts": 2,
-                                    "BackoffRate": 1
-                                }
-                            ],
-                            "Next": "BuildingDetection",
-                            "TimeoutSeconds": 10
-                        },
-                        "BuildingDetection": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-                            "ResultSelector": {
-                                "response.$": "$"
-                            },
-                            "ResultPath": "$.BuildingDetection",
-                            "OutputPath": "$",
-                            "Parameters": {
-                                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
-                                "Payload": {
-                                    "requestData": {
-                                        "orderId.$": "$$.Execution.Input.orderId",
-                                        "latitude.$": "$$.Execution.Input.address.latitude",
-                                        "longitude.$": "$$.Execution.Input.address.longitude",
-                                        "imageCheckOutput": "$.ImageryCheck.response.imageCheckOutput",
-                                        "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput"
-                                    },
-                                    "url": "https://d377-103-77-1-225.ngrok.io/buildingDetection",
-                                    "requestMethod": "POST",
-                                    "headers": {},
-                                    "isWaitTask": true,
-                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 10,
-                                    "storeDataToS3": "",
-                                    "taskName": "BuildingDetection",
-                                    "orderId.$": "$$.Execution.Input.orderId",
-                                    "reportId.$": "$$.Execution.Input.reportId",
-                                    "workflowId.$": "$$.Execution.Name",
-                                    "taskToken.$": "$$.Task.Token",
-                                    "auth": {}
-                                }
-                            },
-                            "Retry": [
-                                {
-                                    "ErrorEquals": [
-                                        "RetriableError",
-                                        "Lambda.ServiceException",
-                                        "Lambda.AWSLambdaException",
-                                        "Lambda.SdkClientException"
-                                    ],
-                                    "IntervalSeconds": 60,
-                                    "MaxAttempts": 2,
-                                    "BackoffRate": 1
-                                }
-                            ],
-                            "Next": "ImageSelection",
-                            "TimeoutSeconds": 10
-                        },
-                        "ImageSelection": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-                            "ResultSelector": {
-                                "response.$": "$"
-                            },
-                            "ResultPath": "$.ImageSelection",
-                            "OutputPath": "$",
-                            "Parameters": {
-                                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
-                                "Payload": {
-                                    "requestData": {
-                                        "orderId.$": "$$.Execution.Input.orderId",
-                                        "latitude.$": "$$.Execution.Input.address.latitude",
-                                        "longitude.$": "$$.Execution.Input.address.longitude",
-                                        "imageCheckOutput": "$.ImageryCheck.response.imageCheckOutput",
-                                        "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput",
-                                        "orthoImagePath": "$.BuildingDetection.response.orthoImagePath",
-                                        "cropImagePath": "$.BuildingDetection.response.cropImagePath"
-                                    },
-                                    "url": "https://d377-103-77-1-225.ngrok.io/imageSelection",
-                                    "requestMethod": "POST",
-                                    "headers": {},
-                                    "isWaitTask": true,
-                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 10,
-                                    "storeDataToS3": "",
-                                    "taskName": "ImageSelection",
-                                    "orderId.$": "$$.Execution.Input.orderId",
-                                    "reportId.$": "$$.Execution.Input.reportId",
-                                    "workflowId.$": "$$.Execution.Name",
-                                    "taskToken.$": "$$.Task.Token",
-                                    "auth": {}
-                                }
-                            },
-                            "Retry": [
-                                {
-                                    "ErrorEquals": [
-                                        "RetriableError",
-                                        "Lambda.ServiceException",
-                                        "Lambda.AWSLambdaException",
-                                        "Lambda.SdkClientException"
-                                    ],
-                                    "IntervalSeconds": 60,
-                                    "MaxAttempts": 2,
-                                    "BackoffRate": 1
-                                }
-                            ],
-                            "Next": "RetrieveandStoreImagesMetadata",
-                            "TimeoutSeconds": 7
-                        },
-                        "RetrieveandStoreImagesMetadata": {
-                            "Type": "Task",
-                            "Resource": "arn:aws:states:::lambda:invoke",
-                            "ResultSelector": {
-                                "response.$": "$"
-                            },
-                            "ResultPath": "$.RetrieveandStore",
-                            "OutputPath": "$",
-                            "Parameters": {
-                                "Payload": {
-                                    "requestData": {
-                                        "orderId.$": "$$.Execution.Input.orderId",
-                                        "latitude.$": "$$.Execution.Input.address.latitude",
-                                        "longitude.$": "$$.Execution.Input.address.longitude",
-                                        "S3URI.$": "$.ImageSelection.response.S3URI",
-                                        "selectedImages.$": "$.ImageSelection.response.selectedImages"
-                                    },
-                                    "url": "https://d377-103-77-1-225.ngrok.io/retrieveandStoreImagesMetadata",
-                                    "requestMethod": "POST",
-                                    "headers": {},
-                                    "isWaitTask": false,
-                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
-                                    "timeout": 10,
-                                    "storeDataToS3": "",
-                                    "taskName": "RetrieveandStoreImagesMetadata",
-                                    "orderId.$": "$$.Execution.Input.orderId",
-                                    "reportId.$": "$$.Execution.Input.reportId",
-                                    "workflowId.$": "$$.Execution.Name",
-                                    "auth": {}
-                                },
-                                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST"
-                            },
-                            "Retry": [
-                                {
-                                    "ErrorEquals": [
-                                        "RetriableError",
-                                        "Lambda.ServiceException",
-                                        "Lambda.AWSLambdaException",
-                                        "Lambda.SdkClientException"
-                                    ],
-                                    "IntervalSeconds": 60,
-                                    "MaxAttempts": 2,
-                                    "BackoffRate": 1
-                                }
-                            ],
-                            "End": true,
-                            "TimeoutSeconds": 10
-                        }
-                    }
-                }
-            ],
-            "Catch": [
-                {
-                    "ErrorEquals": ["States.ALL"],
-                    "Next": "AutomatedImageSelectionFailed"
-                }
-            ]
+      "InsertWorkflowDataToDocDB": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-datastorelambda:$LATEST",
+          "Payload": {
+            "input.$": "$$.Execution.Input",
+            "orderId.$": "$$.Execution.Input.orderId",
+            "workflowId.$": "$$.Execution.Name",
+            "action": "insert"
+          }
         },
-        "AutomatedImageSelectionCompleted": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "OutputPath": "$",
-            "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
-                "Payload": {
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "Parallel",
+        "ResultSelector": {
+          "response.$": "$.Payload"
+        },
+        "ResultPath": "$.InsertWorkflowDataToDocDB"
+      },
+      "Parallel": {
+        "Type": "Parallel",
+        "Next": "AutomatedImageSelectionCompleted",
+        "Branches": [
+          {
+            "StartAt": "ImageryCheck",
+            "States": {
+              "ImageryCheck": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                "ResultSelector": {
+                  "response.$": "$"
+                },
+                "ResultPath": "$.ImageryCheck",
+                "OutputPath": "$",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                    "requestData": {
+                      "orderId.$": "$$.Execution.Input.orderId",
+                      "latitude.$": "$$.Execution.Input.address.latitude",
+                      "longitude.$": "$$.Execution.Input.address.longitude"
+                    },
+                    "callType": "lambda",
+                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "headers": {},
+                    "isWaitTask": true,
+                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                    "timeout": 30,
+                    "storeDataToS3": "",
+                    "taskName": "ImageryCheck",
                     "orderId.$": "$$.Execution.Input.orderId",
                     "reportId.$": "$$.Execution.Input.reportId",
                     "workflowId.$": "$$.Execution.Name",
-                    "taskName": "AutomatedImageSelectionCompleted",
-                    "callType": "eagleflow",
-                    "status": "MAStarted",
-                    "requestData": {}
-                }
-            },
-            "Retry": [
-                {
+                    "taskToken.$": "$$.Task.Token",
+                    "auth": {}
+                  }
+                },
+                "Retry": [
+                  {
                     "ErrorEquals": [
-                        "RetriableError",
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException"
+                      "RetriableError",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
+                    "IntervalSeconds": 60,
                     "MaxAttempts": 2,
-                    "BackoffRate": 2
-                }
-            ],
-            "End": true
-        },
-        "AutomatedImageSelectionFailed": {
-            "Type": "Task",
-            "Resource": "arn:aws:states:::lambda:invoke",
-            "OutputPath": "$",
-            "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
-                "Payload": {
+                    "BackoffRate": 1
+                  }
+                ],
+                "Next": "BuildingDetection",
+                "TimeoutSeconds": 60
+              },
+              "BuildingDetection": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                "ResultSelector": {
+                  "response.$": "$"
+                },
+                "ResultPath": "$.BuildingDetection",
+                "OutputPath": "$",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                    "requestData": {
+                      "orderId.$": "$$.Execution.Input.orderId",
+                      "latitude.$": "$$.Execution.Input.address.latitude",
+                      "longitude.$": "$$.Execution.Input.address.longitude",
+                      "imageCheckOutput": "$.ImageryCheck.response.imageCheckOutput",
+                      "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput"
+                    },
+                    "callType": "lambda",
+                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "headers": {},
+                    "isWaitTask": true,
+                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                    "timeout": 10,
+                    "storeDataToS3": "",
+                    "taskName": "BuildingDetection",
                     "orderId.$": "$$.Execution.Input.orderId",
                     "reportId.$": "$$.Execution.Input.reportId",
                     "workflowId.$": "$$.Execution.Name",
-                    "taskName": "AutomatedImageSelectionFailed",
-                    "callType": "eagleflow",
-                    "status": "MAStarted",
-                    "requestData": {}
-                }
-            },
-            "Retry": [
-                {
+                    "taskToken.$": "$$.Task.Token",
+                    "auth": {}
+                  }
+                },
+                "Retry": [
+                  {
                     "ErrorEquals": [
-                        "RetriableError",
-                        "Lambda.ServiceException",
-                        "Lambda.AWSLambdaException",
-                        "Lambda.SdkClientException"
+                      "RetriableError",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
+                    "IntervalSeconds": 60,
                     "MaxAttempts": 2,
-                    "BackoffRate": 2
-                }
+                    "BackoffRate": 1
+                  }
+                ],
+                "Next": "ImageSelection",
+                "TimeoutSeconds": 60
+              },
+              "ImageSelection": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                "ResultSelector": {
+                  "response.$": "$"
+                },
+                "ResultPath": "$.ImageSelection",
+                "OutputPath": "$",
+                "Parameters": {
+                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                    "requestData": {
+                      "orderId.$": "$$.Execution.Input.orderId",
+                      "latitude.$": "$$.Execution.Input.address.latitude",
+                      "longitude.$": "$$.Execution.Input.address.longitude",
+                      "imageCheckOutput": "$.ImageryCheck.response.imageCheckOutput",
+                      "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput",
+                      "orthoImagePath": "$.BuildingDetection.response.orthoImagePath",
+                      "cropImagePath": "$.BuildingDetection.response.cropImagePath"
+                    },
+                    "callType": "lambda",
+                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "headers": {},
+                    "isWaitTask": true,
+                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                    "timeout": 10,
+                    "storeDataToS3": "",
+                    "taskName": "ImageSelection",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskToken.$": "$$.Task.Token",
+                    "auth": {}
+                  }
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "RetriableError",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                  }
+                ],
+                "Next": "RetrieveandStoreImagesMetadata",
+                "TimeoutSeconds": 60
+              },
+              "RetrieveandStoreImagesMetadata": {
+                "Type": "Task",
+                "Resource": "arn:aws:states:::lambda:invoke",
+                "ResultSelector": {
+                  "response.$": "$.Payload"
+                },
+                "ResultPath": "$.RetrieveandStore",
+                "OutputPath": "$",
+                "Parameters": {
+                  "Payload": {
+                    "requestData": {
+                      "orderId.$": "$$.Execution.Input.orderId",
+                      "latitude.$": "$$.Execution.Input.address.latitude",
+                      "longitude.$": "$$.Execution.Input.address.longitude",
+                      "S3URI.$": "$.ImageSelection.response.S3URI"
+                    },
+                    "callType": "lambda",
+                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "headers": {},
+                    "isWaitTask": false,
+                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                    "timeout": 10,
+                    "storeDataToS3": "",
+                    "taskName": "RetrieveandStoreImagesMetadata",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "auth": {}
+                  },
+                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                },
+                "Retry": [
+                  {
+                    "ErrorEquals": [
+                      "RetriableError",
+                      "Lambda.ServiceException",
+                      "Lambda.AWSLambdaException",
+                      "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                  }
+                ],
+                "End": true,
+                "TimeoutSeconds": 60
+              }
+            }
+          }
+        ],
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
             ],
-            "End": true
-        }
+            "Next": "AutomatedImageSelectionFailed"
+          }
+        ]
+      },
+      "AutomatedImageSelectionCompleted": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+          "Payload": {
+            "orderId.$": "$$.Execution.Input.orderId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "taskName": "AutomatedImageSelectionCompleted",
+            "callType": "eagleflow",
+            "status": "ImageSelectionCompleted",
+            "requestData": {}
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "RetriableError",
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "updateWorkflowDataToDocDB"
+      },
+      "AutomatedImageSelectionFailed": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+          "Payload": {
+            "orderId.$": "$$.Execution.Input.orderId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "taskName": "AutomatedImageSelectionFailed",
+            "callType": "eagleflow",
+            "status": "ImageSelectionFailed",
+            "requestData": {}
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "RetriableError",
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "updateWorkflowDataToDocDB"
+      },
+      "updateWorkflowDataToDocDB": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-datastorelambda",
+          "Payload": {
+            "input.$": "$$.Execution.Input",
+            "orderId.$": "$$.Execution.Input.orderId",
+            "workflowId.$": "$$.Execution.Name",
+            "action": "update"
+          }
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "End": true
+      }
     }
-}
+  }
