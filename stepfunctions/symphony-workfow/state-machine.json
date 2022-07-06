@@ -69,7 +69,7 @@
         }
       ],
       "Next": "MeasurementAutomation",
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 300
     },
     "MeasurementAutomation": {
       "Type": "Parallel",
@@ -121,7 +121,7 @@
                 }
               ],
               "Next": "ImageSelection",
-              "TimeoutSeconds": 30
+              "TimeoutSeconds": 300
             },
             "ImageSelection": {
               "Type": "Task",
@@ -168,7 +168,7 @@
                 }
               ],
               "Next": "FacetKeyPointDetection",
-              "TimeoutSeconds": 180
+              "TimeoutSeconds": 1800
             },
             "FacetKeyPointDetection": {
               "Type": "Task",
@@ -216,7 +216,7 @@
                 }
               ],
               "Next": "3DModellingService",
-              "TimeoutSeconds": 180
+              "TimeoutSeconds": 1800
             },
             "3DModellingService": {
               "Type": "Task",
@@ -265,7 +265,7 @@
                 }
               ],
               "End": true,
-              "TimeoutSeconds": 1200
+              "TimeoutSeconds": 1800
             }
           }
         }
@@ -662,7 +662,7 @@
           "Next": "updateMLAutomationRejected"
         }
       ],
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 300
     },
     "UpdateLegacyStatus": {
       "Type": "Task",
@@ -698,7 +698,7 @@
         }
       ],
       "Next": "updateWorkflowDataToDocDB",
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 300
     },
     "updateWorkflowDataToDocDB": {
       "Type": "Task",
