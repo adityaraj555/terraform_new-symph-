@@ -174,7 +174,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	u, err := url.Parse(URL)
 	if err != nil {
 		log.Error(ctx, err)
-		return nil, "", err
+		return nil, "", error_handler.NewServiceError(error_codes.ErrorParsingURLCalloutLambda, err.Error())
 	}
 	q := u.Query()
 	for key, element := range queryParam {
@@ -191,7 +191,7 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 	if err != nil {
 		log.Error(ctx, "Error while making http call: ", err.Error())
-		return nil, "", err
+		return nil, "", error_handler.NewServiceError(error_codes.ErrorMakingGetCall, err.Error())
 	}
 
 	defer resp.Body.Close()
@@ -261,7 +261,7 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 
 	if err != nil {
 		log.Error(ctx, "Error while making http request: ", err.Error())
-		return nil, "", err
+		return nil, "", error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
 	}
 
 	defer resp.Body.Close()
