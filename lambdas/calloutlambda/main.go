@@ -89,6 +89,7 @@ const failure = "failure"
 const loglevel = "info"
 const RetriableError = "RetriableError"
 const invalidHTTPStatusCodeError = "invalid http status code received"
+const ContextDeadlineExceeded = "context deadline exceeded"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	log.Info(ctx, "handleAuth reached...")
@@ -191,6 +192,9 @@ func makeGetCall(ctx context.Context, URL string, headers map[string]string, pay
 	}
 	if err != nil {
 		log.Error(ctx, "Error while making http call: ", err.Error())
+		if strings.Contains(err.Error(), ContextDeadlineExceeded) {
+			return nil, "", error_handler.NewRetriableError(error_codes.ErrorMakingGetCall, err.Error())
+		}
 		return nil, "", error_handler.NewServiceError(error_codes.ErrorMakingGetCall, err.Error())
 	}
 
@@ -261,6 +265,9 @@ func makePutPostDeleteCall(ctx context.Context, httpMethod, URL string, headers 
 
 	if err != nil {
 		log.Error(ctx, "Error while making http request: ", err.Error())
+		if strings.Contains(err.Error(), ContextDeadlineExceeded) {
+			return nil, "", error_handler.NewRetriableError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		}
 		return nil, "", error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
 	}
 
