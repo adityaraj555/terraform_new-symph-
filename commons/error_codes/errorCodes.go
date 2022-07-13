@@ -51,4 +51,8 @@ const (
 	ErrorWhileFetchingAuthToken               = 4038
 	ErrorUnableToDecodeAuthServiceResponse    = 4039
 	ErrorUnSuccessfullResponseFromAuthService = 4040
+
+	ErrorParsingURLCalloutLambda   = 4041
+	ErrorMakingGetCall             = 4042
+	ErrorMakingPostPutOrDeleteCall = 4043
 )
