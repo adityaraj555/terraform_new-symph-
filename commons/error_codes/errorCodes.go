@@ -13,6 +13,7 @@ const (
 	LambdaExecutionError                        = 4009
 	ErrorInvokingStepFunction                   = 4010
 	ErrorInvokingLambda                         = 4041
+	ErrorFetchingDataFromS3                     = 4042
 
 	// DocumentDB Errors
 	ErrorFetchingStepExecutionDataFromDB     = 4011

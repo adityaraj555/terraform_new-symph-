@@ -141,5 +141,4 @@ func TestGetWorkflowExecutionPathHTwister(t *testing.T) {
 	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
-
 }
