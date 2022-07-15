@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,14 +23,14 @@ import (
 )
 
 const (
-	legacyEndpoint   = "LEGACY_ENDPOINT"
-	legacyAuthSecret = "LEGACY_AUTH_SECRET"
-	legacyAuthKey    = "TOKEN"
-	region           = "us-east-2"
-	success          = "success"
-	failure          = "failure"
-	logLevel         = "info"
-	RetriableError   = "RetriableError"
+	legacyEndpoint = "LEGACY_ENDPOINT"
+	DBSecretARN    = "DBSecretARN"
+	legacyAuthKey  = "TOKEN"
+	region         = "us-east-2"
+	success        = "success"
+	failure        = "failure"
+	logLevel       = "info"
+	RetriableError = "RetriableError"
 )
 
 type eventData struct {
@@ -186,7 +187,7 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 		//https://intranetrest.cmh.reportsprod.evinternal.net/UploadReportFile?reportId={reportId}&fileTypeId={fileTypeId}&fileFormatId={fileFormatId}
 		url := fmt.Sprintf("%s/UploadReportFile?reportId=%s&fileTypeId=%s&fileFormatId=%s", endpoint, reportId, fileTypeId, strconv.Itoa(fileFormatId))
 		log.Info(ctx, "Endpoint: "+url)
-		err = UploadData(ctx, reportId, location, url)
+		err = UploadData(ctx, reportId, location, url, false)
 		if err != nil {
 			return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
 
@@ -202,12 +203,12 @@ func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId str
 	//https://intranetrest.cmh.reportsprod.evinternal.net/StoreImageMetadata
 	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
-	err = UploadData(ctx, reportId, imageMetadata, url)
+	err = UploadData(ctx, reportId, imageMetadata, url, true)
 	log.Info(ctx, "Upload ImageMetadata successful...")
 	return err
 }
 
-func UploadData(ctx context.Context, reportId string, location string, url string) error {
+func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool) error {
 	host, loc, err := commonHandler.AwsClient.FetchS3BucketPath(location)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
@@ -220,7 +221,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		return error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
 	}
 
-	authsecret := os.Getenv(legacyAuthSecret)
+	authsecret := os.Getenv(DBSecretARN)
 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
 		log.Error(ctx, "error while fetching auth token from secret manager", err.Error())
@@ -236,7 +237,11 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	headers := map[string]string{
 		"Authorization": "Basic " + token,
 	}
-	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(imageByteArray), headers)
+	bytesData := imageByteArray
+	if !isImageMetadata {
+		bytesData = []byte(b64.StdEncoding.EncodeToString(imageByteArray))
+	}
+	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(bytesData), headers)
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
 		//return error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
