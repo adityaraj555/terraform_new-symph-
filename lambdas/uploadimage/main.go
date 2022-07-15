@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	b64 "encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -237,11 +236,12 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	headers := map[string]string{
 		"Authorization": "Basic " + token,
 	}
-	bytesData := imageByteArray
-	if !isImageMetadata {
-		bytesData = []byte(b64.StdEncoding.EncodeToString(imageByteArray))
-	}
-	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(bytesData), headers)
+	// bytesData := imageByteArray
+	// if !isImageMetadata {
+	// 	bytesData = []byte(b64.StdEncoding.EncodeToString(imageByteArray))
+	// }
+	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(imageByteArray), headers)
+
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
 		//return error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
