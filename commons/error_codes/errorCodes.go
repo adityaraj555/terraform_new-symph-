@@ -52,4 +52,6 @@ const (
 	ErrorWhileFetchingAuthToken               = 4038
 	ErrorUnableToDecodeAuthServiceResponse    = 4039
 	ErrorUnSuccessfullResponseFromAuthService = 4040
+	ErrorWhileUploadImageToEVOSS              = 4041
+	ErrorWhileUploadImageMetaDataEVOSS        = 4042
 )

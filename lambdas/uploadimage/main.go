@@ -93,7 +93,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		if err != nil {
 			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
 		}
-		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
+		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageToEVOSS, err.Error())
 	}
 	log.Info(ctx, "Images successfully uploaded to EVOSS...")
 
@@ -111,11 +111,16 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		if err != nil {
 			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
 		}
-		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
+		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageMetaDataEVOSS, err.Error())
 	}
 	log.Info(ctx, "ImageMetadata uploaded successfully...")
 
 	//Invoke callback lambda
+	lambdaOutput = LambdaOutput{
+		Status:      success,
+		MessageCode: 200,
+		Message:     "upload image to evoss and upload imagedatametadata successfully",
+	}
 	res, err := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
 	if err != nil {
 		log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
@@ -123,11 +128,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 	}
 	log.Info(ctx, "Callback lambda successful for UpdateImage...")
 	log.Info(ctx, "UpdateImaged lambda successful...")
-	return &LambdaOutput{
-		Status:      success,
-		MessageCode: 200,
-		Message:     "upload image to evoss and upload imagedatametadata successfully",
-	}, nil
+	return &lambdaOutput, nil
 }
 
 func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowId string, lambdaOutput LambdaOutput) (map[string]string, error) {
