@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -214,7 +215,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		return error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
 	}
 
-	imageByteArray, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, loc)
+	ByteArray, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, loc)
 	if err != nil {
 		log.Error(ctx, "Error in getting downloading from s3: ", err.Error())
 		return error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
@@ -236,11 +237,14 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	headers := map[string]string{
 		"Authorization": "Basic " + token,
 	}
-	// bytesData := imageByteArray
-	// if !isImageMetadata {
-	// 	bytesData = []byte(b64.StdEncoding.EncodeToString(imageByteArray))
-	// }
-	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(imageByteArray), headers)
+	if !isImageMetadata {
+		base64EncodedString := base64.StdEncoding.EncodeToString(ByteArray)
+		ByteArray, err = json.Marshal(base64EncodedString)
+		if err != nil {
+			//ToDo handle error here
+		}
+	}
+	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(ByteArray), headers)
 
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
