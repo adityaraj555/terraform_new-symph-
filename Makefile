@@ -29,7 +29,7 @@ test:
 local-cover: test
 	@mkdir -p $(COVERDIR)
 	@go tool cover -html=$(COVERPROFILE) -o $(COVERDIR)/index.html
-	@cd $(COVERDIR) && python -m SimpleHTTPServer $(COVERAGE_REPORT_SERVER_PORT)
+	@cd $(COVERDIR) && python3 -m SimpleHTTPServer $(COVERAGE_REPORT_SERVER_PORT)
 
 cover: test
 	@mkdir -p $(COVERDIR)

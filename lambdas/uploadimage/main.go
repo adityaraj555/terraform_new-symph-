@@ -38,7 +38,7 @@ type eventData struct {
 	WorkflowID     string `json:"workflowId"`
 	ImageMetadata  string `json:"ImageMetadata"`
 	Meta           Meta   `json:"meta"`
-	SelectedImages []Path
+	SelectedImages []Path `json:"selectedImages"`
 }
 
 type Meta struct {
@@ -72,10 +72,11 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 	//validation of attributes
 	if eventData.ReportID == "" || eventData.ImageMetadata == "" || len(eventData.SelectedImages) == 0 {
 		log.Errorf(ctx, "ReportId or ImageMetadata or SelectedImages  cannot be empty, body: %+v", eventData)
+		err = errors.New("error validating input missing fields")
 		return &LambdaOutput{
-			Status: failure,
-			//MessageCode: code,
-			Message: err.Error(),
+			Status:      failure,
+			MessageCode: error_codes.ErrorValidationCheck,
+			Message:     err.Error(),
 		}, err
 	}
 
@@ -89,8 +90,8 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 			MessageCode: errT.GetErrorCode(),
 			Message:     err.Error(),
 		}
-		res, err := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-		if err != nil {
+		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
+		if callBackErr != nil {
 			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
 		}
 		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageToEVOSS, err.Error())
@@ -152,9 +153,6 @@ func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowI
 	errorType, ok := resp["errorType"]
 	if ok {
 		log.Errorf(ctx, lambdaExecutonError, errorType)
-		if errorType == RetriableError {
-			return resp, error_handler.NewRetriableError(error_codes.RetriableCallOutHTTPError, fmt.Sprintf("received %s errorType while executing lambda", errorType))
-		}
 		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
 	}
 
@@ -162,6 +160,7 @@ func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowI
 }
 
 func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) error {
+	log.Infof(ctx, "UploadImageToEvoss Reached")
 	var fileTypeId string
 	var location string
 	fileFormatId := 1
@@ -210,6 +209,8 @@ func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId str
 }
 
 func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool) error {
+	log.Infof(ctx, "Reached Upload Data with reportId = %s,location =%s, url=%s isImageMetadata=%v", reportId, location, url, isImageMetadata)
+	fmt.Println(commonHandler, commonHandler.AwsClient)
 	host, loc, err := commonHandler.AwsClient.FetchS3BucketPath(location)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
@@ -242,7 +243,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		base64EncodedString := base64.StdEncoding.EncodeToString(ByteArray)
 		ByteArray, err = json.Marshal(base64EncodedString)
 		if err != nil {
-			//ToDo handle error here
+			return error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, fmt.Sprintf("Issue with Marshling Data"))
 		}
 	}
 	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(ByteArray), headers)

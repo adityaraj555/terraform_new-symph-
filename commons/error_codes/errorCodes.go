@@ -54,4 +54,6 @@ const (
 	ErrorUnSuccessfullResponseFromAuthService = 4040
 	ErrorWhileUploadImageToEVOSS              = 4041
 	ErrorWhileUploadImageMetaDataEVOSS        = 4042
+	ErrorWhileMarshlingData                   = 4043
+	ErrorValidationCheck                      = 4044
 )
