@@ -108,9 +108,9 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 			MessageCode: errT.GetErrorCode(),
 			Message:     err.Error(),
 		}
-		res, err := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-		if err != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
+		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
+		if callBackErr != nil {
+			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
 		}
 		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageMetaDataEVOSS, err.Error())
 	}
