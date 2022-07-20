@@ -92,7 +92,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		}
 		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
 		if callBackErr != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
+			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
 		}
 		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageToEVOSS, err.Error())
 	}
@@ -139,6 +139,7 @@ func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowI
 		"message":     lambdaOutput.Message,
 		"messageCode": "",
 		"callbackId":  meta.CallbackID,
+		"response":    map[string]interface{}{},
 	}
 
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, meta.CallbackURL, payload, false)
@@ -250,7 +251,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
-		return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		// return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
 	}
 
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
