@@ -177,7 +177,7 @@ func TestErrorValidationdata(t *testing.T) {
 	eventDataReq.ReportID = ""
 	expectedResp := &LambdaOutput{
 		Status:      failure,
-		MessageCode: 4044,
+		MessageCode: 4047,
 		Message:     "error validating input missing fields",
 	}
 	resp, err := handler(context.Background(), eventDataReq)

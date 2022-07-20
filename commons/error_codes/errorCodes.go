@@ -52,8 +52,13 @@ const (
 	ErrorWhileFetchingAuthToken               = 4038
 	ErrorUnableToDecodeAuthServiceResponse    = 4039
 	ErrorUnSuccessfullResponseFromAuthService = 4040
-	ErrorWhileUploadImageToEVOSS              = 4041
-	ErrorWhileUploadImageMetaDataEVOSS        = 4042
-	ErrorWhileMarshlingData                   = 4043
-	ErrorValidationCheck                      = 4044
+
+	ErrorParsingURLCalloutLambda   = 4041
+	ErrorMakingGetCall             = 4042
+	ErrorMakingPostPutOrDeleteCall = 4043
+
+	ErrorWhileUploadImageToEVOSS       = 4044
+	ErrorWhileUploadImageMetaDataEVOSS = 4045
+	ErrorWhileMarshlingData            = 4046
+	ErrorValidationCheck               = 4047
 )
