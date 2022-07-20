@@ -243,14 +243,14 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		base64EncodedString := base64.StdEncoding.EncodeToString(ByteArray)
 		ByteArray, err = json.Marshal(base64EncodedString)
 		if err != nil {
-			return error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, fmt.Sprintf("Issue with Marshling Data"))
+			return error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, "Issue while Marshling Data")
 		}
 	}
 	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(ByteArray), headers)
 
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
-		//return error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
+		return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
 	}
 
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
