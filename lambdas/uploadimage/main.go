@@ -201,11 +201,12 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId string) error {
 	var err error
 	endpoint := os.Getenv(legacyEndpoint)
-	//https://intranetrest.cmh.reportsprod.evinternal.net/StoreImageMetadata
 	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
 	err = UploadData(ctx, reportId, imageMetadata, url, true)
-	log.Info(ctx, "Upload ImageMetadata successful...")
+	if err == nil {
+		log.Info(ctx, "Upload ImageMetadata successful...")
+	}
 	return err
 }
 
@@ -259,7 +260,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	}
 	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
-		return errors.New("response not ok from legacy")
+		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, "response not ok:")
 	}
 	return nil
 }
