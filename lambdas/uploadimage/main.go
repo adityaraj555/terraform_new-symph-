@@ -260,7 +260,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	}
 	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
-		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, "response not ok:")
+		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("response not ok got = %d", response.StatusCode))
 	}
 	return nil
 }
