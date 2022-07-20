@@ -92,7 +92,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		}
 		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
 		if callBackErr != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
+			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
 		}
 		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageToEVOSS, err.Error())
 	}
@@ -108,9 +108,9 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 			MessageCode: errT.GetErrorCode(),
 			Message:     err.Error(),
 		}
-		res, err := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-		if err != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
+		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
+		if callBackErr != nil {
+			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
 		}
 		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageMetaDataEVOSS, err.Error())
 	}
@@ -139,6 +139,7 @@ func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowI
 		"message":     lambdaOutput.Message,
 		"messageCode": "",
 		"callbackId":  meta.CallbackID,
+		"response":    map[string]interface{}{},
 	}
 
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, meta.CallbackURL, payload, false)
@@ -200,11 +201,12 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId string) error {
 	var err error
 	endpoint := os.Getenv(legacyEndpoint)
-	//https://intranetrest.cmh.reportsprod.evinternal.net/StoreImageMetadata
 	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
 	err = UploadData(ctx, reportId, imageMetadata, url, true)
-	log.Info(ctx, "Upload ImageMetadata successful...")
+	if err == nil {
+		log.Info(ctx, "Upload ImageMetadata successful...")
+	}
 	return err
 }
 
@@ -250,7 +252,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
-		return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		// return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
 	}
 
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
@@ -258,7 +260,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	}
 	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
-		return errors.New("response not ok from legacy")
+		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("response not ok got = %d", response.StatusCode))
 	}
 	return nil
 }
