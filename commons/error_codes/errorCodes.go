@@ -13,6 +13,7 @@ const (
 	LambdaExecutionError                        = 4009
 	ErrorInvokingStepFunction                   = 4010
 	ErrorInvokingLambda                         = 4041
+	ErrorFetchingDataFromS3                     = 4042
 
 	// DocumentDB Errors
 	ErrorFetchingStepExecutionDataFromDB     = 4011
@@ -55,4 +56,9 @@ const (
 	ErrorParsingURLCalloutLambda   = 4041
 	ErrorMakingGetCall             = 4042
 	ErrorMakingPostPutOrDeleteCall = 4043
+
+	ErrorWhileUploadImageToEVOSS       = 4044
+	ErrorWhileUploadImageMetaDataEVOSS = 4045
+	ErrorWhileMarshlingData            = 4046
+	ErrorValidationCheck               = 4047
 )
