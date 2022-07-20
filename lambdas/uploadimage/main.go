@@ -199,9 +199,9 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 
 func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId string) error {
 	var err error
-	// endpoint := os.Getenv(legacyEndpoint)
+	endpoint := os.Getenv(legacyEndpoint)
 	//https://intranetrest.cmh.reportsprod.evinternal.net/StoreImageMetadata
-	url := fmt.Sprintf("%s/StoreImageMetadata", "https://storeimagemetadata.free.beeceptor.com")
+	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
 	err = UploadData(ctx, reportId, imageMetadata, url, true)
 	log.Info(ctx, "Upload ImageMetadata successful...")
