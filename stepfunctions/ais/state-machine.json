@@ -6,7 +6,7 @@
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-datastorelambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-datastorelambda:$LATEST",
           "Payload": {
             "input.$": "$$.Execution.Input",
             "orderId.$": "$$.Execution.Input.orderId",
@@ -48,7 +48,7 @@
                 "ResultPath": "$.ImageryCheck",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -56,7 +56,7 @@
                       "longitude.$": "$$.Execution.Input.address.longitude"
                     },
                     "callType": "lambda",
-                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "arn": "${ARN_IMAGERY_CHECK}",
                     "headers": {},
                     "isWaitTask": true,
                     "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -95,7 +95,7 @@
                 "ResultPath": "$.BuildingDetection",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -105,7 +105,7 @@
                       "parcelGeometryOutput": "$.ImageryCheck.response.imageCheckOutput"
                     },
                     "callType": "lambda",
-                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "arn": "${ARN_BUILDING_DETECTION}",
                     "headers": {},
                     "isWaitTask": true,
                     "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -144,7 +144,7 @@
                 "ResultPath": "$.ImageSelection",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -156,7 +156,7 @@
                       "cropImagePath": "$.BuildingDetection.response.cropImagePath"
                     },
                     "callType": "lambda",
-                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "arn": "${ARN_IMAGE_SELECTION}",
                     "headers": {},
                     "isWaitTask": true,
                     "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -203,7 +203,7 @@
                       "S3URI.$": "$.ImageSelection.response.S3URI"
                     },
                     "callType": "lambda",
-                    "arn": "arn:aws:lambda:us-east-2:356071200662:function:mytestlambda",
+                    "arn": "${ARN_UPLOAD_IMAGE}",
                     "headers": {},
                     "isWaitTask": false,
                     "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -215,7 +215,7 @@
                     "workflowId.$": "$$.Execution.Name",
                     "auth": {}
                   },
-                  "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST"
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST"
                 },
                 "Retry": [
                   {
@@ -250,7 +250,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
           "Payload": {
             "orderId.$": "$$.Execution.Input.orderId",
             "reportId.$": "$$.Execution.Input.reportId",
@@ -281,7 +281,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-calloutlambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
           "Payload": {
             "orderId.$": "$$.Execution.Input.orderId",
             "reportId.$": "$$.Execution.Input.reportId",
@@ -312,7 +312,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:us-east-2:app-dev-1x0-lambda-datastorelambda",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda",
           "Payload": {
             "input.$": "$$.Execution.Input",
             "orderId.$": "$$.Execution.Input.orderId",
