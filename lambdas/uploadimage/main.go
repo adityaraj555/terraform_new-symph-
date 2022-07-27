@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
@@ -167,8 +168,8 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 	fileFormatId := 1
 	// var err error
 
-	// var wg sync.WaitGroup
-	// wg.Add(5)
+	var wg sync.WaitGroup
+	wg.Add(len(paths))
 	errChan := make(chan error, len(paths))
 	for _, path := range paths {
 		// wg.Add(1)
@@ -192,7 +193,7 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 		url := fmt.Sprintf("%s/UploadReportFile?reportId=%s&fileTypeId=%s&fileFormatId=%s", endpoint, reportId, fileTypeId, strconv.Itoa(fileFormatId))
 		log.Info(ctx, "Endpoint: "+url)
 
-		go UploadData(ctx, reportId, location, url, false, errChan)
+		go UploadData(ctx, reportId, location, url, false, errChan, &wg)
 		// err = UploadData(ctx, reportId, location, url, false)
 		// valError := <-errChan
 		// if err != nil {
@@ -200,14 +201,14 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 		// }
 		//
 	}
-
+	wg.Wait()
+	close(errChan)
 	for i := 0; i < len(paths); i++ {
 		ch := <-errChan
 		if ch != nil {
 			return ch
 		}
 	}
-	close(errChan)
 
 	log.Info(ctx, "Update Image successful...")
 	return nil
@@ -219,7 +220,9 @@ func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId str
 	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
 	errImageMetaDataChan := make(chan error, 1)
-	UploadData(ctx, reportId, imageMetadata, url, true, errImageMetaDataChan)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	UploadData(ctx, reportId, imageMetadata, url, true, errImageMetaDataChan, &wg)
 	err = <-errImageMetaDataChan
 	close(errImageMetaDataChan)
 	if err == nil {
@@ -228,8 +231,9 @@ func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId str
 	return err
 }
 
-func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool, errChan chan error) {
+func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool, errChan chan error, wg *sync.WaitGroup) {
 	log.Infof(ctx, "Reached Upload Data with reportId = %s,location =%s, url=%s isImageMetadata=%v", reportId, location, url, isImageMetadata)
+	defer wg.Done()
 	host, loc, err := commonHandler.AwsClient.FetchS3BucketPath(location)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
