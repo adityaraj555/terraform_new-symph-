@@ -165,9 +165,13 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 	var fileTypeId string
 	var location string
 	fileFormatId := 1
-	var err error
+	// var err error
 
+	// var wg sync.WaitGroup
+	// wg.Add(5)
+	errChan := make(chan error, 5)
 	for _, path := range paths {
+		// wg.Add(1)
 		if path.View == "O" {
 			fileTypeId = enums.TopImage
 			location = path.S3Path
@@ -185,17 +189,28 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 			location = path.S3Path
 		}
 		endpoint := os.Getenv(legacyEndpoint)
-		//https://intranetrest.cmh.reportsprod.evinternal.net/UploadReportFile?reportId={reportId}&fileTypeId={fileTypeId}&fileFormatId={fileFormatId}
 		url := fmt.Sprintf("%s/UploadReportFile?reportId=%s&fileTypeId=%s&fileFormatId=%s", endpoint, reportId, fileTypeId, strconv.Itoa(fileFormatId))
 		log.Info(ctx, "Endpoint: "+url)
-		err = UploadData(ctx, reportId, location, url, false)
-		if err != nil {
-			return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
 
-		}
-		log.Info(ctx, "Update Image successful...")
+		go UploadData(ctx, reportId, location, url, false, errChan)
+		// err = UploadData(ctx, reportId, location, url, false)
+		// valError := <-errChan
+		// if err != nil {
+		// 	return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
+		// }
+		//
 	}
-	return err
+
+	for i := 0; i < 5; i++ {
+		ch := <-errChan
+		if ch != nil {
+			return ch
+		}
+	}
+
+	close(errChan)
+	log.Info(ctx, "Update Image successful...")
+	return nil
 }
 
 func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId string) error {
@@ -203,39 +218,45 @@ func UploadImageMetadata(ctx context.Context, imageMetadata string, reportId str
 	endpoint := os.Getenv(legacyEndpoint)
 	url := fmt.Sprintf("%s/StoreImageMetadata", endpoint)
 	log.Info(ctx, "Endpoint: "+url)
-	err = UploadData(ctx, reportId, imageMetadata, url, true)
+	errImageMetaDataChan := make(chan error, 1)
+	UploadData(ctx, reportId, imageMetadata, url, true, errImageMetaDataChan)
+	err = <-errImageMetaDataChan
+	close(errImageMetaDataChan)
 	if err == nil {
 		log.Info(ctx, "Upload ImageMetadata successful...")
 	}
 	return err
 }
 
-func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool) error {
+func UploadData(ctx context.Context, reportId string, location string, url string, isImageMetadata bool, errChan chan error) {
 	log.Infof(ctx, "Reached Upload Data with reportId = %s,location =%s, url=%s isImageMetadata=%v", reportId, location, url, isImageMetadata)
-	fmt.Println(commonHandler, commonHandler.AwsClient)
 	host, loc, err := commonHandler.AwsClient.FetchS3BucketPath(location)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
-		return error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
+		errChan <- error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
+		return
 	}
 
 	ByteArray, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, loc)
 	if err != nil {
 		log.Error(ctx, "Error in getting downloading from s3: ", err.Error())
-		return error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
+		errChan <- error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
+		return
 	}
 
 	authsecret := os.Getenv(DBSecretARN)
 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
 	if err != nil {
 		log.Error(ctx, "error while fetching auth token from secret manager", err.Error())
-		return error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
+		errChan <- error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
+		return
 	}
 
 	token, ok := secretMap[legacyAuthKey].(string)
 	if !ok {
 		log.Error(ctx, "Issue with parsing Auth Token: ", secretMap[legacyAuthKey])
-		return error_handler.NewServiceError(error_codes.ErrorParsingLegacyAuthToken, fmt.Sprintf("Issue with parsing Auth Token: %+v", secretMap[legacyAuthKey]))
+		errChan <- error_handler.NewServiceError(error_codes.ErrorParsingLegacyAuthToken, fmt.Sprintf("Issue with parsing Auth Token: %+v", secretMap[legacyAuthKey]))
+		return
 	}
 
 	headers := map[string]string{
@@ -245,24 +266,28 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		base64EncodedString := base64.StdEncoding.EncodeToString(ByteArray)
 		ByteArray, err = json.Marshal(base64EncodedString)
 		if err != nil {
-			return error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, "Issue while Marshling Data")
+			errChan <- error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, "Issue while Marshling Data")
+			return
 		}
 	}
 	response, err := commonHandler.HttpClient.Post(ctx, url, bytes.NewReader(ByteArray), headers)
 
 	if err != nil {
 		log.Error(ctx, "Error while making http call for upload image to evoss, error: ", err)
-		// return error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		errChan <- error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		return
 	}
 
 	if response.StatusCode == http.StatusInternalServerError || response.StatusCode == http.StatusServiceUnavailable {
-		return error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("%d status code received", response.StatusCode))
+		errChan <- error_handler.NewRetriableError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("%d status code received", response.StatusCode))
+		return
 	}
 	if !strings.HasPrefix(strconv.Itoa(response.StatusCode), "20") {
 		log.Error(ctx, "response not ok: ", response.StatusCode)
-		return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("response not ok got = %d", response.StatusCode))
+		errChan <- error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, fmt.Sprintf("response not ok got = %d", response.StatusCode))
+		return
 	}
-	return nil
+	errChan <- nil
 }
 
 func main() {
