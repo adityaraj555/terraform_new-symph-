@@ -6,7 +6,7 @@
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-datastorelambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
           "Payload": {
             "input.$": "$$.Execution.Input",
             "orderId.$": "$$.Execution.Input.orderId",
@@ -48,7 +48,7 @@
                 "ResultPath": "$.ImageryCheck",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -95,7 +95,7 @@
                 "ResultPath": "$.BuildingDetection",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -144,7 +144,7 @@
                 "ResultPath": "$.ImageSelection",
                 "OutputPath": "$",
                 "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                   "Payload": {
                     "requestData": {
                       "orderId.$": "$$.Execution.Input.orderId",
@@ -215,7 +215,7 @@
                     "workflowId.$": "$$.Execution.Name",
                     "auth": {}
                   },
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST"
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
                 },
                 "Retry": [
                   {
@@ -250,7 +250,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
           "Payload": {
             "orderId.$": "$$.Execution.Input.orderId",
             "reportId.$": "$$.Execution.Input.reportId",
@@ -281,7 +281,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-calloutlambda:$LATEST",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
           "Payload": {
             "orderId.$": "$$.Execution.Input.orderId",
             "reportId.$": "$$.Execution.Input.reportId",
@@ -312,7 +312,7 @@
         "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
         "Parameters": {
-          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda",
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-lambda-datastorelambda",
           "Payload": {
             "input.$": "$$.Execution.Input",
             "orderId.$": "$$.Execution.Input.orderId",
