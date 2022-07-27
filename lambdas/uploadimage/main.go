@@ -169,7 +169,7 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 
 	// var wg sync.WaitGroup
 	// wg.Add(5)
-	errChan := make(chan error, 5)
+	errChan := make(chan error, len(paths))
 	for _, path := range paths {
 		// wg.Add(1)
 		if path.View == "O" {
@@ -201,14 +201,14 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 		//
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := 0; i < len(paths); i++ {
 		ch := <-errChan
 		if ch != nil {
 			return ch
 		}
 	}
-
 	close(errChan)
+
 	log.Info(ctx, "Update Image successful...")
 	return nil
 }
