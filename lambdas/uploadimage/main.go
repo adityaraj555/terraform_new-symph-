@@ -35,7 +35,7 @@ const (
 )
 
 type eventData struct {
-	ReportID       string `json:"orderId"`
+	ReportID       string `json:"reportId"`
 	WorkflowID     string `json:"workflowId"`
 	ImageMetadata  string `json:"ImageMetadata"`
 	Meta           Meta   `json:"meta"`
@@ -58,8 +58,6 @@ type LambdaOutput struct {
 	Message     string `json:"message"`
 }
 
-//var awsClient aws_client.IAWSClient
-//var httpClient httpservice.IHTTPClientV2
 var commonHandler common_handler.CommonHandler
 var lambdaExecutonError = "error occured while executing lambda: %+v"
 
@@ -91,11 +89,8 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 			MessageCode: errT.GetErrorCode(),
 			Message:     err.Error(),
 		}
-		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-		if callBackErr != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
-		}
-		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageToEVOSS, err.Error())
+
+		return nil, err
 	}
 	log.Info(ctx, "Images successfully uploaded to EVOSS...")
 
@@ -109,11 +104,8 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 			MessageCode: errT.GetErrorCode(),
 			Message:     err.Error(),
 		}
-		res, callBackErr := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-		if callBackErr != nil {
-			log.Error(ctx, "Error while calling callback lambda, error: ", callBackErr.Error(), res)
-		}
-		return nil, error_handler.NewServiceError(error_codes.ErrorWhileUploadImageMetaDataEVOSS, err.Error())
+
+		return nil, err
 	}
 	log.Info(ctx, "ImageMetadata uploaded successfully...")
 
@@ -123,42 +115,9 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		MessageCode: 200,
 		Message:     "upload image to evoss and upload imagedatametadata successfully",
 	}
-	res, err := InvokeLambdaforCallback(ctx, eventData.Meta, eventData.ReportID, eventData.WorkflowID, lambdaOutput)
-	if err != nil {
-		log.Error(ctx, "Error while calling callback lambda, error: ", err.Error(), res)
-		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, err.Error())
-	}
-	log.Info(ctx, "Callback lambda successful for UpdateImage...")
+
 	log.Info(ctx, "UpdateImaged lambda successful...")
 	return &lambdaOutput, nil
-}
-
-func InvokeLambdaforCallback(ctx context.Context, meta Meta, reportId, workflowId string, lambdaOutput LambdaOutput) (map[string]string, error) {
-
-	payload := map[string]interface{}{
-		"status":      lambdaOutput.Status,
-		"message":     lambdaOutput.Message,
-		"messageCode": "",
-		"callbackId":  meta.CallbackID,
-		"response":    map[string]interface{}{},
-	}
-
-	result, err := commonHandler.AwsClient.InvokeLambda(ctx, meta.CallbackURL, payload, false)
-	if err != nil {
-		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
-	}
-	var resp map[string]string
-	err = json.Unmarshal(result.Payload, &resp)
-	if err != nil {
-		return nil, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
-	}
-	errorType, ok := resp["errorType"]
-	if ok {
-		log.Errorf(ctx, lambdaExecutonError, errorType)
-		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
-	}
-
-	return resp, nil
 }
 
 func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) error {
@@ -166,13 +125,12 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 	var fileTypeId string
 	var location string
 	fileFormatId := 1
-	// var err error
+	var err error
 
 	var wg sync.WaitGroup
 	wg.Add(len(paths))
 	errChan := make(chan error, len(paths))
 	for _, path := range paths {
-		// wg.Add(1)
 		if path.View == "O" {
 			fileTypeId = enums.TopImage
 			location = path.S3Path
@@ -189,17 +147,19 @@ func UploadImageToEvoss(ctx context.Context, paths []Path, reportId string) erro
 			fileTypeId = enums.SouthImage
 			location = path.S3Path
 		}
-		endpoint := os.Getenv(legacyEndpoint)
-		url := fmt.Sprintf("%s/UploadReportFile?reportId=%s&fileTypeId=%s&fileFormatId=%s", endpoint, reportId, fileTypeId, strconv.Itoa(fileFormatId))
-		log.Info(ctx, "Endpoint: "+url)
 
-		go UploadData(ctx, reportId, location, url, false, errChan, &wg)
-		// err = UploadData(ctx, reportId, location, url, false)
-		// valError := <-errChan
-		// if err != nil {
-		// 	return error_handler.NewServiceError(error_codes.ErrorWhileUpdatingLegacy, err.Error())
-		// }
-		//
+		if len(path.S3Path) == 0 {
+			return error_handler.NewServiceError(error_codes.ErrorMissingS3Path, err.Error())
+		} else {
+			endpoint := os.Getenv(legacyEndpoint)
+			splittedS3Path := strings.SplitAfterN(path.S3Path, "/", -1)
+			filename := strings.Split(splittedS3Path[len(splittedS3Path)-1], ".")[0]
+			filename = strings.ReplaceAll(filename, "-", "_")
+			url := fmt.Sprintf("%s/UploadReportFile?reportId=%s&fileTypeId=%s&fileFormatId=%s&fileName=%s", endpoint, reportId, fileTypeId, strconv.Itoa(fileFormatId), filename)
+			log.Info(ctx, "Endpoint: "+url)
+
+			go UploadData(ctx, reportId, location, url, false, errChan, &wg)
+		}
 	}
 	wg.Wait()
 	close(errChan)
