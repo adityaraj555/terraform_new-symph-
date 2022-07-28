@@ -37,6 +37,7 @@ const (
 	RetriableError                       = "RetriableError"
 	ConvertPropertyModelToEVJsonTaskName = "ConvertPropertyModelToEVJson"
 	UploadMLJsonToEvossTaskName          = "UploadMLJsonToEvoss"
+	EvossLocationUrl                     = "EvossLocationUrl"
 )
 
 var (
@@ -63,6 +64,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		propertyModelS3Path, evJsonLocation string
 		legacyStatus                        string = "QCCompleted"
 	)
+	// evossLocationUrl := os.Getenv(EvossLocationUrl)
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
@@ -151,12 +153,16 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 
-	if _, err = UploadMLJsonToEvoss(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelByteArray); err != nil {
+	_, err = UploadMLJsonToEvoss(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelByteArray)
+	if err != nil {
 		ctxlog.Error(ctx, "Error while uploading file to EVOSS: ", err.Error())
 		return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
 	}
 	ctxlog.Info(ctx, "EVJson successfully uploaded to EVOSS...")
-	return updateDocumentDbAndGetResponse(ctx, success, legacyStatus, eventData.WorkflowID, StepExecutionData), nil
+	lambdaResp := updateDocumentDbAndGetResponse(ctx, success, legacyStatus, eventData.WorkflowID, StepExecutionData)
+	// lambdaResp["evjsonEvossLocation"] = fmt.Sprintf("%s/Object/%s", evossLocationUrl, resp["evossObjectId"])
+	lambdaResp["evjsonEvossLocation"] = "https://evossapi.cmh.reportstest.evinternal.net/Object/478890b6-c0cd-4c08-8b27-d7334bb0be8c"
+	return lambdaResp, nil
 }
 
 func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, PropertyModelS3Path, ImageMetaDataS3Path string) (map[string]string, error) {
@@ -249,6 +255,10 @@ func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJso
 		}
 		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
 	}
+
+	// if _, ok := resp["evossObjectId"]; !ok {
+	// 	return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, fmt.Sprintf("EvossObjectId not present in response: %+v", resp))
+	// }
 
 	return resp, nil
 }
