@@ -61,4 +61,5 @@ const (
 	ErrorWhileUploadImageMetaDataEVOSS = 4045
 	ErrorWhileMarshlingData            = 4046
 	ErrorValidationCheck               = 4047
+	ErrorMissingS3Path                 = 4048
 )
