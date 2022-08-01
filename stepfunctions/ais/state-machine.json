@@ -190,7 +190,7 @@
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                             "ResultSelector": {
-                                "response.$": "$"
+                                "response.$": "$.Payload"
                             },
                             "ResultPath": "$.RetrieveandStore",
                             "OutputPath": "$",
@@ -206,7 +206,7 @@
                                     "callType": "lambda",
                                     "arn": "${ARN_UPLOAD_IMAGE}",
                                     "headers": {},
-                                    "isWaitTask": true,
+                                    "isWaitTask": false,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
                                     "timeout": 10,
                                     "storeDataToS3": "",
@@ -214,7 +214,6 @@
                                     "orderId.$": "$$.Execution.Input.orderId",
                                     "reportId.$": "$$.Execution.Input.reportId",
                                     "workflowId.$": "$$.Execution.Name",
-                                    "taskToken.$": "$$.Task.Token",
                                     "auth": {}
                                 },
                                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
