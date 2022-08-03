@@ -37,14 +37,15 @@ const (
 	ErrorConvertingAllowedHipsterCountToInteger = 4027
 
 	// Validation Errors
-	ErrorValidatingCallBackLambdaRequest     = 4028
-	ErrorValidatingCallOutLambdaRequest      = 4029
-	ErrorSerializingCallOutPayload           = 4030
-	ErrorDecodingCallOutResponse             = 4031
-	PropertyModelLocationMissingInTaskOutput = 4032
-	InvalidTypeForPropertyModelLocation      = 4033
-	ErrorDecodingInvokeSFNInput              = 4034
-	ErrorValidatingInvokeSFNInput            = 4035
+	ErrorValidatingCallBackLambdaRequest          = 4028
+	ErrorValidatingCallOutLambdaRequest           = 4029
+	ErrorSerializingCallOutPayload                = 4030
+	ErrorDecodingCallOutResponse                  = 4031
+	PropertyModelLocationMissingInTaskOutput      = 4032
+	InvalidTypeForPropertyModelLocation           = 4033
+	ErrorDecodingInvokeSFNInput                   = 4034
+	ErrorValidatingInvokeSFNInput                 = 4035
+	ErrorEvossObjectIdMissingInEVMLUploadResponse = 4048
 
 	// HTTP Errors
 	ReceivedInternalServerErrorInCallout      = 4036

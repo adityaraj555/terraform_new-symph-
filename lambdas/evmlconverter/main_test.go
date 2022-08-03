@@ -139,13 +139,15 @@ func TestHandler(t *testing.T) {
 	}
 
 	expectedResp := map[string]interface{}{
-		"status":       success,
-		"legacyStatus": "QCCompleted",
+		"status":              success,
+		"legacyStatus":        "QCCompleted",
+		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
 	}
 
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
+
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
 
@@ -234,11 +236,12 @@ func TestHandlerTwisterFlow(t *testing.T) {
 	}
 
 	expectedResp := map[string]interface{}{
-		"status":       success,
-		"legacyStatus": "MACompleted",
+		"status":              success,
+		"legacyStatus":        "MACompleted",
+		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
 	}
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
@@ -281,8 +284,9 @@ func TestHandlerFailureCase(t *testing.T) {
 	}
 
 	expectedResp := map[string]interface{}{
-		"status":       success,
-		"legacyStatus": "QCFailed",
+		"status":              success,
+		"legacyStatus":        "QCFailed",
+		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
@@ -294,8 +298,9 @@ func TestHandlerFailureCase(t *testing.T) {
 	}
 
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
+
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
 	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
@@ -343,7 +348,7 @@ func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
 	}
 
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
@@ -458,7 +463,7 @@ func TestHandlerFetchS3BucketPathError(t *testing.T) {
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
 
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
@@ -503,7 +508,7 @@ func TestHandlerGetDataFromS3Error(t *testing.T) {
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
 
 	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path"}`),
+		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
 	}
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
