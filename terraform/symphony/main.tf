@@ -142,14 +142,14 @@ resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
       raw_message_delivery = true
       filter_policy = <<EOF
       {
-        "Company": [
-          "eagleview"
+        "company": [
+          "Eagleview"
         ],
-        "Event": [
+        "event": [
           "sfn_measurement_automation_workflow",
           "sfn_automated_image_selection_workflow"
         ],
-        "Domain": [
+        "domain": [
           "sfn_measurement_automation"
         ]
       }
