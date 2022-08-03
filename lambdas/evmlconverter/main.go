@@ -37,7 +37,7 @@ const (
 	RetriableError                       = "RetriableError"
 	ConvertPropertyModelToEVJsonTaskName = "ConvertPropertyModelToEVJson"
 	UploadMLJsonToEvossTaskName          = "UploadMLJsonToEvoss"
-	EvossLocationUrl                     = "envEvossLocationUrl"
+	EvossLocationUrl                     = "envEvossUrl"
 )
 
 var (
