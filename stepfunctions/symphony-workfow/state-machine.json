@@ -727,7 +727,7 @@
             "evjsonEvossLocation.$": "$.EVMLJsonConverter_UploadToEvoss.response.evjsonEvossLocation",
             "propertyModelLocation.$": "$.UpdateHipsterJobAndWaitForQC.response.propertyModelLocation"
           },
-          "url": "${ENDPOINT_URL_PMF_CONVERTOR}/pdw",
+          "url": "${ENDPOINT_URL_UPLOAD_PDW}/pdw",
           "requestMethod": "POST",
           "headers": {},
           "isWaitTask": true,
