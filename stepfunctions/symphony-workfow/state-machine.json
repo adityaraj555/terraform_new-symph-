@@ -704,8 +704,8 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.ThrottleService.response.Path",
-          "StringEquals": "Hipster",
+          "Variable": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
+          "StringEquals": "QCCompleted",
           "Next": "UploadToPDW"
         }
       ],
