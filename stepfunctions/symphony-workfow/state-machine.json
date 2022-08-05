@@ -325,7 +325,7 @@
           "Variable": "$.ThrottleService.response.Path",
           "StringEquals": "Twister",
           "Comment": "twister flow",
-          "Next": "EVMLJsonConverter_UploadToEvoss"
+          "Next": "PMF-EVJSON Converter Upload to EVOSS"
         }
       ],
       "Default": "UpdateLegacyMLSymphonyAutomationComplete"
@@ -368,7 +368,7 @@
     },
     "Hipster": {
       "Type": "Parallel",
-      "Next": "EVMLJsonConverter_UploadToEvoss",
+      "Next": "PMF-EVJSON Converter Upload to EVOSS",
       "Branches": [
         {
           "StartAt": "CreateHipsterJobAndWaitForMeasurement",
@@ -582,7 +582,7 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "EVMLJsonConverter_UploadToEvoss",
+          "Next": "PMF-EVJSON Converter Upload to EVOSS",
           "ResultPath": "$.HipsterError"
         }
       ]
@@ -623,37 +623,136 @@
       "Next": "updateWorkflowDataToDocDB",
       "TimeoutSeconds": 30
     },
-    "EVMLJsonConverter_UploadToEvoss": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.EVMLJsonConverter_UploadToEvoss",
-      "OutputPath": "$",
-      "Parameters": {
-        
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-evmlconverter:$LATEST",
-        "Payload": {
-          "workflowId.$": "$$.Execution.Name",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
-        }
-      },
-      "Retry": [
+    "PMF-EVJSON Converter Upload to EVOSS": {
+      "Type": "Parallel",
+      "Next": "UpdateLegacyStatus",
+      "Branches": [
         {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
+          "StartAt": "GetPMFPath",
+          "States": {
+            "GetPMFPath": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "ResultSelector": {
+                "response.$": "$.Payload"
+              },
+              "ResultPath": "$.GetPMFPath",
+              "OutputPath": "$",
+              "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-evmlconverter:$LATEST",
+                "Payload": {
+                  "workflowId.$": "$$.Execution.Name",
+                  "reportId.$": "$$.Execution.Input.reportId"
+                }
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "RetriableError",
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
+                  ],
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 1
+                }
+              ],
+              "Next": "PMFConverter",
+              "TimeoutSeconds": 300
+            },
+            "PMFConverter": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+              "OutputPath": "$",
+              "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                  "requestData": {
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "propertyModelLocation.$": "$.GetPMFPath.response.propertyModelS3Path",
+                    "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
+                  },
+                  "url": "${ENDPOINT_URL_PMF_CONVERTER}",
+                  "requestMethod": "POST",
+                  "headers": {},
+                  "isWaitTask": true,
+                  "retry": "number of times we want to retry on specific error types like timeout, 500",
+                  "timeout": 45,
+                  "storeDataToS3": "",
+                  "taskName": "ConvertPropertyModelToEVJson",
+                  "orderId.$": "$$.Execution.Input.orderId",
+                  "reportId.$": "$$.Execution.Input.reportId",
+                  "workflowId.$": "$$.Execution.Name",
+                  "taskToken.$": "$$.Task.Token",
+                  "auth": {}
+                }
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 6,
+                  "BackoffRate": 2
+                }
+              ],
+              "Next": "UploadToEVOSS",
+              "ResultSelector": {
+                "response.$": "$"
+              },
+              "ResultPath": "$.PMFConverter"
+            },
+            "UploadToEVOSS": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke",
+              "OutputPath": "$",
+              "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                  "requestData": {},
+                  "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
+                  "requestMethod": "POST",
+                  "headers": {
+                    "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
+                  },
+                  "isWaitTask": false,
+                  "retry": "number of times we want to retry on specific error types like timeout, 500",
+                  "timeout": 45,
+                  "storeDataToS3": "",
+                  "getRequestBodyFromS3.$": "$.PMFConverter.response.evJsonLocation",
+                  "s3RequestBodyType": "base64",
+                  "taskName": "UploadEVJSONtoEVOSS",
+                  "orderId.$": "$$.Execution.Input.orderId",
+                  "reportId.$": "$$.Execution.Input.reportId",
+                  "workflowId.$": "$$.Execution.Name",
+                  "auth": {}
+                }
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 6,
+                  "BackoffRate": 2
+                }
+              ],
+              "End": true,
+              "ResultSelector": {
+                "response.$": "$.Payload"
+              },
+              "ResultPath": "$.UploadToEVOSS"
+            }
+          }
         }
       ],
-      "Next": "UpdateLegacyStatus",
       "Catch": [
         {
           "ErrorEquals": [
@@ -662,7 +761,10 @@
           "Next": "updateMLAutomationRejected"
         }
       ],
-      "TimeoutSeconds": 300
+      "ResultSelector": {
+        "response.$": "$[0]"
+      },
+      "OutputPath": "$.response"
     },
     "UpdateLegacyStatus": {
       "Type": "Task",
@@ -679,7 +781,7 @@
           "workflowId.$": "$$.Execution.Name",
           "taskName": "UpdateLegacyStatus",
           "callType": "eagleflow",
-          "status.$": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
+          "status.$": "$.GetPMFPath.response.legacyStatus",
           "requestData": {}
         },
         "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
@@ -704,7 +806,7 @@
       "Type": "Choice",
       "Choices": [
         {
-          "Variable": "$.EVMLJsonConverter_UploadToEvoss.response.legacyStatus",
+          "Variable": "$.GetPMFPath.response.legacyStatus",
           "StringEquals": "QCCompleted",
           "Next": "UploadToPDW"
         }
@@ -715,7 +817,7 @@
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
       "ResultSelector": {
-          "response.$": "$"
+        "response.$": "$"
       },
       "OutputPath": "$",
       "Parameters": {
@@ -724,7 +826,7 @@
           "requestData": {
             "orderId.$": "$$.Execution.Input.orderId",
             "address.$": "$$.Execution.Input.address",
-            "evjsonEvossLocation.$": "$.EVMLJsonConverter_UploadToEvoss.response.evjsonEvossLocation",
+            "evjsonEvossLocation.$": "$.UploadToEVOSS.response.ReferenceId",
             "propertyModelLocation.$": "$.UpdateHipsterJobAndWaitForQC.response.propertyModelLocation"
           },
           "url": "${ENDPOINT_URL_UPLOAD_PDW}",
