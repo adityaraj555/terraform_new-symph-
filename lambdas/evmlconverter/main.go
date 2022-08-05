@@ -44,7 +44,6 @@ var (
 type eventData struct {
 	ReportID   string `json:"reportId"`
 	WorkflowID string `json:"workflowId"`
-	// ImageMetaDataLocation string `json:"imageMetaDataLocation"`
 }
 
 func handler(ctx context.Context, eventData eventData) (map[string]interface{}, error) {
@@ -122,139 +121,9 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	if propertyModelS3Path, ok = taskOutput.(string); !ok {
 		return updateDocumentDbAndGetResponse(ctx, failure, "", "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.InvalidTypeForPropertyModelLocation, "propertyModelLocation should be a string")
 	}
-
-	// evjsonS3Path, err := CovertPropertyModelToEVJson(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelS3Path, eventData.ImageMetaDataLocation)
-	// if err != nil {
-	// 	ctxlog.Error(ctx, "Error in calling EVJson convertor service: ", err.Error())
-	// 	return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
-	// }
-
-	// if evJsonLocation, ok = evjsonS3Path["evJsonLocation"]; !ok {
-	// 	ctxlog.Error(ctx, "evJsonLocation not returned")
-	// 	return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), errors.New("evJsonLocation not returned")
-	// }
-
-	// ctxlog.Info(ctx, "EVJsonLocation: ", evJsonLocation)
-
-	// host, path, err := commonHandler.AwsClient.FetchS3BucketPath(evJsonLocation)
-	// if err != nil {
-	// 	ctxlog.Error(ctx, "Error in fetching AWS path: ", err.Error())
-	// 	return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
-	// }
-	// propertyModelByteArray, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, path)
-	// if err != nil {
-	// 	ctxlog.Error(ctx, "Error in getting downloading from s3: ", err.Error())
-	// 	return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
-	// }
-
-	// resp, err := UploadMLJsonToEvoss(ctx, workflowData.OrderId, eventData.WorkflowID, propertyModelByteArray)
-	// if err != nil {
-	// 	ctxlog.Error(ctx, "Error while uploading file to EVOSS: ", err.Error())
-	// 	return updateDocumentDbAndGetResponse(ctx, failure, "", eventData.WorkflowID, StepExecutionData), err
-	// }
-	ctxlog.Info(ctx, "EVJson successfully uploaded to EVOSS...")
 	lambdaResp := updateDocumentDbAndGetResponse(ctx, success, legacyStatus, propertyModelS3Path, eventData.WorkflowID, StepExecutionData)
-	// lambdaResp["evjsonEvossLocation"] = fmt.Sprintf("%s/Object/%s", evossLocationUrl, resp["ReferenceId"])
 	return lambdaResp, nil
 }
-
-// func CovertPropertyModelToEVJson(ctx context.Context, reportId, workflowId, PropertyModelS3Path, ImageMetaDataS3Path string) (map[string]string, error) {
-// 	calloutLambdaFunction := os.Getenv(envCalloutLambdaFunction)
-// 	evJsonConvertorEndpoint := os.Getenv(envEvJsonConvertorEndpoint)
-
-// 	payload := map[string]interface{}{
-// 		"requestData": map[string]string{
-// 			"reportId":              reportId,
-// 			"propertyModelLocation": PropertyModelS3Path,
-// 			"imageMetaDataLocation": ImageMetaDataS3Path,
-// 		},
-// 		"url":           evJsonConvertorEndpoint,
-// 		"requestMethod": "POST",
-// 		"IsWaitTask":    false,
-// 		"taskName":      ConvertPropertyModelToEVJsonTaskName,
-// 		"orderId":       reportId,
-// 		"reportId":      reportId,
-// 		"workflowId":    workflowId,
-// 	}
-// 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload, false)
-// 	if err != nil {
-// 		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
-// 	}
-// 	var resp map[string]string
-// 	err = json.Unmarshal(result.Payload, &resp)
-// 	if err != nil {
-// 		return nil, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
-// 	}
-// 	errorType, ok := resp["errorType"]
-// 	if ok {
-// 		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
-// 		if errorType == RetriableError {
-// 			return resp, error_handler.NewRetriableError(error_codes.RetriableCallOutHTTPError, fmt.Sprintf("received %s errorType while executing lambda", errorType))
-// 		}
-// 		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
-// 	}
-
-// 	return resp, nil
-// }
-
-// func UploadMLJsonToEvoss(ctx context.Context, reportId, workflowId string, mlJson []byte) (map[string]interface{}, error) {
-// 	calloutLambdaFunction := os.Getenv(envCalloutLambdaFunction)
-// 	authsecret := os.Getenv(DBSecretARN)
-// 	endpoint := os.Getenv(envLegacyEndpoint)
-
-// 	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
-// 	if err != nil {
-// 		ctxlog.Error(ctx, "error while fetching auth token from secret manager", err.Error())
-// 		return nil, error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
-// 	}
-
-// 	token, ok := secretMap[legacyAuthKey].(string)
-// 	if !ok {
-// 		ctxlog.Error(ctx, "Issue with parsing Auth Token: ", secretMap[legacyAuthKey])
-// 		return nil, error_handler.NewServiceError(error_codes.ErrorParsingLegacyAuthToken, fmt.Sprintf("Issue with parsing Auth Token: %+v", secretMap[legacyAuthKey]))
-// 	}
-
-// 	payload := map[string]interface{}{
-// 		"requestData":   b64.StdEncoding.EncodeToString(mlJson),
-// 		"url":           fmt.Sprintf("%s/UploadMLJson?reportId=%s", endpoint, reportId),
-// 		"requestMethod": "POST",
-// 		"headers": map[string]string{
-// 			"Content-Type":  "application/json",
-// 			"Accept":        "application/json",
-// 			"Authorization": "Basic " + token,
-// 		},
-// 		"IsWaitTask": false,
-// 		"taskName":   UploadMLJsonToEvossTaskName,
-// 		"orderId":    reportId,
-// 		"reportId":   reportId,
-// 		"workflowId": workflowId,
-// 	}
-
-// 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, calloutLambdaFunction, payload, false)
-// 	if err != nil {
-// 		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingCalloutLambdaFromEVMLConverter, err.Error())
-// 	}
-// 	var resp map[string]interface{}
-// 	err = json.Unmarshal(result.Payload, &resp)
-// 	if err != nil {
-// 		return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
-// 	}
-
-// 	errorType, ok := resp["errorType"]
-// 	if ok {
-// 		ctxlog.Errorf(ctx, lambdaExecutonError, errorType)
-// 		if errorType == RetriableError {
-// 			return resp, error_handler.NewRetriableError(error_codes.RetriableCallOutHTTPError, fmt.Sprintf("received %s errorType while executing lambda", errorType))
-// 		}
-// 		return resp, error_handler.NewServiceError(error_codes.LambdaExecutionError, fmt.Sprintf(lambdaExecutonError, errorType))
-// 	}
-
-// 	if _, ok := resp["ReferenceId"]; !ok {
-// 		return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, fmt.Sprintf("EvossObjectId not present in response: %+v", resp))
-// 	}
-
-// 	return resp, nil
-// }
 
 func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, propertyModelS3Path, workflowId string, stepExecutionData documentDB_client.StepExecutionDataBody) map[string]interface{} {
 	stepExecutionData.EndTime = time.Now().Unix()

@@ -513,18 +513,18 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		host, path, err := commonHandler.AwsClient.FetchS3BucketPath(data.GetRequestBodyFromS3)
 		if err != nil {
 			log.Error(ctx, "Error in fetching AWS path: ", err.Error())
-			// return returnResponse,err
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
 		}
 		json_data, err = commonHandler.AwsClient.GetDataFromS3(ctx, host, path)
 		if err != nil {
 			log.Error(ctx, "Error in getting downloading from s3: ", err.Error())
-			// return returnResponse,err
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
 		}
 		if data.S3RequestBodyType == base64 {
 			json_data, err = json.Marshal(b64.StdEncoding.EncodeToString(json_data))
 			if err != nil {
 				log.Error(ctx, "Error in marshalling : ", err.Error())
-				// return returnResponse,err
+				return returnResponse, error_handler.NewServiceError(error_codes.ErrorSerializingS3Data, err.Error())
 			}
 		}
 
