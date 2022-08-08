@@ -268,9 +268,9 @@
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
             ],
             "Next": "updateWorkflowDataToDocDB"
@@ -311,7 +311,7 @@
             "Resource": "arn:aws:states:::lambda:invoke",
             "OutputPath": "$.Payload",
             "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
                 "Payload": {
                     "input.$": "$$.Execution.Input",
                     "orderId.$": "$$.Execution.Input.orderId",
@@ -326,9 +326,9 @@
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
             ],
             "End": true
