@@ -33,6 +33,7 @@ const (
 	ConvertPropertyModelToEVJsonTaskName = "ConvertPropertyModelToEVJson"
 	UploadMLJsonToEvossTaskName          = "UploadMLJsonToEvoss"
 	EvossLocationUrl                     = "envEvossUrl"
+	UpdateHipsterJobAndWaitForQCTaskName = "UpdateHipsterJobAndWaitForQC"
 )
 
 var (
@@ -95,7 +96,8 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 			ctxlog.Info(ctx, "Job being pushed to Twister...")
 			legacyStatus = "MACompleted"
 		}
-	} else {
+	}
+	if lastCompletedTask.Status != success || (lastCompletedTask.Status == success && lastCompletedTask.TaskName != UpdateHipsterJobAndWaitForQCTaskName && workflowData.FlowType != "Twister") {
 		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
 			ctxlog.Error(ctx, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
 			return updateDocumentDbAndGetResponse(ctx, failure, "", "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.TaskRecordNotFoundInFailureTaskOutputMap, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
