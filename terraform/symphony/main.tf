@@ -140,20 +140,10 @@ resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
       protocol  = "sqs"
       endpoint  = "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-${module.config.environment_config_map.receive_legacy_order_queue_name}"
       raw_message_delivery = true
-      filter_policy = <<EOF
-      {
-        "company": [
-          "Eagleview"
-        ],
-        "event": [
-          "sfn_measurement_automation_workflow",
-          "sfn_automated_image_selection_workflow"
-        ],
-        "domain": [
-          "sfn_measurement_automation"
-        ]
-      }
-      EOF
+      filter_policy = <<EOD
+${module.config.environment_config_map.sns_domain_event_subscription_legacy_sqs}
+  EOD
+    
 }
 
 data "aws_caller_identity" "current" {}
