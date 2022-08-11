@@ -8,7 +8,7 @@ def deploymentTargetBranchMapOverrides = [
     sandbox: "develop",
     test:"develop",
     stage: "release-1.0.0",
-    develop: "develop",
+    develop: "feature/MUS-484",
     prod: "release-1.0.0"
 ]
 
