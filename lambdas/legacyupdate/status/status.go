@@ -78,4 +78,8 @@ var FailedTaskStatusMap = map[string]failedTaskMetaData{
 		StatusKey:        "MeasurementFailed",
 		FallbackTaskName: "3DModellingService",
 	},
+	"UpdateHipsterMeasurementCompleteInLegacy": {
+		StatusKey:        "MeasurementFailed",
+		FallbackTaskName: "3DModellingService",
+	},
 }
