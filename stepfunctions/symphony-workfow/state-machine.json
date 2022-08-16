@@ -11,7 +11,6 @@
       "ResultPath": "$.InsertWorkflowDataToDocDB",
       "OutputPath": "$",
       "Parameters": {
-        
         "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
         "Payload": {
           "input.$": "$$.Execution.Input",
@@ -104,7 +103,6 @@
                   "workflowId.$": "$$.Execution.Name",
                   "auth": {}
                 },
-
                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
               },
               "Retry": [
@@ -132,7 +130,7 @@
               "ResultPath": "$.ImageSelection",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName":"arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
@@ -294,11 +292,11 @@
       "OutputPath": "$",
       "Parameters": {
         "Payload": {
-            "orderId.$": "$$.Execution.Input.orderId",
-            "reportId.$": "$$.Execution.Input.reportId",
-            "workflowId.$": "$$.Execution.Name",
-            "isPenetration.$": "$$.Execution.Input.isPenetration",
-            "orderType.$": "$$.Execution.Input.orderType"
+          "orderId.$": "$$.Execution.Input.orderId",
+          "reportId.$": "$$.Execution.Input.reportId",
+          "workflowId.$": "$$.Execution.Name",
+          "isPenetration.$": "$$.Execution.Input.isPenetration",
+          "orderType.$": "$$.Execution.Input.orderType"
         },
         "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"
       },
@@ -693,18 +691,20 @@
                   "ErrorEquals": [
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
+                    "Lambda.SdkClientException",
+                    "RetriableError"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 1
                 }
               ],
               "Next": "UploadToEVOSS",
               "ResultSelector": {
                 "response.$": "$"
               },
-              "ResultPath": "$.PMFConverter"
+              "ResultPath": "$.PMFConverter",
+              "TimeoutSeconds": 180
             },
             "UploadToEVOSS": {
               "Type": "Task",
@@ -737,18 +737,20 @@
                   "ErrorEquals": [
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
+                    "Lambda.SdkClientException",
+                    "RetriableError"
                   ],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 6,
-                  "BackoffRate": 2
+                  "IntervalSeconds": 60,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 1
                 }
               ],
               "End": true,
               "ResultSelector": {
                 "response.$": "$.Payload"
               },
-              "ResultPath": "$.UploadToEVOSS"
+              "ResultPath": "$.UploadToEVOSS",
+              "TimeoutSeconds": 30
             }
           }
         }
