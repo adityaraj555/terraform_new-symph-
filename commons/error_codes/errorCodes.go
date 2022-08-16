@@ -46,7 +46,7 @@ const (
 	ErrorDecodingInvokeSFNInput                   = 4034
 	ErrorValidatingInvokeSFNInput                 = 4035
 	ErrorEvossObjectIdMissingInEVMLUploadResponse = 4048
-
+	ErrorSerializingS3Data                        = 4049
 	// HTTP Errors
 	ReceivedInternalServerErrorInCallout      = 4036
 	ReceivedInvalidHTTPStatusCodeInCallout    = 4037

@@ -6,11 +6,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
-	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
@@ -127,8 +125,7 @@ func TestHandler(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	taskdata := documentDB_client.StepExecutionDataBody{
@@ -141,25 +138,16 @@ func TestHandler(t *testing.T) {
 	expectedResp := map[string]interface{}{
 		"status":              success,
 		"legacyStatus":        "QCCompleted",
-		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
+		"propertyModelS3Path": "s3Location",
 	}
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
-
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
 
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -170,62 +158,13 @@ func TestHandler(t *testing.T) {
 	assert.Equal(t, expectedResp, resp)
 }
 
-func TestHandlerInvalidStatusCodeInvokingLambda(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-	slackClient := new(mocks.ISlackClient)
-
-	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{
-		"status": failure,
-	}
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"errorType": "RetriableError"}`),
-	}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-	slackClient.On("SendErrorMessage", mock.Anything, "", "", "evmlconverter", mock.Anything, mock.Anything).Return(nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-	commonHandler.SlackClient = slackClient
-
-	resp, err := notificationWrapper(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	assert.Equal(t, &error_handler.RetriableError{ServiceError: error_handler.ServiceError{ErrorCode: 4008, ErrorMessage: "received RetriableError errorType while executing lambda"}}, err)
-	assert.Equal(t, expectedResp, resp)
-}
-
 func TestHandlerTwisterFlow(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	httpClient := new(mocks.MockHTTPClient)
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	taskdata := documentDB_client.StepExecutionDataBody{
@@ -238,24 +177,18 @@ func TestHandlerTwisterFlow(t *testing.T) {
 	expectedResp := map[string]interface{}{
 		"status":              success,
 		"legacyStatus":        "MACompleted",
-		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
+		"propertyModelS3Path": "s3Location",
 	}
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
+
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
 	workflowData.FlowType = "Twister"
 
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -272,8 +205,7 @@ func TestHandlerFailureCase(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	taskdata := documentDB_client.StepExecutionDataBody{
@@ -286,7 +218,7 @@ func TestHandlerFailureCase(t *testing.T) {
 	expectedResp := map[string]interface{}{
 		"status":              success,
 		"legacyStatus":        "QCFailed",
-		"evjsonEvossLocation": "/Object/f74f5b3e-e0c0-4aa0-807c-21f11a7d034d",
+		"propertyModelS3Path": "s3Location",
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
@@ -297,19 +229,11 @@ func TestHandlerFailureCase(t *testing.T) {
 		TaskName:  "UpdateHipsterJobAndWaitForQC",
 	}
 
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
-
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, success, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -326,8 +250,7 @@ func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	taskdata := documentDB_client.StepExecutionDataBody{
@@ -346,15 +269,8 @@ func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
 		StepId:    "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
 		TaskName:  "wrong task name",
 	}
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
 	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
 	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
@@ -375,8 +291,7 @@ func TestHandlerDocDbWorkflowDataError(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	expectedResp := map[string]interface{}{
@@ -406,8 +321,7 @@ func TestHandlerFetchStepExecutionDataError(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
 
 	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
+		WorkflowID: "",
 	}
 
 	taskdata := documentDB_client.StepExecutionDataBody{
@@ -436,185 +350,5 @@ func TestHandlerFetchStepExecutionDataError(t *testing.T) {
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.Error(t, err)
 	assert.Equal(t, "error", err.Error())
-	assert.Equal(t, expectedResp, resp)
-}
-
-func TestHandlerFetchS3BucketPathError(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-
-	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{
-		"status": failure,
-	}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", errors.New("error"))
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-
-	resp, err := handler(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	assert.Equal(t, "error", err.Error())
-	assert.Equal(t, expectedResp, resp)
-}
-
-func TestHandlerGetDataFromS3Error(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-
-	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{
-		"status": failure,
-	}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"evJsonLocation": "some s3 path", "ReferenceId":"f74f5b3e-e0c0-4aa0-807c-21f11a7d034d"}`),
-	}
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "some s3 path").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), errors.New("error"))
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-
-	resp, err := handler(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	assert.Equal(t, "error", err.Error())
-	assert.Equal(t, expectedResp, resp)
-}
-
-func TestHandlerUploadMLJsonToEvossError(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-
-	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{
-		"status": failure,
-	}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(nil, errors.New("error"))
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-
-	resp, err := handler(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	assert.Equal(t, "error", err.Error())
-	assert.Equal(t, expectedResp, resp)
-}
-
-func TestHandlerDataFromPropertyModelNoLocationError(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-
-	eventDataObj := eventData{
-		WorkflowID:            "",
-		ImageMetaDataLocation: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{
-		"status": failure,
-	}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-
-	convertorOutput := lambda.InvokeOutput{
-		Payload: []byte(`{"wrong": "some s3 path"}`),
-	}
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	awsClient.Mock.On("FetchS3BucketPath", "").Return("", "", nil)
-	awsClient.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
-	awsClient.Mock.On("InvokeLambda", mock.Anything, "", mock.Anything, false).Return(&convertorOutput, nil)
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-	awsClient.Mock.On("GetSecret", mock.Anything, "", region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-
-	resp, err := handler(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	assert.Equal(t, "evJsonLocation not returned", err.Error())
 	assert.Equal(t, expectedResp, resp)
 }

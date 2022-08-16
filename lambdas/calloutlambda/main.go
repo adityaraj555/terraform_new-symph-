@@ -51,24 +51,26 @@ type AuthData struct {
 }
 
 type MyEvent struct {
-	Payload       interface{}         `json:"requestData"`
-	URL           string              `json:"url" validate:"omitempty,url"`
-	ARN           string              `json:"arn"`
-	RequestMethod enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
-	Headers       map[string]string   `json:"headers"`
-	IsWaitTask    bool                `json:"isWaitTask"`
-	Timeout       int                 `json:"timeout"`
-	StoreDataToS3 string              `json:"storeDataToS3"`
-	TaskName      string              `json:"taskName"`
-	CallType      enums.CallType      `json:"callType" validate:"omitempty,callTypes"`
-	OrderID       string              `json:"orderId"`
-	ReportID      string              `json:"reportId" validate:"required"`
-	WorkflowID    string              `json:"workflowId" validate:"required"`
-	TaskToken     string              `json:"taskToken" validate:"required_if=IsWaitTask true"`
-	HipsterJobID  string              `json:"hipsterJobId,omitempty"`
-	QueryParam    map[string]string   `json:"queryParam,omitempty"`
-	Auth          AuthData            `json:"auth"`
-	Status        string              `json:"status"`
+	Payload              interface{}         `json:"requestData"`
+	URL                  string              `json:"url" validate:"omitempty,url"`
+	ARN                  string              `json:"arn"`
+	RequestMethod        enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
+	Headers              map[string]string   `json:"headers"`
+	IsWaitTask           bool                `json:"isWaitTask"`
+	Timeout              int                 `json:"timeout"`
+	GetRequestBodyFromS3 string              `json:"getRequestBodyFromS3"`
+	S3RequestBodyType    string              `json:"s3RequestBodyType"`
+	StoreDataToS3        string              `json:"storeDataToS3"`
+	TaskName             string              `json:"taskName"`
+	CallType             enums.CallType      `json:"callType" validate:"omitempty,callTypes"`
+	OrderID              string              `json:"orderId"`
+	ReportID             string              `json:"reportId" validate:"required"`
+	WorkflowID           string              `json:"workflowId" validate:"required"`
+	TaskToken            string              `json:"taskToken" validate:"required_if=IsWaitTask true"`
+	HipsterJobID         string              `json:"hipsterJobId,omitempty"`
+	QueryParam           map[string]string   `json:"queryParam,omitempty"`
+	Auth                 AuthData            `json:"auth"`
+	Status               string              `json:"status"`
 }
 
 // Currently not using because do not know how to handle runtime error lmbda
@@ -90,6 +92,7 @@ const loglevel = "info"
 const RetriableError = "RetriableError"
 const invalidHTTPStatusCodeError = "invalid http status code received"
 const ContextDeadlineExceeded = "context deadline exceeded"
+const base64 = "base64"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	log.Info(ctx, "handleAuth reached...")
@@ -500,14 +503,32 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		log.Info(ctx, "CallService successfull...")
 		return responseBody, err
 	}
-
 	json_data, err := json.Marshal(data.Payload)
 	if err != nil {
 		log.Error(ctx, "Error while marshalling callout payload, error: ", err.Error())
 		returnResponse["status"] = failure
 		return returnResponse, error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
 	}
+	if data.GetRequestBodyFromS3 != "" {
+		host, path, err := commonHandler.AwsClient.FetchS3BucketPath(data.GetRequestBodyFromS3)
+		if err != nil {
+			log.Error(ctx, "Error in fetching AWS path: ", err.Error())
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorFetchingS3BucketPath, err.Error())
+		}
+		json_data, err = commonHandler.AwsClient.GetDataFromS3(ctx, host, path)
+		if err != nil {
+			log.Error(ctx, "Error in getting downloading from s3: ", err.Error())
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
+		}
+		if data.S3RequestBodyType == base64 {
+			json_data, err = json.Marshal(b64.StdEncoding.EncodeToString(json_data))
+			if err != nil {
+				log.Error(ctx, "Error in marshalling : ", err.Error())
+				return returnResponse, error_handler.NewServiceError(error_codes.ErrorSerializingS3Data, err.Error())
+			}
+		}
 
+	}
 	headers := make(map[string]string)
 	if data.Headers != nil {
 		headers = data.Headers
