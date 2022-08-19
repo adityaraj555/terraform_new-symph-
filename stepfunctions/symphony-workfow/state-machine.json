@@ -166,7 +166,7 @@
                 }
               ],
               "Next": "FacetKeyPointDetection",
-              "TimeoutSeconds": 1800
+              "TimeoutSeconds": 7200
             },
             "FacetKeyPointDetection": {
               "Type": "Task",
@@ -214,7 +214,7 @@
                 }
               ],
               "Next": "3DModellingService",
-              "TimeoutSeconds": 1800
+              "TimeoutSeconds": 7200
             },
             "3DModellingService": {
               "Type": "Task",
@@ -263,7 +263,7 @@
                 }
               ],
               "End": true,
-              "TimeoutSeconds": 1800
+              "TimeoutSeconds": 7200
             }
           }
         }
