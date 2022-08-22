@@ -16,13 +16,12 @@ pipeline {
   parameters {
     string(name: "DOMAIN",             defaultValue: "property-data-orchestrator",      description: "Platform Domain Name")
     choice(name: "ENV",                choices: ["platform-dev", "platform-test", "platform-stage", "platform-prod"],                    description: "Select the environment for deploy")
-    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter","throttleservice", "uploadimage"],    description: "Select the lambda for deploy")
+    choice(name: "LAMBDA",                choices: ["calloutlambda", "callbacklambda", "legacyupdate", "invokesfn","datastorelambda","evmlconverter","throttleservice", "uploadimage","querypdw","sim2pdw","kafkapublisher"],    description: "Select the lambda for deploy")
     choice(name: "ECR_ACCOUNT_ID",     choices: "176992832580",                      description: "ECR account ID (default: platform-ci)")
     choice(name: "ECR_REGION",         choices: "us-east-2",                         description: "ECR region")
     string(name: "GITHUB_CREDENTIALS", defaultValue: "platform-github-token",        description: "Platform GitHub credentials")
     string(name: "ARGOCD_CREDENTIALS", defaultValue: "platform-argocd-token",        description: "Platform ArgoCD credentials")
     string(name: "SLACK_CREDENTIALS",  defaultValue: "slackintegration",             description: "Slack credentials for Graph Warehouse notifications")
-    choice(name: "RUN_JENKINS_MIGRATION", choices: ["yes", "no"],                    description: "choice for running the mirgration stage from Jenkins")
     choice(name: "RUN_R7_SCAN", choices: ["yes", "no"],                    description: "choice for running r7 scan")
     string(name: "BUILD_NOTES",        defaultValue: "property-data-orchestrator-api build", description: "notes for the current build in one line")
     gitParameter name: 'RELEASE_BRANCH' , description: 'select the release branch to deploy' , type: 'PT_BRANCH' , defaultValue:'origin/release-1.0.0', branchFilter:'origin/release-.*'
