@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -67,13 +68,17 @@ type eventResponse struct {
 var commonHandler common_handler.CommonHandler
 
 const (
-	queryfilepath           = "query.gql"
+	queryfilepath           = "/query.gql"
 	primary                 = "primary"
 	ContextDeadlineExceeded = "context deadline exceeded"
 	success                 = "success"
 	failure                 = "failure"
 	validatedata            = "validatedata"
 	querydata               = "querydata"
+	GraphEndpoint           = "GraphEndpoint"
+	AuthEndpoint            = "AuthEndpoint"
+	SecretARN               = "SecretARN"
+	region                  = "us-east-2"
 )
 
 func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
@@ -164,7 +169,7 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 		log.Error(ctx, "Error while marshalling graph request, error: ", err.Error())
 		return nil, error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
 	}
-	responseBody, err := makePostCall(ctx, "https://api.cmh.platform-dev2.evinternal.net/graph", bytearray, headers)
+	responseBody, err := makePostCall(ctx, os.Getenv(GraphEndpoint), bytearray, headers)
 	if err != nil {
 		log.Error(ctx, "Error while making graph request, error: ", err.Error())
 		return nil, err
@@ -213,10 +218,12 @@ func GenerateGQL(attributes []string, lat, long float64, parcelID, address, stru
 	return query
 }
 func AddAuthorizationTokenHeader(ctx context.Context, httpClient httpservice.IHTTPClientV2, headers map[string]string) {
-	appCode := "O2"
-	endpoint := "https://api.cmh.platform-dev2.evinternal.com/auth-service"
-	clientID := "*******"
-	clientSecret := "**********"
+	authsecret := os.Getenv(SecretARN)
+	secretMap, _ := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
+	appCode := secretMap["appCode"].(string)
+	endpoint := os.Getenv(AuthEndpoint)
+	clientID := secretMap["clientID"].(string)
+	clientSecret := secretMap["clientSecret"].(string)
 	generateFreshToken := false
 	token, _ := auth_client.GetAccessToken(ctx, httpClient, appCode, endpoint, clientID, clientSecret, generateFreshToken)
 	fmt.Println(token)
