@@ -72,4 +72,5 @@ const (
 	ParcelIDDoesnotExist           = 4054
 	ErrorReadingQueryFile          = 4055
 	ErrorQueryingPDWAfterIngestion = 4056
+	ErrorGettingAccessToken        = 4057
 )

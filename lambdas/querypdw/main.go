@@ -12,29 +12,27 @@ import (
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.eagleview.com/engineering/assess-platform-library/auth_client"
 	"github.eagleview.com/engineering/assess-platform-library/httpservice"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
+	"github.eagleview.com/engineering/symphony-service/commons/utils"
 )
 
 type eventData struct {
-	Vintage     string  `json:"vintage"`
-	Action      string  `json:"action"`
-	Address     Address `json:"address"`
-	CallbackID  string  `json:"callbackId"`
-	CallbackURL string  `json:"callbackUrl"`
-	ParcelID    string  `json:"parcelId"`
-	WorkflowID  string  `json:"workflowId"`
-}
-
-type Address struct {
-	ParcelAddress string  `json:"parcelAddress"`
-	Lat           float64 `json:"lat"`
-	Long          float64 `json:"long"`
+	Vintage string `json:"vintage"`
+	Action  string `json:"action"`
+	Address struct {
+		ParcelAddress string  `json:"parcelAddress"`
+		Lat           float64 `json:"lat"`
+		Long          float64 `json:"long"`
+	} `json:"address"`
+	CallbackID  string `json:"callbackId"`
+	CallbackURL string `json:"callbackUrl"`
+	ParcelID    string `json:"parcelId"`
+	WorkflowID  string `json:"workflowId"`
 }
 
 type pdwValidationResponse struct {
@@ -66,6 +64,7 @@ type eventResponse struct {
 }
 
 var commonHandler common_handler.CommonHandler
+var auth_client utils.AuthTokenInterface
 
 const (
 	queryfilepath           = "/query.gql"
@@ -76,8 +75,7 @@ const (
 	validatedata            = "validatedata"
 	querydata               = "querydata"
 	GraphEndpoint           = "GraphEndpoint"
-	AuthEndpoint            = "AuthEndpoint"
-	SecretARN               = "SecretARN"
+	DBSecretARN             = "DBSecretARN"
 	region                  = "us-east-2"
 )
 
@@ -88,7 +86,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 
 	// build the validation graph query
 	query := generateValidationQuery(eventData)
-
+	log.Info(ctx, "validation query generated...")
 	// fetch the validation graph response
 	response, err := fetchDataFromPDW(ctx, query)
 	if err != nil {
@@ -113,7 +111,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 	if !isValid {
 		// make callback if structures doesn't exist after ingestion
 		if eventData.Action == querydata {
-			err = makeCallBack(ctx, failure, "unable to query data after ingestion", eventData.CallbackID, eventData.CallbackURL, error_codes.ErrorQueryingPDWAfterIngestion, nil)
+			err = error_handler.NewRetriableError(error_codes.ErrorQueryingPDWAfterIngestion, "unable to query data after ingestion")
 			return eventResponse{}, err
 		}
 		Address := fmt.Sprintf("%s %s %s %s", validationgraphResponse.Data.Parcels[0].Address, validationgraphResponse.Data.Parcels[0].City, validationgraphResponse.Data.Parcels[0].State, validationgraphResponse.Data.Parcels[0].Zip)
@@ -159,8 +157,21 @@ func generateValidationQuery(eventData eventData) string {
 func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
-
-	AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers)
+	authsecret := os.Getenv(DBSecretARN)
+	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
+	if err != nil {
+		return nil, error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
+	}
+	log.Info(ctx, "fetched secrets from secrets manager...")
+	appCode := secretMap["appCode"].(string)
+	clientID := secretMap["clientID"].(string)
+	clientSecret := secretMap["clientSecret"].(string)
+	err = auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	if err != nil {
+		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
+		return nil, err
+	}
+	log.Info(ctx, "added authtoken to headers...")
 	graphrequest := map[string]interface{}{
 		"query": query,
 	}
@@ -217,18 +228,7 @@ func GenerateGQL(attributes []string, lat, long float64, parcelID, address, stru
 	}
 	return query
 }
-func AddAuthorizationTokenHeader(ctx context.Context, httpClient httpservice.IHTTPClientV2, headers map[string]string) {
-	authsecret := os.Getenv(SecretARN)
-	secretMap, _ := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
-	appCode := secretMap["appCode"].(string)
-	endpoint := os.Getenv(AuthEndpoint)
-	clientID := secretMap["clientID"].(string)
-	clientSecret := secretMap["clientSecret"].(string)
-	generateFreshToken := false
-	token, _ := auth_client.GetAccessToken(ctx, httpClient, appCode, endpoint, clientID, clientSecret, generateFreshToken)
-	fmt.Println(token)
-	headers["Authorization"] = "Bearer " + token
-}
+
 func generatequery(parentChildAttributesMap map[string][]string, node string) string {
 	var graphql string
 	if len(parentChildAttributesMap[node]) == 0 {
@@ -270,11 +270,10 @@ func notificationWrapper(ctx context.Context, req eventData) (eventResponse, err
 }
 func main() {
 	log_config.InitLogging("info")
-	commonHandler = common_handler.New(true, true, false, false)
+	commonHandler = common_handler.New(true, true, false, true)
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
 		// APITimeout: 90,
 	})
-	// notificationWrapper(context.Background(), eventData{Address: Address{Lat: 0, Long: 0}})
 	lambda.Start(notificationWrapper)
 
 }
