@@ -67,7 +67,7 @@ var commonHandler common_handler.CommonHandler
 var auth_client utils.AuthTokenInterface
 
 const (
-	queryfilepath           = "/query.gql"
+	queryfilepath           = "query.gql"
 	primary                 = "primary"
 	ContextDeadlineExceeded = "context deadline exceeded"
 	success                 = "success"
@@ -166,6 +166,7 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	appCode := secretMap["appCode"].(string)
 	clientID := secretMap["clientID"].(string)
 	clientSecret := secretMap["clientSecret"].(string)
+	auth_client = &utils.AuthTokenUtil{}
 	err = auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
 	if err != nil {
 		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
