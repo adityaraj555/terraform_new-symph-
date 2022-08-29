@@ -64,7 +64,7 @@ type eventResponse struct {
 }
 
 var commonHandler common_handler.CommonHandler
-var auth_client utils.AuthTokenInterface
+var auth_client utils.AuthTokenInterface = &utils.AuthTokenUtil{}
 
 const (
 	queryfilepath           = "query.gql"
@@ -142,7 +142,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 			log.Error(ctx, "Error while unmarshalling graphresponse, error: ", err.Error())
 			return eventResponse{}, error_handler.NewServiceError(error_codes.ErrorDecodingServiceResponse, err.Error())
 		}
-		err = makeCallBack(ctx, success, "", eventData.CallbackID, eventData.CallbackURL, 0, graphResponse["data"].(map[string]interface{}))
+		err = makeCallBack(ctx, success, "", eventData.CallbackID, eventData.CallbackURL, error_codes.Success, graphResponse["data"].(map[string]interface{}))
 		return eventResponse{}, err
 	}
 }
@@ -166,7 +166,6 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	appCode := secretMap["appCode"].(string)
 	clientID := secretMap["clientID"].(string)
 	clientSecret := secretMap["clientSecret"].(string)
-	auth_client = &utils.AuthTokenUtil{}
 	err = auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
 	if err != nil {
 		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
@@ -187,6 +186,60 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 		return nil, err
 	}
 	return responseBody, nil
+}
+func makePostCall(ctx context.Context, URL string, payload []byte, headers map[string]string) ([]byte, error) {
+	log.Info(ctx, "makePostCall reached...")
+	var resp *http.Response
+	var err error
+	resp, err = commonHandler.HttpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
+
+	if err != nil {
+		log.Error(ctx, "Error while making http request: ", err.Error())
+		if strings.Contains(err.Error(), ContextDeadlineExceeded) {
+			return nil, error_handler.NewRetriableError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+		}
+		return nil, error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
+	}
+	defer resp.Body.Close()
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Error(ctx, "Error while reading response body: ", err.Error())
+	}
+	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
+		return responseBody, error_handler.NewRetriableError(error_codes.ReceivedInternalServerError, fmt.Sprintf("%d status code received", resp.StatusCode))
+	}
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
+		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
+		return responseBody, error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCode, "received invalid http status code: "+strconv.Itoa(resp.StatusCode))
+	}
+	log.Info(ctx, "makePostCall finished...")
+	return responseBody, nil
+}
+
+func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl string, messageCode int, graphresponse map[string]interface{}) error {
+	headers := map[string]string{
+		"Content-Type": "application/json",
+	}
+	callbackRequest := map[string]interface{}{
+		"callbackId":  callbackId,
+		"status":      status,
+		"message":     message,
+		"messageCode": messageCode,
+	}
+	if status == success {
+		callbackRequest["data"] = graphresponse
+	}
+	ByteArray, err := json.Marshal(callbackRequest)
+	if err != nil {
+		log.Error(ctx, "Error while marshalling callbackRequest, error: ", err.Error())
+		return error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
+	}
+	_, err = makePostCall(ctx, callbackUrl, ByteArray, headers)
+	if err != nil {
+		log.Error(ctx, "Error while making callbackRequest, error: ", err.Error())
+		return err
+	}
+	return nil
 }
 func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool {
 	if len(pdwResponse.Data.Parcels[0].Structures) == 0 {
@@ -276,60 +329,4 @@ func main() {
 		// APITimeout: 90,
 	})
 	lambda.Start(notificationWrapper)
-
-}
-func makePostCall(ctx context.Context, URL string, payload []byte, headers map[string]string) ([]byte, error) {
-	log.Info(ctx, "makePostCall reached...")
-	var resp *http.Response
-	var err error
-
-	resp, err = commonHandler.HttpClient.Post(ctx, URL, bytes.NewReader(payload), headers)
-
-	if err != nil {
-		log.Error(ctx, "Error while making http request: ", err.Error())
-		if strings.Contains(err.Error(), ContextDeadlineExceeded) {
-			return nil, error_handler.NewRetriableError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
-		}
-		return nil, error_handler.NewServiceError(error_codes.ErrorMakingPostPutOrDeleteCall, err.Error())
-	}
-	defer resp.Body.Close()
-	responseBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Error(ctx, "Error while reading response body: ", err.Error())
-	}
-	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
-		return responseBody, error_handler.NewRetriableError(error_codes.ReceivedInternalServerError, fmt.Sprintf("%d status code received", resp.StatusCode))
-	}
-	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
-		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
-		return responseBody, error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCode, "received invalid http status code: "+strconv.Itoa(resp.StatusCode))
-	}
-	log.Info(ctx, "makePostCall finished...")
-	return responseBody, nil
-}
-
-func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl string, messageCode int, graphresponse map[string]interface{}) error {
-	headers := map[string]string{
-		"Content-Type": "application/json",
-	}
-	callbackRequest := map[string]interface{}{
-		"callbackId":  callbackId,
-		"status":      status,
-		"message":     message,
-		"messageCode": messageCode,
-	}
-	if status == success {
-		callbackRequest["data"] = graphresponse
-	}
-	ByteArray, err := json.Marshal(callbackRequest)
-	if err != nil {
-		log.Error(ctx, "Error while marshalling callbackRequest, error: ", err.Error())
-		return error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
-	}
-	_, err = makePostCall(ctx, callbackUrl, ByteArray, headers)
-	if err != nil {
-		log.Error(ctx, "Error while making callbackRequest, error: ", err.Error())
-		return err
-	}
-	return nil
 }

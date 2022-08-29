@@ -73,4 +73,5 @@ const (
 	ErrorReadingQueryFile          = 4055
 	ErrorQueryingPDWAfterIngestion = 4056
 	ErrorGettingAccessToken        = 4057
+	Success                        = 4058
 )
