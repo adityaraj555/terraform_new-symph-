@@ -54,6 +54,7 @@ type MyEvent struct {
 	Payload              interface{}         `json:"requestData"`
 	URL                  string              `json:"url" validate:"omitempty,url"`
 	ARN                  string              `json:"arn"`
+	QueueUrl             string              `json:"queueUrl"`
 	RequestMethod        enums.RequestMethod `json:"requestMethod" validate:"omitempty,httpMethod"`
 	Headers              map[string]string   `json:"headers"`
 	IsWaitTask           bool                `json:"isWaitTask"`
@@ -64,7 +65,7 @@ type MyEvent struct {
 	TaskName             string              `json:"taskName"`
 	CallType             enums.CallType      `json:"callType" validate:"omitempty,callTypes"`
 	OrderID              string              `json:"orderId"`
-	ReportID             string              `json:"reportId" validate:"required"`
+	ReportID             string              `json:"reportId"`
 	WorkflowID           string              `json:"workflowId" validate:"required"`
 	TaskToken            string              `json:"taskToken" validate:"required_if=IsWaitTask true"`
 	HipsterJobID         string              `json:"hipsterJobId,omitempty"`
@@ -484,7 +485,12 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		}
 
 		if body, ok := data.Payload.(map[string]interface{}); ok {
-			body["meta"] = metaObj
+			if val, ok := body["meta"]; ok {
+				val.(map[string]interface{})["callbackId"] = metaObj.CallbackID
+				val.(map[string]interface{})["callbackUrl"] = metaObj.CallbackID
+			} else {
+				body["meta"] = metaObj
+			}
 			data.Payload = body
 		}
 	}
@@ -502,6 +508,20 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 		responseBody["status"] = success
 		log.Info(ctx, "CallService successfull...")
 		return responseBody, err
+	}
+	if callType == enums.SQSCT {
+		sqsurl := data.QueueUrl
+		bytearray, err := json.Marshal(data.Payload)
+		if err != nil {
+			log.Error(ctx, "Error while marshalling callout payload, error: ", err.Error())
+			returnResponse["status"] = failure
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
+		}
+		err = commonHandler.AwsClient.PushMessageToSQS(ctx, sqsurl, string(bytearray))
+		if err != nil {
+			returnResponse["status"] = failure
+			return returnResponse, error_handler.NewServiceError(error_codes.ErrorPushingDataToSQS, err.Error())
+		}
 	}
 	json_data, err := json.Marshal(data.Payload)
 	if err != nil {

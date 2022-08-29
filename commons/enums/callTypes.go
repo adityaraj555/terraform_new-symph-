@@ -8,10 +8,11 @@ const (
 	HipsterCT = "hipster"
 	LegacyCT  = "eagleflow"
 	LambdaCT  = "lambda"
+	SQSCT     = "sqs"
 )
 
 func CallTypeList() []string {
-	return []string{HipsterCT, LegacyCT, LambdaCT}
+	return []string{HipsterCT, LegacyCT, LambdaCT, SQSCT}
 }
 
 func (ct CallType) String() string {

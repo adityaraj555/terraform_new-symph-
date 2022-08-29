@@ -1,0 +1,90 @@
+{
+  parcels(ids: ["%s"]) {
+    id
+    lat
+    lon
+    address
+    city
+    state
+    zip
+    _detectedBuildingCount {
+      imagery
+      marker
+      meta
+      source
+      value
+    }
+    _detectedPoolCount {
+      imagery
+      marker
+      meta
+      source
+      value
+    }
+    _detectedTrampolineCount {
+      imagery
+      marker
+      meta
+      source
+      value
+    }
+    structures {
+      id
+      _type {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+      _outline {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+    }
+    trampolines {
+      id
+      _type {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+      _isObstructed {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+      _outline {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+    }
+    pools {
+      id
+      _isCovered {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+      _outline {
+        imagery
+        marker
+        meta
+        source
+        value
+      }
+    }
+  }
+}

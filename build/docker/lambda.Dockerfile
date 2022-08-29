@@ -4,4 +4,6 @@ COPY bin/main /main
 
 COPY build/assets/rds-combined-ca-bundle.pem /rds-combined-ca-bundle.pem
 
+COPY lambdas/querypdw/query.gql /query.gql
+
 ENTRYPOINT [ "/main" ]

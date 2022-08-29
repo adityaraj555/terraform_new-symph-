@@ -24,7 +24,7 @@ func TestRequestValidation(t *testing.T) {
 	//Empty Request
 	req := MyEvent{}
 	_, err := CallService(context.Background(), req, "")
-	assert.Equal(t, "reportId is a required field,workflowId is a required field", err.Error())
+	assert.Equal(t, "workflowId is a required field", err.Error())
 
 	//CallType
 	//1.Invalid

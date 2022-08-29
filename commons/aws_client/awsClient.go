@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/secretsmanager"
 	"github.com/aws/aws-sdk-go/service/sfn"
+	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 )
 
@@ -32,6 +33,7 @@ type IAWSClient interface {
 	GetDataFromS3(ctx context.Context, bucketName, s3KeyPath string) ([]byte, error)
 	FetchS3BucketPath(s3Path string) (string, string, error)
 	CloseWaitTask(ctx context.Context, status, TaskToken, Output, Cause, Error string) error
+	PushMessageToSQS(ctx context.Context, queueUrl, messageBody string) error
 }
 
 type AWSClient struct{}
@@ -231,4 +233,14 @@ func (ac *AWSClient) CloseWaitTask(ctx context.Context, status, TaskToken, Outpu
 		}
 		return err
 	}
+}
+
+func (ac *AWSClient) PushMessageToSQS(ctx context.Context, queueUrl, messageBody string) error {
+	mySession := session.Must(session.NewSession())
+	sqsClient := sqs.New(mySession)
+	_, err := sqsClient.SendMessage(&sqs.SendMessageInput{
+		QueueUrl:    &queueUrl,
+		MessageBody: aws.String(messageBody),
+	})
+	return err
 }
