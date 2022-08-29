@@ -522,6 +522,9 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 			returnResponse["status"] = failure
 			return returnResponse, error_handler.NewServiceError(error_codes.ErrorPushingDataToSQS, err.Error())
 		}
+		returnResponse["status"] = success
+		log.Info(ctx, "CallService successfull...")
+		return returnResponse, err
 	}
 	json_data, err := json.Marshal(data.Payload)
 	if err != nil {

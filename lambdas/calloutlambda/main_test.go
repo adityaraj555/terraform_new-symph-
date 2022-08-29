@@ -743,3 +743,65 @@ func TestFailureLambdaCallunmarshalError(t *testing.T) {
 	_, err := callLambda(context.Background(), map[string]interface{}{"key": "value"}, "lambda function arn", true)
 	assert.Error(t, err)
 }
+
+func TestCompleteCalloutSuccessSQSCall(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("PushMessageToSQS", mock.Anything, "Queue endpoint", mock.Anything).
+		Return(nil)
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	reportID := "1241243"
+	workflowId := "some-id"
+	// 3. Valid POST Call with  wait taask
+	req := MyEvent{ReportID: reportID, IsWaitTask: true, TaskToken: "taskToken", WorkflowID: workflowId, QueueUrl: "Queue endpoint", CallType: "sqs", Payload: map[string]interface{}{"key": "value"}}
+
+	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, success, mock.Anything, req.IsWaitTask).Return("update")
+	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
+	commonHandler.HttpClient = httpClient
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	_, err := HandleRequest(context.Background(), req)
+	assert.NoError(t, err)
+}
+
+func TestCompleteCalloutFailureSQSCall(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("PushMessageToSQS", mock.Anything, "Queue endpoint", mock.Anything).
+		Return(errors.New("some error"))
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	reportID := "1241243"
+	workflowId := "some-id"
+	// 3. Valid POST Call with  wait taask
+	req := MyEvent{ReportID: reportID, IsWaitTask: true, TaskToken: "taskToken", WorkflowID: workflowId, QueueUrl: "Queue endpoint", CallType: "sqs", Payload: map[string]interface{}{"key": "value"}}
+
+	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, failure, mock.Anything, req.IsWaitTask).Return("update")
+	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
+	commonHandler.HttpClient = httpClient
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	_, err := HandleRequest(context.Background(), req)
+	assert.Error(t, err)
+}
+func TestCompleteCalloutSuccessSQSCallWithMeta(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.Mock.On("PushMessageToSQS", mock.Anything, "Queue endpoint", mock.Anything).
+		Return(nil)
+	httpClient := new(mocks.MockHTTPClient)
+	dBClient := new(mocks.IDocDBClient)
+	reportID := "1241243"
+	workflowId := "some-id"
+	// 3. Valid POST Call with  wait taask
+	req := MyEvent{ReportID: reportID, IsWaitTask: true, TaskToken: "taskToken", WorkflowID: workflowId, QueueUrl: "Queue endpoint", CallType: "sqs", Payload: map[string]interface{}{"key": "value", "meta": map[string]interface{}{"S3URI": ""}}}
+
+	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
+	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, success, mock.Anything, req.IsWaitTask).Return("update")
+	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
+	commonHandler.HttpClient = httpClient
+	commonHandler.AwsClient = awsClient
+	commonHandler.DBClient = dBClient
+	_, err := HandleRequest(context.Background(), req)
+	assert.NoError(t, err)
+}
