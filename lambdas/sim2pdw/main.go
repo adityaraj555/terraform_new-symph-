@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -54,10 +55,14 @@ type SimOutput struct {
 }
 
 type imageSource struct {
-	ImageURN     string `json:"image_urn"`
-	ImageSetURN  string `json:"image_set_urn"`
-	ShotDateTime string `json:"shot_date_time"`
-	Source       string `json:"source"`
+	ImageURN     string    `json:"image_urn"`
+	ImageSetURN  string    `json:"image_set_urn"`
+	ShotDateTime string    `json:"shot_date_time"`
+	Source       string    `json:"source"`
+	UL           []float64 `json:"UL"`
+	RL           []float64 `json:"RL"`
+	GSD          float64   `json:"GSD"`
+	S3MaskedUri  string    `json:"S3MaskedUri"`
 }
 
 type structure struct {
@@ -134,32 +139,34 @@ func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{
 
 	data, err := commonHandler.AwsClient.GetDataFromS3(ctx, host, path)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorFetchingDataFromS3, err.Error())
 	}
 	output := SimOutput{}
 	err = json.Unmarshal(data, &output)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorUnmarshallingSimOutput, err.Error())
 	}
 
 	pdwPayload, err := sim2Pdw(ctx, &output, eventData.ParcelId, eventData.Address)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorTransformingSim2PDW, err.Error())
 	}
 
 	data, err = json.Marshal(pdwPayload)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorWhileMarshlingData, err.Error())
 	}
 
 	s3Bucket := os.Getenv("PDO_S3_BUCKET")
-	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim/pdw_payload.json", data)
+	addr := strings.Join(strings.Split(eventData.Address, " "), "")
+	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim/"+addr+"/pdw_payload.json", data)
 	if err != nil {
-		return resp, err
+		return resp, error_handler.NewServiceError(error_codes.ErrorStoringDataToS3, err.Error())
 	}
-	log.Info(context.Background(), "Successfull")
+	log.Info(context.Background(), " upload successfull")
+	s3Key := "s3://" + s3Bucket + "/sim/" + addr + "/pdw_payload.json"
 	// Upload to s3
-	return map[string]interface{}{"status": "success", "payload": pdwPayload}, nil
+	return map[string]interface{}{"pdwPayload": s3Key, "status": "success"}, nil
 }
 
 func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string) ([]PDWPayload, error) {
@@ -169,6 +176,14 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	trampolineCount := 0
 	timeStamp := simOutput.Image.ShotDateTime + "T00:00:00.000000+00:00"
 	dateCreated := time.Now().Format(time.RFC3339)
+
+	imageryMeta := map[string]interface{}{
+		"imageSetUrn": simOutput.Image.ImageSetURN,
+		"ul":          simOutput.Image.UL,
+		"rl":          simOutput.Image.RL,
+		"gsd":         simOutput.Image.GSD,
+		"s3MaskedURI": simOutput.Image.S3MaskedUri,
+	}
 
 	for _, v := range simOutput.Structure {
 		var payload PDWPayload
@@ -187,9 +202,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 				},
 			},
 			Date: timeStamp,
-			Meta: map[string]interface{}{
-				"imageSetUrn": simOutput.Image.ImageSetURN,
-			},
+			Meta: imageryMeta,
 		}
 		payload.Tags = tags
 		payload.Source = pdwSource{
@@ -264,9 +277,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 				},
 			},
 			Date: timeStamp,
-			Meta: map[string]interface{}{
-				"imageSetUrn": simOutput.Image.ImageSetURN,
-			},
+			Meta: imageryMeta,
 		},
 		Attributes: map[string]pdwAttributes{
 			"detectedBuildingCount": {
