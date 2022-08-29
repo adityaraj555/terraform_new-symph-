@@ -47,8 +47,8 @@ type sim2pdwInput struct {
 }
 
 type SimOutput struct {
-	Lat       float64     `json:"lat"`
-	Long      float64     `json:"lon"`
+	Lat       float64     `json:"lat,omitempty"`
+	Long      float64     `json:"lon,omitempty"`
 	Image     imageSource `json:"image"`
 	Structure []structure `json:"structure"`
 }
@@ -87,8 +87,8 @@ type PDWPayload struct {
 }
 
 type pdwAsset struct {
-	Lat  float64 `json:"lat"`
-	Lon  float64 `json:"lon"`
+	Lat  float64 `json:"lat,omitempty"`
+	Lon  float64 `json:"lon,omitempty"`
 	Type string  `json:"type"`
 	Id   string  `json:"id,omitempty"`
 }
@@ -96,14 +96,14 @@ type pdwAsset struct {
 type pdwSource struct {
 	Type        string                 `json:"type"`
 	DateCreated string                 `json:"dateCreated"`
-	Meta        map[string]interface{} `json:"meta"`
+	Meta        map[string]interface{} `json:"meta,omitempty"`
 }
 
 type pdwImagery struct {
 	Source  string                 `json:"source"`
 	UrnList []pdwUrn               `json:"urnList"`
 	Date    string                 `json:"date"`
-	Meta    map[string]interface{} `json:"meta"`
+	Meta    map[string]interface{} `json:"meta,omitempty"`
 }
 
 type pdwUrn struct {
@@ -114,14 +114,14 @@ type pdwUrn struct {
 
 type pdwAttributes struct {
 	Value      interface{}               `json:"value"`
-	Meta       map[string]interface{}    `json:"meta"`
-	Attributes map[string]pdwAttributes2 `json:"attributes"`
+	Meta       map[string]interface{}    `json:"meta,omitempty"`
+	Attributes map[string]pdwAttributes2 `json:"attributes,omitempty"`
 }
 
 type pdwAttributes2 struct {
 	Value      interface{}            `json:"value"`
 	Confidence float64                `json:"confidence"`
-	Meta       map[string]interface{} `json:"meta"`
+	Meta       map[string]interface{} `json:"meta,omitempty"`
 }
 
 func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{}, error) {
@@ -168,6 +168,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	poolCount := 0
 	trampolineCount := 0
 	timeStamp := simOutput.Image.ShotDateTime + "T00:00:00.000000+00:00"
+	dateCreated := time.Now().Format(time.RFC3339)
 
 	for _, v := range simOutput.Structure {
 		var payload PDWPayload
@@ -193,7 +194,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 		payload.Tags = tags
 		payload.Source = pdwSource{
 			Type:        "ML",
-			DateCreated: time.Now().String(),
+			DateCreated: dateCreated,
 		}
 
 		v.Geometry.CRS = crs4326
@@ -202,7 +203,9 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 			Value: v.Geometry,
 			Attributes: map[string]pdwAttributes2{
 				"outlineType": outlineTypeFootPrint,
-				"confidence":  {Value: v.Confidence},
+			},
+			Meta: map[string]interface{}{
+				"confidence": v.Confidence,
 			},
 		}
 
@@ -235,6 +238,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 
 		default:
 			log.Info(ctx, "unsupported type: "+v.Type)
+			continue
 		}
 		resp = append(resp, payload)
 	}
@@ -249,9 +253,36 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 		Date:      timeStamp,
 		Source: pdwSource{
 			Type:        "ML",
-			DateCreated: time.Now().String(),
+			DateCreated: dateCreated,
 		},
+		Imagery: pdwImagery{
+			Source: simOutput.Image.Source,
+			UrnList: []pdwUrn{
+				{
+					Urn:  simOutput.Image.ImageURN,
+					Date: timeStamp,
+				},
+			},
+			Date: timeStamp,
+			Meta: map[string]interface{}{
+				"imageSetUrn": simOutput.Image.ImageSetURN,
+			},
+		},
+		Attributes: map[string]pdwAttributes{
+			"detectedBuildingCount": {
+				Value: buildingCount,
+			},
+			"detectedPoolCount": {
+				Value: poolCount,
+			},
+			"detectedTrampolineCount": {
+				Value: trampolineCount,
+			},
+		},
+		Tags: tags,
 	}
+
+	resp = append(resp, parcel)
 
 	return resp, nil
 }
@@ -259,10 +290,5 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(true, false, false, false)
-	handler(context.Background(), sim2pdwInput{
-		SimOutput: "s3://platform-evml-address-pool/dr5r0f9/metas/ae0e9570-13bd-4c83-87b3-16bdd7c411d0_dr5r0f9-s1jxcn-fdw1qn_output.json",
-		Address:   "12 Houstan TX Bangalore",
-		ParcelId:  "9172490-oiahsvlk-918yhkljh-alkjsdq4r",
-	})
 	lambda.Start(handler)
 }
