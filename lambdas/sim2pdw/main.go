@@ -40,7 +40,7 @@ var (
 )
 
 type sim2pdwInput struct {
-	SimOutput  string `json:"simOuput"`
+	SimOutput  string `json:"simOutput"`
 	WorkflowId string `json:"workflowId"`
 	Address    string `json:"address"`
 	ParcelId   string `json:"parcelId"`
