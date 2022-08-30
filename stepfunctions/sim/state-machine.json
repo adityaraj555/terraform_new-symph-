@@ -71,33 +71,11 @@
             "Next": "Pass"
           }
         ],
-        "Default": "LatLongAdress"
+        "Default": "Invoke_SIM_Model"
       },
       "Pass": {
         "Type": "Pass",
         "End": true
-      },
-      "LatLongAdress": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
-        "Parameters": {
-          "Payload.$": "$",
-          "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda"
-        },
-        "Retry": [
-          {
-            "ErrorEquals": [
-              "Lambda.ServiceException",
-              "Lambda.AWSLambdaException",
-              "Lambda.SdkClientException"
-            ],
-            "IntervalSeconds": 2,
-            "MaxAttempts": 6,
-            "BackoffRate": 2
-          }
-        ],
-        "Next": "Invoke_SIM_Model"
       },
       "Invoke_SIM_Model": {
         "Type": "Task",
