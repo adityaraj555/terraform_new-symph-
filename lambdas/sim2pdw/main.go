@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -131,6 +130,7 @@ type pdwAttributes2 struct {
 
 func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{}, error) {
 	resp := make(map[string]interface{})
+	resp["status"] = "failure"
 	host, path, err := commonHandler.AwsClient.FetchS3BucketPath(eventData.SimOutput)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
@@ -158,13 +158,12 @@ func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{
 	}
 
 	s3Bucket := os.Getenv("PDO_S3_BUCKET")
-	addr := strings.Join(strings.Split(eventData.Address, " "), "")
-	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim/"+addr+"/pdw_payload.json", data)
+	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim/"+eventData.WorkflowId+"/pdw_payload.json", data)
 	if err != nil {
 		return resp, error_handler.NewServiceError(error_codes.ErrorStoringDataToS3, err.Error())
 	}
 	log.Info(context.Background(), " upload successfull")
-	s3Key := "s3://" + s3Bucket + "/sim/" + addr + "/pdw_payload.json"
+	s3Key := "s3://" + s3Bucket + "/sim/" + eventData.WorkflowId + "/pdw_payload.json"
 	// Upload to s3
 	return map[string]interface{}{"pdwPayload": s3Key, "status": "success"}, nil
 }
@@ -236,7 +235,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 			}
 
 		case "trampoline":
-			if v.SubType != "building" {
+			if v.SubType != "trampoline" {
 				continue
 			}
 			payload.Asset.Type = "Trampoline"
@@ -298,8 +297,17 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	return resp, nil
 }
 
+func notificationWrapper(ctx context.Context, req sim2pdwInput) (map[string]interface{}, error) {
+	resp, err := handler(ctx, req)
+	if err != nil {
+		errT := err.(error_handler.ICodedError)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowId, "sim2pdw", err.Error(), nil)
+	}
+	return resp, err
+}
+
 func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(true, false, false, false)
-	lambda.Start(handler)
+	lambda.Start(notificationWrapper)
 }
