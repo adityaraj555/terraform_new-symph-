@@ -25,12 +25,23 @@ type CommonHandler struct {
 	HttpClient  httpservice.IHTTPClientV2
 	DBClient    documentDB_client.IDocDBClient
 	SlackClient slack.ISlackClient
+	Secrets     map[string]interface{}
 }
 
-func New(awsClient, httpClient, dbClient, slackClient bool) CommonHandler {
+func New(awsClient, httpClient, dbClient, slackClient, secretsRequired bool) CommonHandler {
 	CommonHandlerObject := CommonHandler{}
 	var secrets map[string]interface{}
 	var err error
+	if secretsRequired {
+		SecretARN := os.Getenv(DBSecretARN)
+		log.Info("fetching db secrets")
+		secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+		if err != nil {
+			log.Error(context.Background(), err)
+			panic(err)
+		}
+		CommonHandlerObject.Secrets = secrets
+	}
 	if httpClient {
 		CommonHandlerObject.HttpClient = &httpservice.HTTPClientV2{}
 		httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
@@ -47,10 +58,12 @@ func New(awsClient, httpClient, dbClient, slackClient bool) CommonHandler {
 		if CommonHandlerObject.AwsClient == nil {
 			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
 		}
-		secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-		if err != nil {
-			log.Error("Unable to fetch DocumentDb in secret")
-			panic(err)
+		if secrets == nil {
+			secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
+			if err != nil {
+				log.Error("Unable to fetch DocumentDb in secret")
+				panic(err)
+			}
 		}
 		CommonHandlerObject.DBClient = documentDB_client.NewDBClientService(secrets)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

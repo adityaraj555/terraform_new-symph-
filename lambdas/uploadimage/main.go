@@ -208,8 +208,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 		return
 	}
 
-	authsecret := os.Getenv(DBSecretARN)
-	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
+	secretMap := commonHandler.Secrets
 	if err != nil {
 		log.Error(ctx, "error while fetching auth token from secret manager", err.Error())
 		errChan <- error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
@@ -256,7 +255,7 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 
 func main() {
 	log_config.InitLogging(logLevel)
-	commonHandler = common_handler.New(true, true, true, true)
+	commonHandler = common_handler.New(true, true, true, true, true)
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
 		// APITimeout: 90,
 	})
