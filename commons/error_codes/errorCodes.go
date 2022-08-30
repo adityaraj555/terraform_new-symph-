@@ -63,4 +63,7 @@ const (
 	ErrorWhileMarshlingData            = 4046
 	ErrorValidationCheck               = 4047
 	ErrorMissingS3Path                 = 4048
+
+	ErrorUnmarshallingSimOutput = 4061
+	ErrorTransformingSim2PDW    = 4062
 )
