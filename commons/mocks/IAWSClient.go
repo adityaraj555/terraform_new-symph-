@@ -192,3 +192,16 @@ func NewIAWSClient(t testing.TB) *IAWSClient {
 
 	return mock
 }
+
+func (_m *IAWSClient) PushMessageToSQS(ctx context.Context, queueUrl, messageBody string) error {
+	ret := _m.Called(ctx, queueUrl, messageBody)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, queueUrl, messageBody)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}

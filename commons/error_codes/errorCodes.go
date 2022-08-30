@@ -14,6 +14,7 @@ const (
 	ErrorInvokingStepFunction                   = 4010
 	ErrorInvokingLambda                         = 4041
 	ErrorFetchingDataFromS3                     = 4042
+	ErrorPushingDataToSQS                       = 4050
 
 	// DocumentDB Errors
 	ErrorFetchingStepExecutionDataFromDB     = 4011
@@ -53,6 +54,9 @@ const (
 	ErrorWhileFetchingAuthToken               = 4038
 	ErrorUnableToDecodeAuthServiceResponse    = 4039
 	ErrorUnSuccessfullResponseFromAuthService = 4040
+	ReceivedInternalServerError               = 4051
+	ReceivedInvalidHTTPStatusCode             = 4052
+	ErrorDecodingServiceResponse              = 4053
 
 	ErrorParsingURLCalloutLambda   = 4041
 	ErrorMakingGetCall             = 4042
@@ -63,6 +67,13 @@ const (
 	ErrorWhileMarshlingData            = 4046
 	ErrorValidationCheck               = 4047
 	ErrorMissingS3Path                 = 4048
+
+	// PDW Errors
+	ParcelIDDoesnotExist           = 4054
+	ErrorReadingQueryFile          = 4055
+	ErrorQueryingPDWAfterIngestion = 4056
+	ErrorGettingAccessToken        = 4057
+	Success                        = 4058
 
 	ErrorUnmarshallingSimOutput = 4061
 	ErrorTransformingSim2PDW    = 4062
