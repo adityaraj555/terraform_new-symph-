@@ -74,4 +74,7 @@ const (
 	ErrorQueryingPDWAfterIngestion = 4056
 	ErrorGettingAccessToken        = 4057
 	Success                        = 4058
+
+	ErrorUnmarshallingSimOutput = 4061
+	ErrorTransformingSim2PDW    = 4062
 )
