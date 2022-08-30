@@ -68,10 +68,14 @@
           {
             "Variable": "$.PDW_Query.response.call_model",
             "StringMatches": "false",
-            "Next": "Send_Data_To_Caller"
+            "Next": "Pass"
           }
         ],
         "Default": "LatLongAdress"
+      },
+      "Pass": {
+        "Type": "Pass",
+        "End": true
       },
       "LatLongAdress": {
         "Type": "Task",
@@ -98,6 +102,36 @@
       "Invoke_SIM_Model": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload.$": "$",
+          "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "SIMToPDWConversion",
+        "Catch": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "Next": "Notify_Error"
+          }
+        ]
+      },
+      "SIMToPDWConversion": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
         "OutputPath": "$.Payload",
         "Parameters": {
           "Payload.$": "$",
@@ -202,45 +236,15 @@
             "BackoffRate": 2
           }
         ],
-        "Next": "Send_Data_To_Caller",
         "Catch": [
           {
             "ErrorEquals": [
               "States.ALL"
             ],
             "Next": "Notify_Error"
-          }
-        ]
-      },
-      "Send_Data_To_Caller": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
-        "Parameters": {
-          "Payload.$": "$",
-          "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda"
-        },
-        "Retry": [
-          {
-            "ErrorEquals": [
-              "Lambda.ServiceException",
-              "Lambda.AWSLambdaException",
-              "Lambda.SdkClientException"
-            ],
-            "IntervalSeconds": 2,
-            "MaxAttempts": 6,
-            "BackoffRate": 2
           }
         ],
-        "End": true,
-        "Catch": [
-          {
-            "ErrorEquals": [
-              "States.ALL"
-            ],
-            "Next": "Notify_Error"
-          }
-        ]
+        "End": true
       }
     }
   }
