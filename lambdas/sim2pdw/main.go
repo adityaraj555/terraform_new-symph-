@@ -61,16 +61,20 @@ type imageSource struct {
 	UL           []float64 `json:"UL"`
 	RL           []float64 `json:"RL"`
 	GSD          float64   `json:"GSD"`
-	S3MaskedUri  string    `json:"S3MaskedUri"`
+	S3MaskedUri  string    `json:"MaskedImageUri"`
 }
 
 type structure struct {
-	Type       string                 `json:"type"`
-	SubType    string                 `json:"sub_type"`
-	Confidence float64                `json:"confidence"`
-	Geometry   geometry               `json:"geometry"`
-	Primary    bool                   `json:"primary"`
-	Details    map[string]interface{} `json:"details"`
+	Type       string  `json:"type"`
+	SubType    string  `json:"sub_type"`
+	Confidence float64 `json:"confidence"`
+	Centroid   struct {
+		Lat  float64 `json:"latitude"`
+		Long float64 `json:"longitude"`
+	} `json:"centroid"`
+	Geometry geometry               `json:"geometry"`
+	Primary  bool                   `json:"primary"`
+	Details  map[string]interface{} `json:"details"`
 }
 
 type geometry struct {
@@ -189,8 +193,8 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 
 		payload.Addresses = append(payload.Addresses, address)
 		payload.Date = timeStamp
-		payload.Asset.Lat = simOutput.Lat
-		payload.Asset.Lon = simOutput.Long
+		payload.Asset.Lat = v.Centroid.Lat
+		payload.Asset.Lon = v.Centroid.Long
 		payload.Version = "v3"
 		payload.Imagery = pdwImagery{
 			Source: simOutput.Image.Source,

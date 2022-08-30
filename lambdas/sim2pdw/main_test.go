@@ -41,6 +41,10 @@ const sampleSimOutput = `{
                 128,
                 105
             ],
+            "centroid": {
+                "longitude": -121.5663409,
+                "latitude": 37.0097997
+            },
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -97,6 +101,10 @@ const sampleSimOutput = `{
                 83,
                 90
             ],
+            "centroid": {
+                "longitude": -121.5663409,
+                "latitude": 37.0097997
+            },
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -161,6 +169,10 @@ const sampleSimOutput = `{
                 50,
                 79
             ],
+            "centroid": {
+                "longitude": -121.5663409,
+                "latitude": 37.0097997
+            },
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
@@ -225,6 +237,10 @@ const sampleSimOutput = `{
                 38,
                 40
             ],
+            "centroid": {
+                "longitude": -121.5663409,
+                "latitude": 37.0097997
+            },
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [
