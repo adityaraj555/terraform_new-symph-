@@ -56,11 +56,12 @@ type pdwValidationResponse struct {
 }
 
 type eventResponse struct {
-	Address    string  `json:"address"`
-	Latitude   float64 `json:"latitude"`
-	Longitude  float64 `json:"longitude"`
-	ParcelID   string  `json:"parcelId"`
+	Address    string  `json:"address,omitempty"`
+	Latitude   float64 `json:"latitude,omitempty"`
+	Longitude  float64 `json:"longitude,omitempty"`
+	ParcelID   string  `json:"parcelId,omitempty"`
 	TriggerSIM bool    `json:"triggerSIM"`
+	Message    string  `json:"message,omitempty"`
 }
 
 var commonHandler common_handler.CommonHandler
@@ -77,6 +78,9 @@ const (
 	GraphEndpoint           = "GraphEndpoint"
 	DBSecretARN             = "DBSecretARN"
 	region                  = "us-east-2"
+	NoParcelMessage         = "ParcelID does not exist in the graph response"
+	NoStructureMessage      = "Structures does not exist in the graph response"
+	StructurePresentMessage = "Structures exist in the graph response"
 )
 
 func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
@@ -100,10 +104,9 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 	}
 	// make callback if the parcel doesn't exist for the given address in graph
 	if len(validationgraphResponse.Data.Parcels) == 0 || validationgraphResponse.Data.Parcels[0].ID == "" {
-		parcelIDErrMsg := "ParcelID does not exist in the graph response"
-		log.Info(ctx, parcelIDErrMsg)
-		err = makeCallBack(ctx, failure, parcelIDErrMsg, eventData.CallbackID, eventData.CallbackURL, error_codes.ParcelIDDoesnotExist, nil)
-		return eventResponse{}, err
+		log.Info(ctx, NoParcelMessage)
+		err = makeCallBack(ctx, failure, NoParcelMessage, eventData.CallbackID, eventData.CallbackURL, error_codes.ParcelIDDoesnotExist, nil)
+		return eventResponse{Message: NoParcelMessage}, err
 	}
 	parcelid := validationgraphResponse.Data.Parcels[0].ID
 	isValid := isValidPDWResponse(validationgraphResponse, eventData.Vintage)
@@ -122,6 +125,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 			ParcelID:   validationgraphResponse.Data.Parcels[0].ID,
 			TriggerSIM: true,
 			Address:    Address,
+			Message:    NoStructureMessage,
 		}
 		return triggerSIMResponse, nil
 	} else {
@@ -143,7 +147,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 			return eventResponse{}, error_handler.NewServiceError(error_codes.ErrorDecodingServiceResponse, err.Error())
 		}
 		err = makeCallBack(ctx, success, "", eventData.CallbackID, eventData.CallbackURL, error_codes.Success, graphResponse["data"].(map[string]interface{}))
-		return eventResponse{}, err
+		return eventResponse{Message: StructurePresentMessage}, err
 	}
 }
 

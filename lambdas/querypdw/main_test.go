@@ -78,6 +78,7 @@ func TestHandlerTriggerSIM(t *testing.T) {
 		Longitude:  -77.501957,
 		TriggerSIM: true,
 		ParcelID:   "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
+		Message:    NoStructureMessage,
 	}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
@@ -112,7 +113,7 @@ func TestHandlerParcelDoesnotExist(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	expectedResp := eventResponse{}
+	expectedResp := eventResponse{Message: NoParcelMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
@@ -175,7 +176,7 @@ func TestHandlerStructureExists(t *testing.T) {
 	}, nil).Once()
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	expectedResp := eventResponse{}
+	expectedResp := eventResponse{Message: StructurePresentMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
