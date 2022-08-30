@@ -128,7 +128,7 @@ type pdwAttributes struct {
 
 type pdwAttributes2 struct {
 	Value      interface{}            `json:"value"`
-	Confidence float64                `json:"confidence"`
+	Confidence float64                `json:"confidence,omitempty"`
 	Meta       map[string]interface{} `json:"meta,omitempty"`
 }
 
