@@ -75,6 +75,7 @@ const (
 	ErrorGettingAccessToken        = 4057
 	Success                        = 4058
 
-	ErrorUnmarshallingSimOutput = 4061
-	ErrorTransformingSim2PDW    = 4062
+	ErrorUnmarshallingSimOutput   = 4061
+	ErrorTransformingSim2PDW      = 4062
+	ErrorValidatingSim2PDWRequest = 4063
 )

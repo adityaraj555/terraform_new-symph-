@@ -12,6 +12,7 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
+	"github.eagleview.com/engineering/symphony-service/commons/validator"
 )
 
 const (
@@ -40,10 +41,10 @@ var (
 )
 
 type sim2pdwInput struct {
-	SimOutput  string `json:"simOutput"`
-	WorkflowId string `json:"workflowId"`
-	Address    string `json:"address"`
-	ParcelId   string `json:"parcelId"`
+	SimOutput  string `json:"simOutput" validate:"required"`
+	WorkflowId string `json:"workflowId" validate:"required"`
+	Address    string `json:"address" validate:"required"`
+	ParcelId   string `json:"parcelId" validate:"required"`
 }
 
 type SimOutput struct {
@@ -135,6 +136,10 @@ type pdwAttributes2 struct {
 func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{}, error) {
 	resp := make(map[string]interface{})
 	resp["status"] = "failure"
+	if err := validator.ValidateSim2PDWRequest(ctx, eventData); err != nil {
+		return resp, error_handler.NewServiceError(error_codes.ErrorValidatingSim2PDWRequest, err.Error())
+	}
+
 	host, path, err := commonHandler.AwsClient.FetchS3BucketPath(eventData.SimOutput)
 	if err != nil {
 		log.Error(ctx, "Error in fetching AWS path: ", err.Error())
