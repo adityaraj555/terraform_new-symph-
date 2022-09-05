@@ -209,11 +209,6 @@ func UploadData(ctx context.Context, reportId string, location string, url strin
 	}
 
 	secretMap := commonHandler.Secrets
-	if err != nil {
-		log.Error(ctx, "error while fetching auth token from secret manager", err.Error())
-		errChan <- error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
-		return
-	}
 
 	token, ok := secretMap[legacyAuthKey].(string)
 	if !ok {
