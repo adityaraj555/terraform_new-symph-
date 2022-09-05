@@ -83,7 +83,7 @@ func notificationWrapper(ctx context.Context, req RequestBody) (map[string]inter
 	resp, err := Handler(ctx, req)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.OrderId, req.WorkflowId, "datastore", err.Error(), nil)
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.OrderId, req.WorkflowId, "", "datastore", err.Error(), nil)
 	}
 	return resp, err
 }
@@ -128,7 +128,7 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 		log.Error(ctx, "error updating db", err.Error())
 		return error_handler.NewServiceError(error_codes.ErrorUpdatingStepsDataInDB, err.Error())
 	}
-	commonHandler.SlackClient.SendErrorMessage(error_codes.StepFunctionTaskTimedOut, req.OrderId, req.WorkflowId, "datastore", "Task Timed Out", map[string]string{
+	commonHandler.SlackClient.SendErrorMessage(error_codes.StepFunctionTaskTimedOut, req.OrderId, req.WorkflowId, "datastore", timedOutStep.TaskName, "Task Timed Out", map[string]string{
 		"Task":   timedOutStep.TaskName,
 		"StepId": timedOutStep.StepId,
 	})

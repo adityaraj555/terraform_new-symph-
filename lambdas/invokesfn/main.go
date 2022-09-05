@@ -55,7 +55,7 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), reportId, workflowId, "invokesfn", err.Error(), map[string]string{
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), reportId, workflowId, "", "invokesfn", err.Error(), map[string]string{
 			"request": strings.Join(req, " : "),
 		})
 	}
