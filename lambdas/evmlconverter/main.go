@@ -159,7 +159,7 @@ func notificationWrapper(ctx context.Context, req eventData) (map[string]interfa
 	resp, err := handler(ctx, req)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.ReportID, req.WorkflowID, "evmlconverter", err.Error(), map[string]string(nil))
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), req.ReportID, req.WorkflowID, "evmlconverter", "evmlconverter", err.Error(), map[string]string(nil))
 	}
 	return resp, err
 }
