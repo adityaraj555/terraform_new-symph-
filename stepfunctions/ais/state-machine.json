@@ -240,7 +240,8 @@
             "Catch": [
                 {
                     "ErrorEquals": ["States.ALL"],
-                    "Next": "AutomatedImageSelectionFailed"
+                    "Next": "AutomatedImageSelectionFailed",
+                    "ResultPath": "$.errorMessage"
                 }
             ]
         },
@@ -288,7 +289,8 @@
                     "taskName": "AutomatedImageSelectionFailed",
                     "callType": "eagleflow",
                     "status": "AISFailed",
-                    "requestData": {}
+                    "requestData": {},
+                    "errorMessage.$": "$.errorMessage"
                 }
             },
             "Retry": [
