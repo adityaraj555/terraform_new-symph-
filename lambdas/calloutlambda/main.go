@@ -410,10 +410,17 @@ func callLambda(ctx context.Context, payload interface{}, LambdaFunction string,
 	errorType, ok := resp["errorType"]
 	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
-		if errorType == RetriableError {
-			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
+		var errorMessage string
+		_, ok = resp["errorMessage"]
+		if ok {
+			errorMessage = resp["errorMessage"].(string)
+		} else {
+			errorMessage = fmt.Sprintf("received %s", errorType)
 		}
-		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
+		if errorType == RetriableError {
+			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, errorMessage, fmt.Sprintf("from %s", functionName))
+		}
+		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, errorMessage, fmt.Sprintf("from %s", functionName))
 	}
 	log.Info(ctx, "callLambda successful...")
 	return resp, nil

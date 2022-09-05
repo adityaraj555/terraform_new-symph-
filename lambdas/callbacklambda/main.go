@@ -25,6 +25,13 @@ type RequestBody struct {
 	CallbackID  string                 `json:"callbackId" validate:"required"`
 	Response    map[string]interface{} `json:"response"`
 }
+type ErrorMessage struct {
+	Message     string      `json:"message"`
+	MessageCode interface{} `json:"messageCode"`
+}
+type Cause struct {
+	ErrorMessage ErrorMessage `json:"errorMessage"`
+}
 
 const DBSecretARN = "DBSecretARN"
 const success = "success"
@@ -64,7 +71,15 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		err = commonHandler.AwsClient.CloseWaitTask(ctx, success, StepExecutionData.TaskToken, jsonResponse, "", "")
 	} else {
 		log.Info(ctx, CallbackRequest.MessageCode)
-		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", CallbackRequest.Message, fmt.Sprintf("failed at %s", StepExecutionData.TaskName))
+		cause := Cause{
+			ErrorMessage: ErrorMessage{
+				Message:     CallbackRequest.Message,
+				MessageCode: CallbackRequest.MessageCode,
+			},
+		}
+		causebyteData, _ := json.Marshal(cause)
+		Cause := string(causebyteData)
+		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", Cause, fmt.Sprintf("failed at %s", StepExecutionData.TaskName))
 	}
 	if err != nil {
 		log.Error(ctx, "Error Calling CloseWaitTask", err)
