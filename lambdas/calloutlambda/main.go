@@ -705,6 +705,6 @@ func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, true, true, true)
+	commonHandler = common_handler.New(true, true, true, true, false)
 	lambda.Start(notifcationWrapper)
 }

@@ -47,7 +47,7 @@ const (
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, false, true)
+	commonHandler = common_handler.New(true, false, false, true, false)
 	lambda.Start(notificationWrapper)
 }
 
