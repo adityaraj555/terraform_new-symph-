@@ -72,6 +72,12 @@ type MyEvent struct {
 	QueryParam           map[string]string   `json:"queryParam,omitempty"`
 	Auth                 AuthData            `json:"auth"`
 	Status               string              `json:"status"`
+	ErrorMessage         ErrorMessage        `json:"errorMessage"`
+}
+
+type ErrorMessage struct {
+	Error string `json:"Error"`
+	Cause string `json:"Cause"`
 }
 
 // Currently not using because do not know how to handle runtime error lmbda
@@ -94,6 +100,7 @@ const RetriableError = "RetriableError"
 const invalidHTTPStatusCodeError = "invalid http status code received"
 const ContextDeadlineExceeded = "context deadline exceeded"
 const base64 = "base64"
+const Timeout = "States.Timeout"
 
 func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string]string) error {
 	log.Info(ctx, "handleAuth reached...")
@@ -386,26 +393,27 @@ func callLegacyStatusUpdate(ctx context.Context, payload map[string]interface{})
 
 func callLambda(ctx context.Context, payload interface{}, LambdaFunction string, isWaitTask bool) (map[string]interface{}, error) {
 	log.Infof(ctx, "callLambda reached...")
-
+	substrings := strings.Split(LambdaFunction, ":")
+	functionName := substrings[len(substrings)-1]
 	result, err := commonHandler.AwsClient.InvokeLambda(ctx, LambdaFunction, payload.(map[string]interface{}), isWaitTask)
 	if err != nil {
-		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, err.Error())
+		return nil, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, fmt.Sprintf("error invoking %s lambda : %s", functionName, err.Error()))
 	}
 	var resp map[string]interface{}
 	if len(result.Payload) != 0 {
 		err = json.Unmarshal(result.Payload, &resp)
 		if err != nil {
 			log.Error(ctx, "Error while unmarshalling, errror: ", err.Error())
-			return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, err.Error())
+			return resp, error_handler.NewServiceError(error_codes.ErrorDecodingLambdaOutput, fmt.Sprintf("error unmarshalling %s output : %s", functionName, err.Error()))
 		}
 	}
 	errorType, ok := resp["errorType"]
 	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
 		if errorType == RetriableError {
-			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s errorType while Invoking Lambda", errorType))
+			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
 		}
-		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, "error while invoking lamdba")
+		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
 	}
 	log.Info(ctx, "callLambda successful...")
 	return resp, nil
@@ -440,6 +448,26 @@ func validate(ctx context.Context, data MyEvent) error {
 	return nil
 }
 
+func getTimedoutTask(ctx context.Context, WorkflowId string) string {
+	wfExecData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, WorkflowId)
+	if err != nil {
+		log.Error(ctx, "error fetching data from db", err.Error())
+		return ""
+	}
+	var timedOutStep *documentDB_client.StepsPassedThroughBody
+	for _, state := range wfExecData.StepsPassedThrough {
+		if state.Status == running {
+			timedOutStep = &state
+			break
+		}
+	}
+	if timedOutStep == nil {
+		return ""
+	}
+	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
+	return timedOutStep.TaskName
+}
+
 func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
 	log.Info(ctx, "CallService reached...")
 	returnResponse := make(map[string]interface{})
@@ -462,11 +490,25 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	log.Info(ctx, "CallType: ", callType)
 
 	if callType == enums.LegacyCT {
+		var notes string
+		if data.ErrorMessage.Error == Timeout {
+			timedoutTask := getTimedoutTask(ctx, data.WorkflowID)
+			if timedoutTask != "" {
+				notes = fmt.Sprintf("Task Timedout at %s", timedoutTask)
+			} else {
+				notes = Timeout
+			}
+		} else {
+			if data.ErrorMessage.Error != "" || data.ErrorMessage.Cause != "" {
+				notes = fmt.Sprintf("Error: %s :: Cause: %s", data.ErrorMessage.Error, data.ErrorMessage.Cause)
+			}
+		}
 		req := map[string]interface{}{
 			"reportId":   data.ReportID,
 			"workflowId": data.WorkflowID,
 			"status":     data.Status,
 			"taskName":   data.TaskName,
+			"notes":      notes,
 		}
 		err := callLegacyStatusUpdate(ctx, req)
 		if err != nil {

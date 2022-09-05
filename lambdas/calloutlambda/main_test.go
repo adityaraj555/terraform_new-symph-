@@ -38,7 +38,7 @@ func TestRequestValidation(t *testing.T) {
 	assert.Equal(t, "status cannot be empty", err.Error())
 
 	//3.Eagleflow
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"notes": "", "reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"success\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient

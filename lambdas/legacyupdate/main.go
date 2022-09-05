@@ -34,6 +34,7 @@ type eventData struct {
 	TaskName     string `json:"taskName"`
 	Status       string `json:"status"`
 	HipsterJobID string `json:"hipsterJobId"`
+	Notes        string `json:"notes"`
 }
 
 type LambdaOutput struct {
@@ -92,6 +93,7 @@ func handler(ctx context.Context, eventData *eventData) (*LambdaOutput, error) {
 		SubStatus:    status.SubStatus,
 		ReportID:     eventData.ReportID,
 		HipsterJobId: eventData.HipsterJobID,
+		Notes:        eventData.Notes,
 	}
 
 	err = client.UpdateReportStatus(ctx, &payload)
