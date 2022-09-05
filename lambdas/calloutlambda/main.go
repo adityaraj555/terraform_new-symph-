@@ -740,7 +740,7 @@ func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{
 	resp, err := HandleRequest(ctx, req)
 	if err != nil {
 		errT := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), req.ReportID, req.WorkflowID, "callout", err.Error(), nil)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), req.ReportID, req.WorkflowID, "callout", req.TaskName, err.Error(), nil)
 	}
 	return resp, err
 }

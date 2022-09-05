@@ -46,7 +46,7 @@ func TestCallbackvalidation(t *testing.T) {
 
 	RequestBodyObj := RequestBody{}
 	slackClient := &mocks.ISlackClient{}
-	slackClient.On("SendErrorMessage", mock.Anything, "", "", "callback", "invalid status", map[string]string(nil)).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, "", "", "callback", mock.Anything, "invalid status", map[string]string(nil)).Return(nil)
 	mydata := []byte(RequestBodyString)
 	json.Unmarshal(mydata, &RequestBodyObj)
 	RequestBodyObj.Status = "random"
@@ -69,7 +69,7 @@ func TestCallbackErrorFetching(t *testing.T) {
 	dBClient.Mock.On("FetchStepExecutionData", context.Background(), "callbackId").Return(documentDB_client.StepExecutionDataBody{TaskToken: "TaskToken"}, errors.New("error while fetching"))
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, _, _, err := Handler(context.Background(), RequestBodyObj)
+	resp, _, _, _, err := Handler(context.Background(), RequestBodyObj)
 	assert.Error(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -89,7 +89,7 @@ func TestCallbackRework(t *testing.T) {
 	dBClient.Mock.On("UpdateDocumentDB", context.Background(), "filter", "query", mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, _, _, err := Handler(context.Background(), RequestBodyObj)
+	resp, _, _, _, err := Handler(context.Background(), RequestBodyObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -109,7 +109,7 @@ func TestCallbackFailure(t *testing.T) {
 	dBClient.Mock.On("UpdateDocumentDB", context.Background(), "filter", "query", mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, _, _, err := Handler(context.Background(), RequestBodyObj)
+	resp, _, _, _, err := Handler(context.Background(), RequestBodyObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -127,7 +127,7 @@ func TestCallbackFailureClosingWaitTaks(t *testing.T) {
 	aws_client.Mock.On("CloseWaitTask", context.Background(), success, "TaskToken", mock.Anything, mock.Anything, mock.Anything).Return(errors.New("some error"))
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, _, _, err := Handler(context.Background(), RequestBodyObj)
+	resp, _, _, _, err := Handler(context.Background(), RequestBodyObj)
 	assert.Error(t, err)
 	assert.Equal(t, expectedResp, resp)
 }
@@ -146,7 +146,7 @@ func TestCallbackFailedUpdatingDB(t *testing.T) {
 	dBClient.Mock.On("UpdateDocumentDB", context.Background(), "filter", "query", mock.Anything).Return(errors.New("error updating DocDB"))
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = aws_client
-	resp, _, _, err := Handler(context.Background(), RequestBodyObj)
+	resp, _, _, _, err := Handler(context.Background(), RequestBodyObj)
 	assert.Error(t, err)
 	assert.Equal(t, expectedResp, resp)
 
