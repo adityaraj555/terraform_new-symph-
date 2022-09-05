@@ -318,7 +318,7 @@ func notificationWrapper(ctx context.Context, req eventData) (eventResponse, err
 	resp, err := handler(ctx, req)
 	if err != nil {
 		errT := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowID, "querypdw", err.Error(), nil)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowID, "querypdw", "querypdw", err.Error(), nil)
 	}
 	return resp, err
 }
