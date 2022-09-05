@@ -65,10 +65,10 @@ func TestHandler(t *testing.T) {
 	}
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{legacyAuthKey: "token"}
 	aws_Client.Mock.On("FetchS3BucketPath", mock.Anything).Return("", "", nil)
 	aws_Client.Mock.On("GetDataFromS3", mock.Anything, "", "").Return([]byte("dummy response"), nil)
 	aws_Client.Mock.On("InvokeLambda", mock.Anything, mock.Anything, mock.Anything, false).Return(&convertorOutput, nil)
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{legacyAuthKey: "token"}, nil)
 	http_Client.Mock.On("Post").Return(&http.Response{
 		StatusCode: http.StatusOK,
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{

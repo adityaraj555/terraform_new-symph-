@@ -135,6 +135,12 @@ resource "aws_lambda_event_source_mapping" "event_trigger_sqs" {
 }
 //
 
+resource "aws_lambda_event_source_mapping" "event_trigger_sqssim" {
+  event_source_arn = "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-${module.config.environment_config_map.receive_sim_order_queue_name}"
+  function_name    = "arn:aws:lambda:${local.region}:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.invokesfn_lambda_name}" //module.invokesfn_lambda[0].arn
+  depends_on       = [module.invokesfn_lambda]
+}
+
 resource "aws_sns_topic_subscription" "lambda_sns_subscription" {
       topic_arn = "arn:aws:sns:${local.region}:${local.account_id}:DomainEvents"
       protocol  = "sqs"

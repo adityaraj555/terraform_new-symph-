@@ -94,7 +94,7 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, true, true)
+	commonHandler = common_handler.New(true, false, true, true, false)
 	lambda.Start(notificationWrapper)
 }
 
