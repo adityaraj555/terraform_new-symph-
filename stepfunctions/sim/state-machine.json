@@ -31,7 +31,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ],
       "ResultSelector": {
@@ -83,7 +84,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ],
       "ResultSelector": {
@@ -153,7 +155,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ],
       "ResultSelector": {
@@ -204,7 +207,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ],
       "ResultPath": "$.SIMToPDWConversion",
@@ -238,7 +242,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ]
     },
@@ -252,8 +257,12 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "OutputPath": "$.Payload",
       "Parameters": {
-        "Payload.$": "$",
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda"
+        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-sfnnotifier",
+        "Payload": {
+          "callbackId.$": "$$.Execution.Input.callbackId",
+          "callbackUrl.$": "$$.Execution.Input.callbackUrl",
+          "errorMessage.$": "$.errorMessage"
+        }
       },
       "Retry": [
         {
@@ -312,7 +321,8 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error"
+          "Next": "Notify_Error",
+          "ResultPath": "$.errorMessage"
         }
       ],
       "End": true
