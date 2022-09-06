@@ -26,7 +26,7 @@ func NewSlackClient(slackToken, channel string) *SlackClient {
 }
 
 func (sc *SlackClient) SendErrorMessage(errorCode int, reportId, workflowId, lambdaName, taskName, msg string, meta map[string]string) {
-	log.Info(context.Background(), "Error Notification for ReportID: ", reportId, "at TaskName: ", taskName, " failed due to ", msg)
+	log.Info(context.Background(), "Error Notification for WorkflowID: ", workflowId, ", ReportID: ", reportId, " at TaskName: ", taskName, " failed due to ", msg)
 	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(errorCode, reportId, workflowId, msg, taskName, lambdaName, meta)...)
 	if err != nil {
 		log.Error(context.Background(), "error while sending slack notification", err)
