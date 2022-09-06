@@ -47,7 +47,7 @@ const (
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, false, true)
+	commonHandler = common_handler.New(true, false, false, true, false)
 	lambda.Start(notificationWrapper)
 }
 
@@ -55,7 +55,7 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), reportId, workflowId, "invokesfn", err.Error(), map[string]string{
+		commonHandler.SlackClient.SendErrorMessage(cerr.GetErrorCode(), reportId, workflowId, "", "invokesfn", err.Error(), map[string]string{
 			"request": strings.Join(req, " : "),
 		})
 	}

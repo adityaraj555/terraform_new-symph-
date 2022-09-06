@@ -68,7 +68,7 @@ func TestDatastoreLambdainserterror(t *testing.T) {
 
 	dBClient.Mock.On("InsertWorkflowExecutionData", testContext, mock.Anything).Return(errors.New("some error"))
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(documentDB_client.WorkflowExecutionDataBody{}, nil)
-	slackClient.On("SendErrorMessage", mock.Anything, DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, "datastore", mock.Anything, mock.Anything).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, DataStoreRequestObj.OrderId, DataStoreRequestObj.WorkflowId, mock.Anything, "datastore", mock.Anything, mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
 	commonHandler.SlackClient = slackClient
 	resp, err := notificationWrapper(context.Background(), DataStoreRequestObj)
@@ -113,7 +113,7 @@ func TestDatastoreLambdaupdateerror(t *testing.T) {
 
 func TestDatastoreLambdaupdateStepTimeOut(t *testing.T) {
 	dBClient := new(mocks.IDocDBClient)
-
+	slackClient := new(mocks.ISlackClient)
 	DataStoreRequestObj := RequestBody{}
 	mydata := []byte(DataStoreRequest)
 	json.Unmarshal(mydata, &DataStoreRequestObj)
@@ -131,7 +131,9 @@ func TestDatastoreLambdaupdateStepTimeOut(t *testing.T) {
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(nil).Times(3)
 	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, mock.Anything).Return(stepData, nil)
 	dBClient.Mock.On("BuildQueryForCallBack", testContext, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return("filter", "query")
+	slackClient.Mock.On("SendErrorMessage", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	commonHandler.DBClient = dBClient
+	commonHandler.SlackClient = slackClient
 	resp, err := Handler(context.Background(), DataStoreRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)

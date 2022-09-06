@@ -161,16 +161,12 @@ func generateValidationQuery(eventData eventData) string {
 func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
-	authsecret := os.Getenv(DBSecretARN)
-	secretMap, err := commonHandler.AwsClient.GetSecret(ctx, authsecret, region)
-	if err != nil {
-		return nil, error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err.Error())
-	}
+	secretMap := commonHandler.Secrets
 	log.Info(ctx, "fetched secrets from secrets manager...")
 	appCode := secretMap["appCode"].(string)
 	clientID := secretMap["clientID"].(string)
 	clientSecret := secretMap["clientSecret"].(string)
-	err = auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
 	if err != nil {
 		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
 		return nil, err
@@ -322,13 +318,13 @@ func notificationWrapper(ctx context.Context, req eventData) (eventResponse, err
 	resp, err := handler(ctx, req)
 	if err != nil {
 		errT := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowID, "querypdw", err.Error(), nil)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowID, "querypdw", "querypdw", err.Error(), nil)
 	}
 	return resp, err
 }
 func main() {
 	log_config.InitLogging("info")
-	commonHandler = common_handler.New(true, true, false, true)
+	commonHandler = common_handler.New(true, true, false, true, true)
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
 		// APITimeout: 90,
 	})

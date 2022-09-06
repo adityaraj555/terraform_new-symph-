@@ -310,13 +310,13 @@ func notificationWrapper(ctx context.Context, req sim2pdwInput) (map[string]inte
 	resp, err := handler(ctx, req)
 	if err != nil {
 		errT := err.(error_handler.ICodedError)
-		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowId, "sim2pdw", err.Error(), nil)
+		commonHandler.SlackClient.SendErrorMessage(errT.GetErrorCode(), "", req.WorkflowId, "sim2pdw", "sim2pdw", err.Error(), nil)
 	}
 	return resp, err
 }
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, false, false, true)
+	commonHandler = common_handler.New(true, false, false, true, false)
 	lambda.Start(notificationWrapper)
 }

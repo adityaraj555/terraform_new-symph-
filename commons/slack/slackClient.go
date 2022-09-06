@@ -10,7 +10,7 @@ import (
 )
 
 type ISlackClient interface {
-	SendErrorMessage(errorCode int, reportId, workflowId, lambdaName, msg string, meta map[string]string)
+	SendErrorMessage(errorCode int, reportId, workflowId, lambdaName, taskName, msg string, meta map[string]string)
 }
 
 type SlackClient struct {
@@ -25,14 +25,15 @@ func NewSlackClient(slackToken, channel string) *SlackClient {
 	}
 }
 
-func (sc *SlackClient) SendErrorMessage(errorCode int, reportId, workflowId, lambdaName, msg string, meta map[string]string) {
-	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(errorCode, reportId, workflowId, msg, lambdaName, meta)...)
+func (sc *SlackClient) SendErrorMessage(errorCode int, reportId, workflowId, lambdaName, taskName, msg string, meta map[string]string) {
+	log.Info(context.Background(), "Error Notification for WorkflowID: ", workflowId, ", ReportID: ", reportId, " at TaskName: ", taskName, " failed due to ", msg)
+	_, _, _, err := sc.client.SendMessage(sc.channel, sc.getErrorPayload(errorCode, reportId, workflowId, msg, taskName, lambdaName, meta)...)
 	if err != nil {
 		log.Error(context.Background(), "error while sending slack notification", err)
 	}
 }
 
-func (sc *SlackClient) getErrorPayload(errorCode int, reportId, workflowId, msg, lambdaName string, meta map[string]string) []sdk.MsgOption {
+func (sc *SlackClient) getErrorPayload(errorCode int, reportId, workflowId, msg, taskName, lambdaName string, meta map[string]string) []sdk.MsgOption {
 	metaBlock := ""
 	for k, v := range meta {
 		metaBlock = fmt.Sprintf("%s\n %s : %s", metaBlock, k, v)
@@ -52,6 +53,10 @@ func (sc *SlackClient) getErrorPayload(errorCode int, reportId, workflowId, msg,
 			sdk.Attachment{
 				Title: "WorkflowID",
 				Text:  workflowId,
+			},
+			sdk.Attachment{
+				Title: "TaskName",
+				Text:  taskName,
 			},
 			sdk.Attachment{
 				Title: "ErrorCode",

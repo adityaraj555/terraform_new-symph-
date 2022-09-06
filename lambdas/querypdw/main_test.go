@@ -38,11 +38,6 @@ func TestHandlerTriggerSIM(t *testing.T) {
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
 	http_Client.Mock.On("Post").Return(&http.Response{
 
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
@@ -72,6 +67,9 @@ func TestHandlerTriggerSIM(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	expectedResp := eventResponse{
 		Address:    "23 HAVENSHIRE RD ROCHESTER NY 14625",
 		Latitude:   43.172988,
@@ -95,11 +93,6 @@ func TestHandlerParcelDoesnotExist(t *testing.T) {
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
 	http_Client.Mock.On("Post").Return(&http.Response{
 
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
@@ -113,6 +106,9 @@ func TestHandlerParcelDoesnotExist(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	expectedResp := eventResponse{Message: NoParcelMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
@@ -130,11 +126,7 @@ func TestHandlerStructureExists(t *testing.T) {
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
+
 	http_Client.Mock.On("Post").Return(&http.Response{
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
 			"data": {
@@ -176,6 +168,9 @@ func TestHandlerStructureExists(t *testing.T) {
 	}, nil).Once()
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	expectedResp := eventResponse{Message: StructurePresentMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
@@ -193,11 +188,7 @@ func TestHandlerNoStructuresAfterIngestion(t *testing.T) {
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
+
 	http_Client.Mock.On("Post").Return(&http.Response{
 
 		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
@@ -227,6 +218,9 @@ func TestHandlerNoStructuresAfterIngestion(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	expectedResp := eventResponse{}
 	eventDataReq.Action = querydata
 	resp, err := handler(context.Background(), eventDataReq)
@@ -245,11 +239,7 @@ func TestHandlerUnmarshallingGraphResponseError(t *testing.T) {
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
+
 	http_Client.Mock.On("Post").Return(&http.Response{
 
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
@@ -257,6 +247,9 @@ func TestHandlerUnmarshallingGraphResponseError(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	expectedResp := eventResponse{}
 	eventDataReq.Action = querydata
 	resp, err := handler(context.Background(), eventDataReq)
@@ -311,11 +304,7 @@ func TestCallbackError(t *testing.T) {
 
 func TestFetchPDWDataError(t *testing.T) {
 	aws_Client := new(mocks.IAWSClient)
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
+
 	http_Client := new(mocks.MockHTTPClient)
 	http_Client.Mock.On("Post").Return(&http.Response{
 
@@ -324,6 +313,9 @@ func TestFetchPDWDataError(t *testing.T) {
 	}, nil)
 	commonHandler.HttpClient = http_Client
 	commonHandler.AwsClient = aws_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
@@ -331,24 +323,9 @@ func TestFetchPDWDataError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFetchPDWDataErrorFetchingSecrets(t *testing.T) {
-	aws_Client := new(mocks.IAWSClient)
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, errors.New("some error"))
-	commonHandler.AwsClient = aws_Client
-	_, err := fetchDataFromPDW(context.Background(), "")
-	assert.Error(t, err)
-}
 func TestFetchPDWDataErrorAddingTokenToHeaders(t *testing.T) {
 	aws_Client := new(mocks.IAWSClient)
-	aws_Client.Mock.On("GetSecret", mock.Anything, mock.Anything, region).Return(map[string]interface{}{
-		"appCode":      "",
-		"clientID":     "",
-		"clientSecret": "",
-	}, nil)
+
 	http_Client := new(mocks.MockHTTPClient)
 	http_Client.Mock.On("Post").Return(&http.Response{
 
@@ -357,6 +334,9 @@ func TestFetchPDWDataErrorAddingTokenToHeaders(t *testing.T) {
 	}, nil)
 	commonHandler.HttpClient = http_Client
 	commonHandler.AwsClient = aws_Client
+	commonHandler.Secrets = map[string]interface{}{"appCode": "",
+		"clientID":     "",
+		"clientSecret": ""}
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("some error"))
 	auth_client = mock_auth_client

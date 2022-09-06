@@ -38,7 +38,7 @@ func TestRequestValidation(t *testing.T) {
 	assert.Equal(t, "status cannot be empty", err.Error())
 
 	//3.Eagleflow
-	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
+	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"notes": "", "reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
 		Return(&lambda.InvokeOutput{Payload: []byte("{\n  \"status\": \"success\"\n}")}, nil)
 	commonHandler.AwsClient = awsClient
 	commonHandler.DBClient = dBClient
@@ -184,7 +184,7 @@ func TestCompleteCalloutFailure(t *testing.T) {
 			"Message": "Report Status updated for ReportId: "
 		}`))),
 	}, nil)
-	slackClient.On("SendErrorMessage", mock.Anything, reportID, workflowId, "callout", "500 status code received", map[string]string(nil)).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, reportID, workflowId, "callout", mock.Anything, "500 status code received", map[string]string(nil)).Return(nil)
 	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, failure, mock.Anything, req.IsWaitTask).Return("update")
 	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
