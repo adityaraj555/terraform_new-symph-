@@ -257,39 +257,6 @@ func TestHandlerUnmarshallingGraphResponseError(t *testing.T) {
 	assert.Equal(t, expectedResp, resp)
 }
 
-func TestMakePostCallError(t *testing.T) {
-	http_Client := new(mocks.MockHTTPClient)
-	http_Client.Mock.On("Post").Return(&http.Response{
-
-		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
-		StatusCode: http.StatusOK,
-	}, errors.New("some error"))
-	commonHandler.HttpClient = http_Client
-	_, err := makePostCall(context.Background(), "", []byte(""), map[string]string{})
-	assert.Error(t, err)
-}
-func TestMakePostCallInternalError(t *testing.T) {
-	http_Client := new(mocks.MockHTTPClient)
-	http_Client.Mock.On("Post").Return(&http.Response{
-
-		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
-		StatusCode: 500,
-	}, nil)
-	commonHandler.HttpClient = http_Client
-	_, err := makePostCall(context.Background(), "", []byte(""), map[string]string{})
-	assert.Error(t, err)
-}
-func TestMakePostCallForbiddenError(t *testing.T) {
-	http_Client := new(mocks.MockHTTPClient)
-	http_Client.Mock.On("Post").Return(&http.Response{
-
-		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
-		StatusCode: 403,
-	}, nil)
-	commonHandler.HttpClient = http_Client
-	_, err := makePostCall(context.Background(), "", []byte(""), map[string]string{})
-	assert.Error(t, err)
-}
 func TestCallbackError(t *testing.T) {
 	http_Client := new(mocks.MockHTTPClient)
 	http_Client.Mock.On("Post").Return(&http.Response{
