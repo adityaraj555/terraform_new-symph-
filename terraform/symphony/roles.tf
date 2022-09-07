@@ -103,7 +103,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
   path                 = "/"
 
   tags = {
-    Name        = "${local.resource_name_prefix}-role-pdo-access"
+    Name        = "${local.resource_name_prefix}-service-role-pdo-access"
     Description = "AWS IAM role to allow services to access platform-data-orchestrator common resources like s3 and callback Lambda"
   }
 }
