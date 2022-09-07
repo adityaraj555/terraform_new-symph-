@@ -53,46 +53,9 @@ POLICY
 
 
 resource "aws_iam_role" "platform-data-orchestrator-service-role" {
-  assume_role_policy = <<POLICY
-{
-          "Version": "2012-10-17",
-          "Statement": [
-              {
-                  "Effect": "Allow",
-                  "Principal": {
-                      "Service": "lambda.amazonaws.com"
-                  },
-                  "Action": "sts:AssumeRole"
-              },
-              {
-                  "Effect": "Allow",
-                  "Principal": {
-                      "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566"
-                  },
-                  "Action": "sts:AssumeRoleWithWebIdentity",
-                  "Condition": {
-                      "StringEquals": {
-                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
-                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:aud": "sts.amazonaws.com"
-                      }
-                  }
-              },
-              {
-                  "Effect": "Allow",
-                  "Principal": {
-                      "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566"
-                  },
-                  "Action": "sts:AssumeRoleWithWebIdentity",
-                  "Condition": {
-                      "StringEquals": {
-                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
-                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:aud": "sts.amazonaws.com"
-                      }
-                  }
-              }
-          ]
-}
-POLICY
+ assume_role_policy = <<POLICY
+${module.config.environment_config_map.trust_relashionships_external_service_factory_dx}
+  POLICY
 
   inline_policy {
     name   = "platform-data-orchestrator-service-role-access-policy"
