@@ -67,26 +67,26 @@ resource "aws_iam_role" "platform-data-orchestrator-service-role" {
               {
                   "Effect": "Allow",
                   "Principal": {
-                      "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}"
+                      "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566"
                   },
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                       "StringEquals": {
-                          "oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
-                          "oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}:aud": "sts.amazonaws.com"
+                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
+                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:aud": "sts.amazonaws.com"
                       }
                   }
               },
               {
                   "Effect": "Allow",
                   "Principal": {
-                      "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}"
+                      "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566"
                   },
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                       "StringEquals": {
-                          "oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
-                          "oidc.eks.us-east-2.amazonaws.com/id/${local.eks_cluster_id}:aud": "sts.amazonaws.com"
+                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:sub": "system:serviceaccount:factory-dx-human-extraction:pmf-conversion-service-account",
+                          "oidc.eks.us-east-2.amazonaws.com/id/43F424AE2B4DD0EA667BEF4D39D2F566:aud": "sts.amazonaws.com"
                       }
                   }
               }
