@@ -167,12 +167,12 @@ func handler(ctx context.Context, eventData sim2pdwInput) (map[string]interface{
 	}
 
 	s3Bucket := os.Getenv("PDO_S3_BUCKET")
-	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim-pipeline/"+eventData.WorkflowId+"/pdw_payload.json", data)
+	err = commonHandler.AwsClient.StoreDataToS3(ctx, s3Bucket, "/sim-pipeline/"+eventData.WorkflowId+"/sim2pdw/pdw_payload.json", data)
 	if err != nil {
 		return resp, error_handler.NewServiceError(error_codes.ErrorStoringDataToS3, err.Error())
 	}
 	log.Info(context.Background(), " upload successfull")
-	s3Key := "s3://" + s3Bucket + "/sim-pipeline/" + eventData.WorkflowId + "/pdw_payload.json"
+	s3Key := "s3://" + s3Bucket + "/sim-pipeline/" + eventData.WorkflowId + "/sim2pdw/pdw_payload.json"
 	// Upload to s3
 	return map[string]interface{}{"pdwPayload": s3Key, "status": "success"}, nil
 }
