@@ -99,7 +99,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
   managed_policy_arns = []
 
   max_session_duration = "3600"
-  name                 = "${local.resource_name_prefix}-role-pdo-access"
+  name                 = "${local.resource_name_prefix}-service-role-pdo-access"
   path                 = "/"
 
   tags = {
