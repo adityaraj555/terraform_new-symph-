@@ -78,4 +78,5 @@ const (
 	ErrorUnmarshallingSimOutput   = 4061
 	ErrorTransformingSim2PDW      = 4062
 	ErrorValidatingSim2PDWRequest = 4063
+	ErrorUnknownSource            = 4064
 )

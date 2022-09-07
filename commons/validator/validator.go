@@ -97,8 +97,8 @@ func ValidateCallOutRequest(ctx context.Context, data interface{}) error {
 }
 
 func ValidateInvokeSfnRequest(ctx context.Context, data interface{}) error {
+	fmt.Printf("ValidateInvokeSfnRequest reached %+v\n", data)
 	v, trans := initStructValidation()
-
 	_ = v.RegisterValidation("source", func(fl validator.FieldLevel) bool {
 		_, ok := util.FindInStringArray(enums.SourcesList(), fl.Field().String(), true)
 		return ok
@@ -110,6 +110,15 @@ func ValidateInvokeSfnRequest(ctx context.Context, data interface{}) error {
 		t, _ := ut.T("source", fe.Field())
 		return t
 	})
+
+	_ = v.RegisterTranslation("required", trans,
+		func(ut ut.Translator) error {
+			return ut.Add("required", "{0} is a required field", true)
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			t, _ := ut.T("required", fe.Field())
+			return t
+		})
 
 	err := v.Struct(data)
 	errs := translateError(err, trans)
@@ -148,10 +157,12 @@ func translateError(err error, trans ut.Translator) (errs []error) {
 	if err == nil {
 		return nil
 	}
-	validatorErrs := err.(validator.ValidationErrors)
-	for _, e := range validatorErrs {
-		translatedErr := fmt.Errorf(e.Translate(trans))
-		errs = append(errs, translatedErr)
+	validatorErrs, ok := err.(validator.ValidationErrors)
+	if ok {
+		for _, e := range validatorErrs {
+			translatedErr := fmt.Errorf(e.Translate(trans))
+			errs = append(errs, translatedErr)
+		}
 	}
 	return errs
 }
