@@ -136,6 +136,13 @@ func ValidateCallBackRequest(ctx context.Context, data interface{}) error {
 	return combinedError(errs)
 }
 
+func ValidateSim2PDWRequest(ctx context.Context, data interface{}) error {
+	v, trans := initStructValidation()
+	err := v.Struct(data)
+	errs := translateError(err, trans)
+	return combinedError(errs)
+}
+
 //translateError Translate the error
 func translateError(err error, trans ut.Translator) (errs []error) {
 	if err == nil {
