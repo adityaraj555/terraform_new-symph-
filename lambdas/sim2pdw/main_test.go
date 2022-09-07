@@ -330,13 +330,13 @@ func TestSim2Pdw(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	awsClient.On("FetchS3BucketPath", "s3path").Return("bucket", "path", nil)
 	awsClient.On("GetDataFromS3", context.Background(), "bucket", "path").Return([]byte(sampleSimOutput), nil)
-	awsClient.On("StoreDataToS3", context.Background(), "", "/sim-pipeline/1/pdw_payload.json", mock.Anything).Return(nil)
+	awsClient.On("StoreDataToS3", context.Background(), "", "/sim-pipeline/1/sim2pdw/pdw_payload.json", mock.Anything).Return(nil)
 	commonHandler.AwsClient = awsClient
 
 	resp, err := notificationWrapper(context.Background(), sim2pdwInput{SimOutput: "s3path", WorkflowId: "1", Address: "some address", ParcelId: "some id"})
 	assert.NoError(t, err)
 	assert.Equal(t, "success", resp["status"])
-	assert.Equal(t, "s3:///sim-pipeline/1/pdw_payload.json", resp["pdwPayload"])
+	assert.Equal(t, "s3:///sim-pipeline/1/sim2pdw/pdw_payload.json", resp["pdwPayload"])
 }
 
 func TestSim2PdwWrongData(t *testing.T) {
