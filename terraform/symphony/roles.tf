@@ -131,16 +131,33 @@ ${module.config.environment_config_map.trust_relashionships_external_service}
                     "s3:PutObjectAcl",
                     "s3:DeleteObject",
                     "s3:GetObject",
-                    "s3:GetObjectAcl"
+                    "s3:GetObjectAcl",
+                    "sqs:DeleteMessage",
+                    "sqs:ReceiveMessage",
+                    "sqs:GetQueueAttributes"
                 ],
                 "Resource": [
                     "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.callback_lambda_name}",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator",
-                    "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*"
+                    "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*",
+                    "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveSIMOrder"
 
                 ],
                 "Effect": "Allow",
                 "Sid": "AccessCallback2"
+            },
+            {
+                "Effect": "Allow",
+                "Principal": {
+                    "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                    "StringEquals": {
+                        "oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF:sub": "system:serviceaccount:factory-dx-reports-workflow:factory-dx-reports-workflow-service-account",
+                        "oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF:aud": "sts.amazonaws.com"
+                    }
+                }
             }
         ]
     }
