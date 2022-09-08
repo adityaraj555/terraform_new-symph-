@@ -42,11 +42,14 @@ type Address struct {
 }
 
 type sfnSIMInput struct {
-	Address     Address       `json:"address"`
-	CallbackId  string        `json:"callbackId" validate:"required"`
-	CallbackUrl string        `json:"callbackUrl" validate:"required"`
-	Vintage     time.Time     `json:"vintage"`
-	Source      enums.Sources `json:"source" validate:"source"`
+	Address Address       `json:"address"`
+	Meta    *Meta         `json:"meta" validate:"required"`
+	Vintage time.Time     `json:"vintage"`
+	Source  enums.Sources `json:"source" validate:"source"`
+}
+type Meta struct {
+	CallbackID  string `json:"callbackId" validate:"required"`
+	CallbackURL string `json:"callbackUrl" validate:"required"`
 }
 
 var (
@@ -149,7 +152,7 @@ func SFNSourceData(ctx context.Context, input string, source string) (error, str
 			return error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error()), "", ""
 		}
 		SFNStateMachineARN := os.Getenv(SIMStateMachineARN)
-		sfnName := fmt.Sprintf("%s-%s", sfnsimreq.CallbackId, sfnsimreq.Source)
+		sfnName := fmt.Sprintf("%s-%s", sfnsimreq.Meta.CallbackID, sfnsimreq.Source)
 		return nil, SFNStateMachineARN, sfnName
 
 	default:
