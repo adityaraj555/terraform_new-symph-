@@ -52,13 +52,13 @@ POLICY
 }
 
 
-resource "aws_iam_role" "platform-data-orchestrator-service-role" {
+resource "aws_iam_role" "platform-data-orchestrator-service-account-to-pdo-role" {
  assume_role_policy = <<POLICY
 ${module.config.environment_config_map.trust_relashionships_external_service_factory_dx}
   POLICY
 
   inline_policy {
-    name   = "platform-data-orchestrator-service-role-access-policy"
+    name   = "platform-data-orchestrator-service-account-to-pdo-policy"
     policy = <<POLICY
 {
         "Version": "2012-10-17",
@@ -100,7 +100,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
   managed_policy_arns = []
 
   max_session_duration = "3600"
-  name                 = "${local.resource_name_prefix}-service-role-pdo-access"
+  name                 = "${local.resource_name_prefix}-service-account-to-pdo"
   path                 = "/"
 
   tags = {
