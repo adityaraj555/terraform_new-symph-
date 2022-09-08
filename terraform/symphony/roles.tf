@@ -90,20 +90,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 ],
                 "Effect": "Allow",
                 "Sid": "AccessCallback2"
-            },
-            {
-              "Effect": "Allow",
-              "Principal": {
-                  "Federated": "arn:aws:iam::356071200662:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF"
-              },
-              "Action": "sts:AssumeRoleWithWebIdentity",
-              "Condition": {
-                  "StringEquals": {
-                      "oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF:sub": "system:serviceaccount:factory-dx-reports-workflow:factory-dx-reports-workflow-service-account",
-                      "oidc.eks.us-east-2.amazonaws.com/id/E09EAD6977269F0D71AB62C95222F0AF:aud": "sts.amazonaws.com"
-                  }
-              }
-          }
+            }
         ]
     }
     POLICY
@@ -117,7 +104,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
   path                 = "/"
 
   tags = {
-    Name        = "${local.resource_name_prefix}-service-role-pdo-access"
+    Name        = "${local.resource_name_prefix}-service-account-to-pdo"
     Description = "AWS IAM role to allow services to access platform-data-orchestrator common resources like s3 and callback Lambda"
   }
 }
