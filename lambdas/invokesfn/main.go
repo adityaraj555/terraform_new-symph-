@@ -98,7 +98,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		if !ok {
 			return req, error_handler.NewServiceError(error_codes.ErrorUnknownSource, "Unknown Source")
 		}
-		err, SFNStateMachineARN, sfnName := SFNSourceData(ctx, message.Body, src.(string))
+		err, SFNStateMachineARN, sfnName := GetSfnDataBySource(ctx, message.Body, src.(string))
 		if err != nil {
 			log.Error(ctx, err)
 			return req, err
@@ -116,7 +116,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 	return req, err
 }
 
-func SFNSourceData(ctx context.Context, input string, source string) (error, string, string) {
+func GetSfnDataBySource(ctx context.Context, input string, source string) (error, string, string) {
 	log.Info(ctx, "input body:", input)
 
 	switch source {
