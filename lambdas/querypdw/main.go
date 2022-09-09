@@ -81,6 +81,7 @@ const (
 	NoParcelMessage         = "ParcelID does not exist in the graph response"
 	NoStructureMessage      = "Structures does not exist in the graph response"
 	StructurePresentMessage = "Structures exist in the graph response"
+	appCode                 = "O2"
 )
 
 func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
@@ -163,7 +164,6 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	headers["Content-Type"] = "application/json"
 	secretMap := commonHandler.Secrets
 	log.Info(ctx, "fetched secrets from secrets manager...")
-	appCode := secretMap["appCode"].(string)
 	clientID := secretMap["clientID"].(string)
 	clientSecret := secretMap["clientSecret"].(string)
 	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
