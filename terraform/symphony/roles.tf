@@ -78,7 +78,8 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                     "s3:GetObjectAcl",
                     "sqs:DeleteMessage",
                     "sqs:ReceiveMessage",
-                    "sqs:GetQueueAttributes"
+                    "sqs:GetQueueAttributes",
+                    "sqs:SendMessage
                 ],
                 "Resource": [
                     "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.callback_lambda_name}",
