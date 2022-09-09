@@ -185,7 +185,7 @@
             "InvokeGraphPublisher": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "OutputPath": "$.Payload",
+              "OutputPath": "$",
               "Parameters": {
                 "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
                 "Payload": {
@@ -218,7 +218,11 @@
                 }
               ],
               "Next": "PDW_Query_After_Ingestion",
-              "TimeoutSeconds": 120
+              "TimeoutSeconds": 120,
+              "ResultSelector": {
+                "response.$": "$"
+              },
+              "ResultPath": "$.PDW_Query_After_Ingestion"
             },
             "PDW_Query_After_Ingestion": {
               "Type": "Task",
@@ -231,8 +235,8 @@
                     "vintage.$": "$$.Execution.Input.vintage",
                     "action": "querydata",
                     "address.$": "$$.Execution.Input.address",
-                    "callbackId.$": "$$.Execution.Input.callbackId",
-                    "callbackUrl.$": "$$.Execution.Input.callbackUrl"
+                    "callbackId.$": "$$.Execution.Input.meta.callbackId",
+                    "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
                   },
                   "callType": "lambda",
                   "arn": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-querypdw",
