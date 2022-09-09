@@ -8,7 +8,7 @@ def deploymentTargetBranchMapOverrides = [
     sandbox: "develop",
     test:"develop",
     stage: "release-1.0.0",
-    develop: "test_service_role",
+    develop: "develop",
     prod: "release-1.0.0"
 ]
 
