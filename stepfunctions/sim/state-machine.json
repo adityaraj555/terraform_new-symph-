@@ -202,7 +202,15 @@
                   "taskName": "InvokeGraphPublisher",
                   "workflowId.$": "$$.Execution.Name",
                   "taskToken.$": "$$.Task.Token",
-                  "auth": {}
+                  "auth": {
+                    "type": "bearer",
+                    "authData": {
+                      "secretStoreType": "PDO_secret_manager",
+                      "clientIdKey": "ClientID",
+                      "clientSecretKey": "ClientSecret",
+                      "url": "https://api.cmh.platform-dev2.evinternal.com/auth-service/v1/token"
+                    }
+                  }
                 }
               },
               "Retry": [

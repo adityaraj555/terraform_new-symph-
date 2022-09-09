@@ -164,8 +164,8 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	headers["Content-Type"] = "application/json"
 	secretMap := commonHandler.Secrets
 	log.Info(ctx, "fetched secrets from secrets manager...")
-	clientID := secretMap["clientID"].(string)
-	clientSecret := secretMap["clientSecret"].(string)
+	clientID := secretMap["ClientID"].(string)
+	clientSecret := secretMap["ClientSecret"].(string)
 	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
 	if err != nil {
 		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
