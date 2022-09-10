@@ -255,6 +255,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 	}
 
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
+		log.Error(ctx, errors.New(invalidHTTPStatusCodeError+strconv.Itoa(resp.StatusCode)))
 		return "", error_handler.NewServiceError(error_codes.ErrorUnSuccessfullResponseFromAuthService, invalidHTTPStatusCodeError)
 	}
 
@@ -331,7 +332,7 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		if err2 != nil {
 			return "", "", error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err2.Error())
 		}
-	case "PDO_secret_manager":
+	case "pdo_secret_manager":
 		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
 		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
 		cllientId = commonHandler.Secrets[cllientIdKey].(string)

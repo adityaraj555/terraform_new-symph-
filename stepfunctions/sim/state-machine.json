@@ -205,7 +205,7 @@
                   "auth": {
                     "type": "bearer",
                     "authData": {
-                      "secretStoreType": "PDO_secret_manager",
+                      "secretStoreType": "pdo_secret_manager",
                       "clientIdKey": "ClientID",
                       "clientSecretKey": "ClientSecret",
                       "url": "https://api.cmh.platform-dev2.evinternal.com/auth-service/v1/token"
