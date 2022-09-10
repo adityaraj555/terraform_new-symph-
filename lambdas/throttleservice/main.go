@@ -27,11 +27,12 @@ const (
 )
 
 type eventData struct {
-	ReportID      string `json:"reportId"`
-	OrderID       string `json:"orderId"`
-	WorkflowID    string `json:"workflowId"`
-	OrderType     string `json:"orderType"`
-	IsPenetration bool   `json:"isPenetration"`
+	ReportID         string `json:"reportId"`
+	OrderID          string `json:"orderId"`
+	WorkflowID       string `json:"workflowId"`
+	OrderType        string `json:"orderType"`
+	IsPenetration    bool   `json:"isPenetration"`
+	IsHipsterEnabled bool   `json:"isHipsterEnabled"`
 }
 
 const AllowedHipsterCount = "AllowedHipsterCount"
@@ -87,7 +88,7 @@ func getWorkflowExecutionPath(ctx context.Context, eventData *eventData) (string
 
 func hipsterAllowed(ctx context.Context, eventData *eventData) bool {
 	log.Infof(ctx, "Checking Hipster is allowed or not")
-	if eventData.IsPenetration || !enums.IsHipsterCompatible(eventData.OrderType) {
+	if eventData.IsPenetration || !enums.IsHipsterCompatible(eventData.OrderType) || !eventData.IsHipsterEnabled {
 		return false
 	}
 	return true

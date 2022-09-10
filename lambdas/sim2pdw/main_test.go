@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
+	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
 
@@ -328,13 +330,13 @@ func TestSim2Pdw(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	awsClient.On("FetchS3BucketPath", "s3path").Return("bucket", "path", nil)
 	awsClient.On("GetDataFromS3", context.Background(), "bucket", "path").Return([]byte(sampleSimOutput), nil)
-	awsClient.On("StoreDataToS3", context.Background(), "", "/sim/1/pdw_payload.json", mock.Anything).Return(nil)
+	awsClient.On("StoreDataToS3", context.Background(), "", "/sim-pipeline/1/sim2pdw/pdw_payload.json", mock.Anything).Return(nil)
 	commonHandler.AwsClient = awsClient
 
-	resp, err := notificationWrapper(context.Background(), sim2pdwInput{SimOutput: "s3path", WorkflowId: "1"})
+	resp, err := notificationWrapper(context.Background(), sim2pdwInput{SimOutput: "s3path", WorkflowId: "1", Address: "some address", ParcelId: "some id"})
 	assert.NoError(t, err)
 	assert.Equal(t, "success", resp["status"])
-	assert.Equal(t, "s3:///sim/1/pdw_payload.json", resp["pdwPayload"])
+	assert.Equal(t, "s3:///sim-pipeline/1/sim2pdw/pdw_payload.json", resp["pdwPayload"])
 }
 
 func TestSim2PdwWrongData(t *testing.T) {
@@ -343,7 +345,20 @@ func TestSim2PdwWrongData(t *testing.T) {
 	awsClient.On("GetDataFromS3", context.Background(), "bucket", "path").Return([]byte(`{"lat": "wrong type"}`), nil)
 	commonHandler.AwsClient = awsClient
 
+	resp, err := handler(context.Background(), sim2pdwInput{SimOutput: "s3path", WorkflowId: "1", Address: "some address", ParcelId: "some id"})
+	assert.Error(t, err)
+	assert.Equal(t, "failure", resp["status"])
+}
+
+func TestSim2PdwWrongInput(t *testing.T) {
+	awsClient := new(mocks.IAWSClient)
+	awsClient.On("FetchS3BucketPath", "s3path").Return("bucket", "path", nil)
+	awsClient.On("GetDataFromS3", context.Background(), "bucket", "path").Return([]byte(`{"lat": "wrong type"}`), nil)
+	commonHandler.AwsClient = awsClient
+
 	resp, err := handler(context.Background(), sim2pdwInput{SimOutput: "s3path", WorkflowId: "1"})
 	assert.Error(t, err)
+	err2 := err.(error_handler.ICodedError)
+	assert.Equal(t, error_codes.ErrorValidatingSim2PDWRequest, err2.GetErrorCode())
 	assert.Equal(t, "failure", resp["status"])
 }

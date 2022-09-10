@@ -17,6 +17,7 @@ var eventTestData string = `{
 	"orderId": "44825849",
 	"workflowId": "9cabffdf-e980-0bbf-b481-0048f7a88bef",
 	"isPenetration":true,
+	"isHipsterEnabled":true,
 	"orderType": "PremiumResidential"
   }`
 

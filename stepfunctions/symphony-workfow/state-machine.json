@@ -296,6 +296,7 @@
           "reportId.$": "$$.Execution.Input.reportId",
           "workflowId.$": "$$.Execution.Name",
           "isPenetration.$": "$$.Execution.Input.isPenetration",
+          "isHipsterEnabled.$": "$$.Execution.Input.isHipsterEnabled",
           "orderType.$": "$$.Execution.Input.orderType"
         },
         "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"

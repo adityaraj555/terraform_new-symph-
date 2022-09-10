@@ -148,6 +148,7 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 		headers["Authorization"] = "X-API-Key " + XAPIKey
 		return nil
 	case enums.AuthBearer:
+
 		cllientId, clientSecret, err := fetchClientIdSecret(ctx, payoadAuthData)
 		if err != nil {
 			return err
@@ -254,6 +255,7 @@ func fetchAuthToken(ctx context.Context, URL, cllientId, clientSecret string, he
 	}
 
 	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
+		log.Error(ctx, errors.New(invalidHTTPStatusCodeError+strconv.Itoa(resp.StatusCode)))
 		return "", error_handler.NewServiceError(error_codes.ErrorUnSuccessfullResponseFromAuthService, invalidHTTPStatusCodeError)
 	}
 
@@ -330,7 +332,11 @@ func fetchClientIdSecret(ctx context.Context, payoadAuthData AuthData) (string, 
 		if err2 != nil {
 			return "", "", error_handler.NewServiceError(error_codes.ErrorFetchingSecretsFromSecretManager, err2.Error())
 		}
-
+	case "pdo_secret_manager":
+		cllientIdKey := payoadAuthData.RequiredAuthData.ClientIDKey
+		clientSecretKey := payoadAuthData.RequiredAuthData.ClientSecretKey
+		cllientId = commonHandler.Secrets[cllientIdKey].(string)
+		clientSecret = commonHandler.Secrets[clientSecretKey].(string)
 	}
 	cllientId = strings.Trim(string(cllientId), "\"")
 	clientSecret = strings.Trim(string(clientSecret), "\"")
@@ -754,6 +760,6 @@ func notifcationWrapper(ctx context.Context, req MyEvent) (map[string]interface{
 
 func main() {
 	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(true, true, true, true, false)
+	commonHandler = common_handler.New(true, true, true, true, true)
 	lambda.Start(notifcationWrapper)
 }
