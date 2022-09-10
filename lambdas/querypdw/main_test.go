@@ -67,9 +67,9 @@ func TestHandlerTriggerSIM(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	expectedResp := eventResponse{
 		Address:    "23 HAVENSHIRE RD ROCHESTER NY 14625",
 		Latitude:   43.172988,
@@ -106,9 +106,9 @@ func TestHandlerParcelDoesnotExist(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	expectedResp := eventResponse{Message: NoParcelMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
@@ -168,9 +168,9 @@ func TestHandlerStructureExists(t *testing.T) {
 	}, nil).Once()
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	expectedResp := eventResponse{Message: StructurePresentMessage}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
@@ -218,9 +218,9 @@ func TestHandlerNoStructuresAfterIngestion(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	expectedResp := eventResponse{}
 	eventDataReq.Action = querydata
 	resp, err := handler(context.Background(), eventDataReq)
@@ -247,9 +247,9 @@ func TestHandlerUnmarshallingGraphResponseError(t *testing.T) {
 	}, nil)
 	commonHandler.AwsClient = aws_Client
 	commonHandler.HttpClient = http_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	expectedResp := eventResponse{}
 	eventDataReq.Action = querydata
 	resp, err := handler(context.Background(), eventDataReq)
@@ -313,9 +313,9 @@ func TestFetchPDWDataError(t *testing.T) {
 	}, nil)
 	commonHandler.HttpClient = http_Client
 	commonHandler.AwsClient = aws_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	auth_client = mock_auth_client
@@ -334,9 +334,9 @@ func TestFetchPDWDataErrorAddingTokenToHeaders(t *testing.T) {
 	}, nil)
 	commonHandler.HttpClient = http_Client
 	commonHandler.AwsClient = aws_Client
-	commonHandler.Secrets = map[string]interface{}{"appCode": "",
-		"clientID":     "",
-		"clientSecret": ""}
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	mock_auth_client := new(mocks.AuthTokenInterface)
 	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(errors.New("some error"))
 	auth_client = mock_auth_client
