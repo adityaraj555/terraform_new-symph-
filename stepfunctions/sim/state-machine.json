@@ -307,7 +307,8 @@
         "Payload": {
           "callbackId.$": "$$.Execution.Input.meta.callbackId",
           "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl",
-          "errorMessage.$": "$.errorMessage"
+          "errorMessage.$": "$.errorMessage",
+          "workflowId.$": "$$.Execution.Name"
         }
       },
       "Retry": [

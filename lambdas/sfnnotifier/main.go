@@ -14,6 +14,7 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/error_codes"
 	"github.eagleview.com/engineering/symphony-service/commons/error_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
+	"github.eagleview.com/engineering/symphony-service/commons/utils"
 )
 
 type eventData struct {
@@ -52,7 +53,10 @@ const (
 	failure = "failure"
 	running = "running"
 	Timeout = "States.Timeout"
+	appCode = "O2"
 )
+
+var auth_client utils.AuthTokenInterface = &utils.AuthTokenUtil{}
 
 var commonHandler common_handler.CommonHandler
 
@@ -84,6 +88,14 @@ func makeCallBack(ctx context.Context, message, callbackId, callbackUrl string, 
 	headers := map[string]string{
 		"Content-Type": "application/json",
 	}
+	secretMap := commonHandler.Secrets
+	clientID := secretMap["ClientID"].(string)
+	clientSecret := secretMap["ClientSecret"].(string)
+	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	if err != nil {
+		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
+		return err
+	}
 	callbackRequest := map[string]interface{}{
 		"callbackId":  callbackId,
 		"status":      failure,
@@ -112,7 +124,7 @@ func notificationWrapper(ctx context.Context, req eventData) error {
 }
 func main() {
 	log_config.InitLogging("info")
-	commonHandler = common_handler.New(true, true, true, true, false)
+	commonHandler = common_handler.New(true, true, true, true, true)
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
 		// APITimeout: 90,
 	})

@@ -32,6 +32,12 @@ func TestNotifier(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.HttpClient = httpClient
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	httpClient.Mock.On("Post").Return(&http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: http.StatusOK,
@@ -51,6 +57,12 @@ func TestTmeoutNotifier(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.HttpClient = httpClient
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	httpClient.Mock.On("Post").Return(&http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: http.StatusOK,
@@ -71,6 +83,12 @@ func TestCallbackError(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.HttpClient = httpClient
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	httpClient.Mock.On("Post").Return(&http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: http.StatusOK,
@@ -91,6 +109,12 @@ func TestErrorCodesUnavailability(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.HttpClient = httpClient
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	httpClient.Mock.On("Post").Return(&http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: http.StatusOK,
@@ -117,6 +141,12 @@ func TestErrorCodesUnavailability2(t *testing.T) {
 	commonHandler.DBClient = dBClient
 	commonHandler.AwsClient = awsClient
 	commonHandler.HttpClient = httpClient
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	httpClient.Mock.On("Post").Return(&http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: http.StatusOK,
