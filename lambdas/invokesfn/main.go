@@ -138,6 +138,7 @@ func GetSfnDataBySource(ctx context.Context, input string, source string) (error
 			SFNStateMachineARN = os.Getenv(StateMachineARN)
 		}
 		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
+		log_config.SetTraceIdInContext(ctx, sfnreq.ReportID, "")
 		return nil, SFNStateMachineARN, sfnName
 
 	case enums.SIM:
@@ -153,10 +154,11 @@ func GetSfnDataBySource(ctx context.Context, input string, source string) (error
 		}
 		SFNStateMachineARN := os.Getenv(SIMStateMachineARN)
 		sfnName := fmt.Sprintf("%s-%s", sfnsimreq.Meta.CallbackID, sfnsimreq.Source)
+		log_config.SetTraceIdInContext(ctx, sfnsimreq.Meta.CallbackID, "")
 		return nil, SFNStateMachineARN, sfnName
 
 	default:
 		return error_handler.NewServiceError(error_codes.ErrorUnknownSource, "Unknown Source"), "", ""
 	}
-	// log_config.SetTraceIdInContext(ctx, req.ReportID, "")
+
 }
