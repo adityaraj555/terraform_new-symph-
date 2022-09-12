@@ -416,10 +416,17 @@ func callLambda(ctx context.Context, payload interface{}, LambdaFunction string,
 	errorType, ok := resp["errorType"]
 	log.Errorf(ctx, "Error returned from lambda: %+v", errorType)
 	if ok {
-		if errorType == RetriableError {
-			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
+		var errorMessage string
+		_, ok = resp["errorMessage"]
+		if ok {
+			errorMessage = resp["errorMessage"].(string)
+		} else {
+			errorMessage = fmt.Sprintf("received %s", errorType)
 		}
-		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, fmt.Sprintf("received %s for %s", errorType, functionName))
+		if errorType == RetriableError {
+			return resp, error_handler.NewRetriableError(error_codes.ErrorInvokingLambda, errorMessage, fmt.Sprintf("from %s", functionName))
+		}
+		return resp, error_handler.NewServiceError(error_codes.ErrorInvokingLambda, errorMessage, fmt.Sprintf("from %s", functionName))
 	}
 	log.Info(ctx, "callLambda successful...")
 	return resp, nil
@@ -454,26 +461,6 @@ func validate(ctx context.Context, data MyEvent) error {
 	return nil
 }
 
-func getTimedoutTask(ctx context.Context, WorkflowId string) string {
-	wfExecData, err := commonHandler.DBClient.FetchWorkflowExecutionData(ctx, WorkflowId)
-	if err != nil {
-		log.Error(ctx, "error fetching data from db", err.Error())
-		return ""
-	}
-	var timedOutStep *documentDB_client.StepsPassedThroughBody
-	for _, state := range wfExecData.StepsPassedThrough {
-		if state.Status == running {
-			timedOutStep = &state
-			break
-		}
-	}
-	if timedOutStep == nil {
-		return ""
-	}
-	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
-	return timedOutStep.TaskName
-}
-
 func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]interface{}, error) {
 	log.Info(ctx, "CallService reached...")
 	returnResponse := make(map[string]interface{})
@@ -498,7 +485,7 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 	if callType == enums.LegacyCT {
 		var notes string
 		if data.ErrorMessage.Error == Timeout {
-			timedoutTask := getTimedoutTask(ctx, data.WorkflowID)
+			timedoutTask := commonHandler.DBClient.GetTimedoutTask(ctx, data.WorkflowID)
 			if timedoutTask != "" {
 				notes = fmt.Sprintf("Task Timedout at %s", timedoutTask)
 			} else {

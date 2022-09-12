@@ -78,4 +78,21 @@ const (
 	ErrorUnmarshallingSimOutput   = 4061
 	ErrorTransformingSim2PDW      = 4062
 	ErrorValidatingSim2PDWRequest = 4063
+	ErrorSentToCallbackLambda     = 4064
+	TaskTimedOutError             = 4065
+	ErrorRetrievingMsgCode        = 4066
 )
+
+// Messagecodes map for async tasks from callback range 4080-4100
+var AsyncTaskMsgCodeMap = map[string]interface{}{
+	"InvokeGraphPublisher":                  4080,
+	"Invoke_SIM_Model":                      4081,
+	"ImageryCheck":                          4082,
+	"BuildingDetection":                     4083,
+	"ImageSelection":                        4084,
+	"FacetKeyPointDetection":                4085,
+	"3DModellingService":                    4086,
+	"CreateHipsterJobAndWaitForMeasurement": 4087,
+	"UpdateHipsterJobAndWaitForQC":          4088,
+	"ConvertPropertyModelToEVJson":          4089,
+}

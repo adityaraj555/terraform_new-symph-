@@ -50,6 +50,7 @@ type IDocDBClient interface {
 	BuildQueryForUpdateWorkflowDataCallout(ctx context.Context, TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{}
 	CheckConnection(ctx context.Context) error
 	GetHipsterCountPerDay(ctx context.Context) (int64, error)
+	GetTimedoutTask(ctx context.Context, WorkflowId string) string
 }
 
 type DocDBClient struct {
@@ -292,4 +293,23 @@ func (DBClient *DocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, 
 		return 0, err
 	}
 	return count, nil
+}
+func (DBClient *DocDBClient) GetTimedoutTask(ctx context.Context, WorkflowId string) string {
+	wfExecData, err := DBClient.FetchWorkflowExecutionData(ctx, WorkflowId)
+	if err != nil {
+		log.Error(ctx, "error fetching data from db", err.Error())
+		return ""
+	}
+	var timedOutStep *StepsPassedThroughBody
+	for _, state := range wfExecData.StepsPassedThrough {
+		if state.Status == running {
+			timedOutStep = &state
+			break
+		}
+	}
+	if timedOutStep == nil {
+		return ""
+	}
+	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
+	return timedOutStep.TaskName
 }

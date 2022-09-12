@@ -24,18 +24,18 @@ func TestRequestValidation(t *testing.T) {
 	//Empty Request
 	req := MyEvent{}
 	_, err := CallService(context.Background(), req, "")
-	assert.Equal(t, "workflowId is a required field", err.Error())
+	assert.Equal(t, "{\"message\":\"workflowId is a required field\",\"messageCode\":4029}", err.Error())
 
 	//CallType
 	//1.Invalid
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, CallType: "assess"}
 	_, err = CallService(context.Background(), req, "")
-	assert.Equal(t, "unsupported calltype", err.Error())
+	assert.Equal(t, "{\"message\":\"unsupported calltype\",\"messageCode\":4029}", err.Error())
 
 	//2.Hipster, Status missing
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, CallType: "hipster"}
 	_, err = CallService(context.Background(), req, "")
-	assert.Equal(t, "status cannot be empty", err.Error())
+	assert.Equal(t, "{\"message\":\"status cannot be empty\",\"messageCode\":4029}", err.Error())
 
 	//3.Eagleflow
 	awsClient.Mock.On("InvokeLambda", context.Background(), "", map[string]interface{}{"notes": "", "reportId": "1241243", "status": "MAStarted", "taskName": "", "workflowId": "some-id"}, false).
@@ -51,17 +51,17 @@ func TestRequestValidation(t *testing.T) {
 	//1.Invalid
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, CallType: "Eagleflow", RequestMethod: "PATCH"}
 	_, err = CallService(context.Background(), req, "")
-	assert.Equal(t, "invalid http request method", err.Error())
+	assert.Equal(t, "{\"message\":\"invalid http request method\",\"messageCode\":4029}", err.Error())
 
 	//2.Empty URL
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, RequestMethod: "POST"}
 	_, err = CallService(context.Background(), req, "")
-	assert.Equal(t, "invalid callout request", err.Error())
+	assert.Equal(t, "{\"message\":\"invalid callout request\",\"messageCode\":4029}", err.Error())
 
 	//3.Invalid URL
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, RequestMethod: "POST", URL: "asdfasd.net"}
 	_, err = CallService(context.Background(), req, "")
-	assert.Equal(t, "url must be a valid URL", err.Error())
+	assert.Equal(t, "{\"message\":\"url must be a valid URL\",\"messageCode\":4029}", err.Error())
 
 	// 3. Valid, need http mocking
 	req = MyEvent{ReportID: reportID, WorkflowID: workflowId, CallType: "", RequestMethod: "GET", URL: "http://google.com"}
@@ -184,7 +184,7 @@ func TestCompleteCalloutFailure(t *testing.T) {
 			"Message": "Report Status updated for ReportId: "
 		}`))),
 	}, nil)
-	slackClient.On("SendErrorMessage", mock.Anything, reportID, workflowId, "callout", mock.Anything, "500 status code received", map[string]string(nil)).Return(nil)
+	slackClient.On("SendErrorMessage", mock.Anything, reportID, workflowId, "callout", mock.Anything, mock.Anything, map[string]string(nil)).Return(nil)
 	dBClient.Mock.On("InsertStepExecutionData", mock.Anything, mock.Anything).Return(nil)
 	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", mock.Anything, req.TaskName, mock.Anything, failure, mock.Anything, req.IsWaitTask).Return("update")
 	dBClient.Mock.On("UpdateDocumentDB", mock.Anything, mock.Anything, "update", mock.Anything).Return(nil)
