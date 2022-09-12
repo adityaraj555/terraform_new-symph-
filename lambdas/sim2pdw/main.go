@@ -226,20 +226,30 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 				"outlineType": outlineTypeFootPrint,
 			},
 			Meta: map[string]interface{}{
-				"confidence": v.Confidence,
+				"confidence-exist": v.Confidence,
 			},
 		}
 
 		switch v.Type {
 		case "building":
-			if v.SubType != "building" {
-				continue
-			}
 			payload.Asset.Type = "Structure"
 			buildingCount += 1
-			if v.Primary {
+			switch {
+			case v.Primary:
 				payload.Attributes["type"] = pdwAttributes{
 					Value: "main",
+				}
+			case v.SubType == "barn":
+				payload.Attributes["type"] = pdwAttributes{
+					Value: "Barn",
+				}
+			case v.SubType == "deck":
+				payload.Attributes["type"] = pdwAttributes{
+					Value: "Deck",
+				}
+			default:
+				payload.Attributes["type"] = pdwAttributes{
+					Value: "Other",
 				}
 			}
 
@@ -256,7 +266,12 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 			}
 			payload.Asset.Type = "Pool"
 			poolCount += 1
-
+		case "extension":
+			if v.SubType == "deck" {
+				payload.Attributes["type"] = pdwAttributes{
+					Value: "Deck",
+				}
+			}
 		default:
 			log.Info(ctx, "unsupported type: "+v.Type)
 			continue

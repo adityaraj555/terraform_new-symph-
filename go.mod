@@ -32,7 +32,7 @@ require (
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.3 // indirect
 	github.com/labstack/echo v3.3.10+incompatible // indirect
-	github.com/labstack/gommon v0.3.0 // indirect
+	github.com/labstack/gommon v0.3.0
 	github.com/mattn/go-colorable v0.1.7 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
