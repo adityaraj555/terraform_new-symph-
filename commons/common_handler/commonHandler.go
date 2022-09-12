@@ -41,7 +41,7 @@ func New(awsClient, httpClient, dbClient, slackClient, secretsRequired bool) Com
 	CommonHandlerObject := CommonHandler{}
 	var secrets map[string]interface{}
 	var err error
-	if secretsRequired {
+	if secretsRequired || awsClient || dbClient || slackClient {
 		SecretARN := os.Getenv(DBSecretARN)
 		log.Info("fetching db secrets")
 		if CommonHandlerObject.AwsClient == nil {
@@ -60,23 +60,8 @@ func New(awsClient, httpClient, dbClient, slackClient, secretsRequired bool) Com
 			APITimeout: 90,
 		})
 	}
-	if awsClient {
-		CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
-	}
 
 	if dbClient {
-		SecretARN := os.Getenv(DBSecretARN)
-		log.Info("fetching db secrets")
-		if CommonHandlerObject.AwsClient == nil {
-			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
-		}
-		if secrets == nil {
-			secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
-			if err != nil {
-				log.Error("Unable to fetch DocumentDb in secret")
-				panic(err)
-			}
-		}
 		CommonHandlerObject.DBClient = documentDB_client.NewDBClientService(secrets)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -86,18 +71,7 @@ func New(awsClient, httpClient, dbClient, slackClient, secretsRequired bool) Com
 	}
 
 	if slackClient {
-		secretarn := os.Getenv(DBSecretARN)
 		slackErrChannel := os.Getenv(slackChannel)
-		if CommonHandlerObject.AwsClient == nil {
-			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
-		}
-		if secrets == nil {
-			secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), secretarn, region)
-			if err != nil {
-				log.Error(context.Background(), err)
-				panic(err)
-			}
-		}
 		CommonHandlerObject.SlackClient = slack.NewSlackClient(secrets[slackKey].(string), slackErrChannel)
 	}
 
