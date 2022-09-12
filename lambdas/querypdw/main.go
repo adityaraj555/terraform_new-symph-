@@ -188,6 +188,14 @@ func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl 
 	headers := map[string]string{
 		"Content-Type": "application/json",
 	}
+	secretMap := commonHandler.Secrets
+	clientID := secretMap["ClientID"].(string)
+	clientSecret := secretMap["ClientSecret"].(string)
+	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	if err != nil {
+		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
+		return err
+	}
 	callbackRequest := map[string]interface{}{
 		"callbackId":  callbackId,
 		"status":      status,
