@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -34,6 +35,23 @@ type sfnInput struct {
 	Source     enums.Sources `json:"source" validate:"source"`
 }
 
+type Address struct {
+	ParcelAddress string  `json:"parcelAddress"`
+	Lat           float64 `json:"lat"`
+	Long          float64 `json:"long"`
+}
+
+type sfnSIMInput struct {
+	Address Address       `json:"address"`
+	Meta    *Meta         `json:"meta" validate:"required"`
+	Vintage time.Time     `json:"vintage"`
+	Source  enums.Sources `json:"source" validate:"source"`
+}
+type Meta struct {
+	CallbackID  string `json:"callbackId" validate:"required"`
+	CallbackURL string `json:"callbackUrl" validate:"required"`
+}
+
 var (
 	commonHandler        common_handler.CommonHandler
 	reportId, workflowId string
@@ -42,6 +60,7 @@ var (
 const (
 	StateMachineARN    = "StateMachineARN"
 	AISStateMachineARN = "AISStateMachineARN"
+	SIMStateMachineARN = "SIMStateMachineARN"
 	loglevel           = "info"
 )
 
@@ -64,28 +83,25 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
 	log.Infof(ctx, "Invokesfn Lambda reached...")
-	var SFNStateMachineARN string
 
 	for _, message := range sqsEvent.Records {
 		log.Info(ctx, "SQS Message: %+v", message)
 		req = append(req, message.Body)
-		if err = validateInput(ctx, message.Body); err != nil {
-			return req, err
-		}
-		sfnreq := sfnInput{}
+
+		var sfnreq map[string]interface{}
 		err := json.Unmarshal([]byte(message.Body), &sfnreq)
 		if err != nil {
 			log.Error(ctx, err)
 			return req, error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
 		}
-
-		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source.String())
-
-		switch sfnreq.Source {
-		case enums.AutoImageSelection:
-			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
-		default:
-			SFNStateMachineARN = os.Getenv(StateMachineARN)
+		src, ok := sfnreq["source"]
+		if !ok {
+			return req, error_handler.NewServiceError(error_codes.ErrorUnknownSource, "Unknown Source")
+		}
+		err, SFNStateMachineARN, sfnName := GetSfnDataBySource(ctx, message.Body, src.(string))
+		if err != nil {
+			log.Error(ctx, err)
+			return req, err
 		}
 
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
@@ -94,29 +110,55 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			log.Error(ctx, err)
 			return req, error_handler.NewServiceError(error_codes.ErrorInvokingStepFunction, err.Error())
 		}
+
 	}
 	log.Infof(ctx, "Invokesfn Lambda successful...")
 	return req, err
 }
 
-func validateInput(ctx context.Context, input string) error {
+func GetSfnDataBySource(ctx context.Context, input string, source string) (error, string, string) {
 	log.Info(ctx, "input body:", input)
-	req := sfnInput{}
-	err := json.Unmarshal([]byte(input), &req)
-	log.Info(ctx, req)
-	if err != nil {
-		log.Error(ctx, "invalid input for sfn", input)
-		return error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error())
+
+	switch source {
+	case enums.AutoImageSelection, enums.MeasurementAutomation:
+		var SFNStateMachineARN string
+		sfnreq := sfnInput{}
+		err := json.Unmarshal([]byte(input), &sfnreq)
+		if err != nil {
+			log.Error(ctx, err)
+			return error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error()), "", ""
+		}
+		if err := validator.ValidateInvokeSfnRequest(ctx, sfnreq); err != nil {
+			log.Error(ctx, "error in validation: ", err)
+			return error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error()), "", ""
+		}
+		if source == enums.AutoImageSelection {
+			SFNStateMachineARN = os.Getenv(AISStateMachineARN)
+		} else {
+			SFNStateMachineARN = os.Getenv(StateMachineARN)
+		}
+		sfnName := fmt.Sprintf("%s-%s-%s", sfnreq.ReportID, sfnreq.WorkflowId, sfnreq.Source)
+		log_config.SetTraceIdInContext(ctx, sfnreq.ReportID, "")
+		return nil, SFNStateMachineARN, sfnName
+
+	case enums.SIM:
+		sfnsimreq := sfnSIMInput{}
+		err := json.Unmarshal([]byte(input), &sfnsimreq)
+		if err != nil {
+			log.Error(ctx, err)
+			return error_handler.NewServiceError(error_codes.ErrorDecodingInvokeSFNInput, err.Error()), "", ""
+		}
+		if err := validator.ValidateInvokeSfnRequest(ctx, sfnsimreq); err != nil {
+			log.Error(ctx, "error in validation: ", err)
+			return error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error()), "", ""
+		}
+		SFNStateMachineARN := os.Getenv(SIMStateMachineARN)
+		sfnName := fmt.Sprintf("%s-%s", sfnsimreq.Meta.CallbackID, sfnsimreq.Source)
+		log_config.SetTraceIdInContext(ctx, sfnsimreq.Meta.CallbackID, "")
+		return nil, SFNStateMachineARN, sfnName
+
+	default:
+		return error_handler.NewServiceError(error_codes.ErrorUnknownSource, "Unknown Source"), "", ""
 	}
 
-	reportId = req.ReportID
-	workflowId = req.WorkflowId
-
-	if err := validator.ValidateInvokeSfnRequest(ctx, req); err != nil {
-		log.Error(ctx, "error in validation: ", err)
-		return error_handler.NewServiceError(error_codes.ErrorValidatingCallOutLambdaRequest, err.Error())
-	}
-
-	log_config.SetTraceIdInContext(ctx, req.ReportID, "")
-	return nil
 }

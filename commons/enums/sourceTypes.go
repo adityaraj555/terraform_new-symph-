@@ -5,10 +5,11 @@ type Sources string
 const (
 	MeasurementAutomation = "MA"
 	AutoImageSelection    = "AIS"
+	SIM                   = "SIM"
 )
 
 func SourcesList() []string {
-	return []string{MeasurementAutomation, AutoImageSelection}
+	return []string{MeasurementAutomation, AutoImageSelection, SIM}
 }
 
 func (s Sources) String() string {

@@ -81,6 +81,7 @@ const (
 	ErrorSentToCallbackLambda     = 4064
 	TaskTimedOutError             = 4065
 	ErrorRetrievingMsgCode        = 4066
+	ErrorUnknownSource            = 4067
 )
 
 // Messagecodes map for async tasks from callback range 4080-4100
