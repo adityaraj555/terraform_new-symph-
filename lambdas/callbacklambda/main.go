@@ -25,6 +25,13 @@ type RequestBody struct {
 	CallbackID  string                 `json:"callbackId" validate:"required"`
 	Response    map[string]interface{} `json:"response"`
 }
+type ErrorMessage struct {
+	Message     string      `json:"message"`
+	MessageCode interface{} `json:"messageCode"`
+}
+type Cause struct {
+	ErrorMessage ErrorMessage `json:"errorMessage"`
+}
 
 const DBSecretARN = "DBSecretARN"
 const success = "success"
@@ -52,10 +59,14 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	log.Info(ctx, "Callback Status: ", CallbackRequest.Status.String())
 
 	var stepstatus string = failure
-	if CallbackRequest.Status.String() == rework {
-		CallbackRequest.Response[isReworkRequired] = true
+	var ReworkRequired bool = true
+	if CallbackRequest.Status.String() != rework {
+		ReworkRequired = false
+	}
+	if CallbackRequest.Response != nil {
+		CallbackRequest.Response[isReworkRequired] = ReworkRequired
 	} else {
-		CallbackRequest.Response[isReworkRequired] = false
+		CallbackRequest.Response = map[string]interface{}{isReworkRequired: ReworkRequired}
 	}
 	if CallbackRequest.Status.String() == success || CallbackRequest.Status.String() == rework {
 		stepstatus = success
@@ -64,7 +75,21 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		err = commonHandler.AwsClient.CloseWaitTask(ctx, success, StepExecutionData.TaskToken, jsonResponse, "", "")
 	} else {
 		log.Info(ctx, CallbackRequest.MessageCode)
-		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", CallbackRequest.Message, fmt.Sprintf("failed at %s", StepExecutionData.TaskName))
+		var MessageCode interface{}
+		MessageCode = error_codes.ErrorSentToCallbackLambda
+		mgcode, ok := error_codes.AsyncTaskMsgCodeMap[StepExecutionData.TaskName]
+		if ok {
+			MessageCode = mgcode
+		}
+		cause := Cause{
+			ErrorMessage: ErrorMessage{
+				Message:     fmt.Sprintf("failed at %s with Message: %s MessageCode %v", StepExecutionData.TaskName, CallbackRequest.Message, CallbackRequest.MessageCode),
+				MessageCode: MessageCode,
+			},
+		}
+		causebyteData, _ := json.Marshal(cause)
+		Cause := string(causebyteData)
+		err = commonHandler.AwsClient.CloseWaitTask(ctx, failure, StepExecutionData.TaskToken, "", Cause, fmt.Sprintf("failed at %s", StepExecutionData.TaskName))
 	}
 	if err != nil {
 		log.Error(ctx, "Error Calling CloseWaitTask", err)
