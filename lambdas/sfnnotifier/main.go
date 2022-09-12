@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/labstack/gommon/log"
@@ -35,6 +36,8 @@ type Message struct {
 
 const (
 	failure = "failure"
+	running = "running"
+	Timeout = "States.Timeout"
 )
 
 var commonHandler common_handler.CommonHandler
@@ -43,17 +46,21 @@ func handler(ctx context.Context, eventData eventData) error {
 	ctx = log_config.SetTraceIdInContext(ctx, "", eventData.WorkflowID)
 	var CauseMessage CauseMessage
 	var Message Message
+	if eventData.ErrorMessage.Error == Timeout {
+		timedouttask := commonHandler.DBClient.GetTimedoutTask(ctx, eventData.WorkflowID)
+		return makeCallBack(ctx, fmt.Sprintf("%s Task TimedOut", timedouttask), eventData.CallbackID, eventData.CallbackURL, error_codes.TaskTimedOutError)
+	}
 	err := json.Unmarshal([]byte(eventData.ErrorMessage.Cause), &CauseMessage)
 	if err != nil {
 		log.Error(ctx, "Error while unmarshalling CauseMessage, error: ", err.Error())
 		// make callback with empty message and messagecode
-		return makeCallBack(ctx, eventData.ErrorMessage.Cause, eventData.CallbackID, eventData.CallbackURL, nil)
+		return makeCallBack(ctx, eventData.ErrorMessage.Cause, eventData.CallbackID, eventData.CallbackURL, error_codes.ErrorRetrievingMsgCode)
 	}
 	err = json.Unmarshal([]byte(CauseMessage.ErrorMessage), &Message)
 	if err != nil {
 		log.Error(ctx, "Error while unmarshalling ErrorMessage, error: ", err.Error())
 		// make callback with empty message and messagecode
-		return makeCallBack(ctx, eventData.ErrorMessage.Cause, eventData.CallbackID, eventData.CallbackURL, nil)
+		return makeCallBack(ctx, CauseMessage.ErrorMessage, eventData.CallbackID, eventData.CallbackURL, error_codes.ErrorRetrievingMsgCode)
 	}
 	err = makeCallBack(ctx, Message.Message, eventData.CallbackID, eventData.CallbackURL, Message.MessageCode)
 	return err
@@ -69,7 +76,6 @@ func makeCallBack(ctx context.Context, message, callbackId, callbackUrl string, 
 		"message":     message,
 		"messageCode": messageCode,
 	}
-
 	ByteArray, err := json.Marshal(callbackRequest)
 	if err != nil {
 		log.Error(ctx, "Error while marshalling callbackRequest, error: ", err.Error())
@@ -92,7 +98,7 @@ func notificationWrapper(ctx context.Context, req eventData) error {
 }
 func main() {
 	log_config.InitLogging("info")
-	commonHandler = common_handler.New(false, true, false, true, false)
+	commonHandler = common_handler.New(true, true, true, true, false)
 	httpservice.ConfigureHTTPClient(&httpservice.HTTPClientConfiguration{
 		// APITimeout: 90,
 	})

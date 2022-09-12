@@ -133,6 +133,16 @@ func (_m *IDocDBClient) GetHipsterCountPerDay(ctx context.Context) (int64, error
 
 	return r0, r1
 }
+func (_m *IDocDBClient) GetTimedoutTask(ctx context.Context, WorkflowId string) string {
+	ret := _m.Called(ctx,WorkflowId)
+	var r0 string
+	if rf, ok := ret.Get(0).(func(context.Context,string) string); ok {
+		r0 = rf(ctx,WorkflowId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	return r0
+}
 
 // InsertStepExecutionData provides a mock function with given fields: ctx, StepExecutionData
 func (_m *IDocDBClient) InsertStepExecutionData(ctx context.Context, StepExecutionData documentDB_client.StepExecutionDataBody) error {

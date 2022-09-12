@@ -59,10 +59,14 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 	log.Info(ctx, "Callback Status: ", CallbackRequest.Status.String())
 
 	var stepstatus string = failure
-	if CallbackRequest.Status.String() == rework {
-		CallbackRequest.Response[isReworkRequired] = true
+	var ReworkRequired bool = true
+	if CallbackRequest.Status.String() != rework {
+		ReworkRequired = false
+	}
+	if CallbackRequest.Response != nil {
+		CallbackRequest.Response[isReworkRequired] = ReworkRequired
 	} else {
-		CallbackRequest.Response[isReworkRequired] = false
+		CallbackRequest.Response = map[string]interface{}{isReworkRequired: ReworkRequired}
 	}
 	if CallbackRequest.Status.String() == success || CallbackRequest.Status.String() == rework {
 		stepstatus = success
@@ -71,10 +75,16 @@ func Handler(ctx context.Context, CallbackRequest RequestBody) (map[string]inter
 		err = commonHandler.AwsClient.CloseWaitTask(ctx, success, StepExecutionData.TaskToken, jsonResponse, "", "")
 	} else {
 		log.Info(ctx, CallbackRequest.MessageCode)
+		var MessageCode interface{}
+		MessageCode = error_codes.ErrorSentToCallbackLambda
+		mgcode, ok := error_codes.AsyncTaskMsgCodeMap[StepExecutionData.TaskName]
+		if ok {
+			MessageCode = mgcode
+		}
 		cause := Cause{
 			ErrorMessage: ErrorMessage{
-				Message:     CallbackRequest.Message,
-				MessageCode: CallbackRequest.MessageCode,
+				Message:     fmt.Sprintf("failed at %s with Message: %s MessageCode %v", StepExecutionData.TaskName, CallbackRequest.Message, CallbackRequest.MessageCode),
+				MessageCode: MessageCode,
 			},
 		}
 		causebyteData, _ := json.Marshal(cause)
