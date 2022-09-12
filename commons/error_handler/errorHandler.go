@@ -37,7 +37,7 @@ func NewServiceError(code int, messages ...string) *ServiceError {
 		}
 	}
 	for i := 1; i < len(messages); i++ {
-		Message.Message += fmt.Sprintf(" %s", messages[i])
+		Message.Message += fmt.Sprintf(", %s", messages[i])
 	}
 	errorByteData, _ := json.Marshal(Message)
 	return &ServiceError{ErrorCode: code, ErrorMessage: string(errorByteData)}

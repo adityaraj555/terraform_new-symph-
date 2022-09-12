@@ -41,18 +41,19 @@ func New(awsClient, httpClient, dbClient, slackClient, secretsRequired bool) Com
 	CommonHandlerObject := CommonHandler{}
 	var secrets map[string]interface{}
 	var err error
-	if secretsRequired || awsClient || dbClient || slackClient {
+	if secretsRequired || dbClient || slackClient {
 		SecretARN := os.Getenv(DBSecretARN)
 		log.Info("fetching db secrets")
-		if CommonHandlerObject.AwsClient == nil {
-			CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
-		}
+		CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
 		secrets, err = CommonHandlerObject.AwsClient.GetSecret(context.Background(), SecretARN, "us-east-2")
 		if err != nil {
 			log.Error(context.Background(), err)
 			panic(err)
 		}
 		CommonHandlerObject.Secrets = secrets
+	}
+	if awsClient {
+		CommonHandlerObject.AwsClient = &aws_client.AWSClient{}
 	}
 	if httpClient {
 		CommonHandlerObject.HttpClient = &httpservice.HTTPClientV2{}
