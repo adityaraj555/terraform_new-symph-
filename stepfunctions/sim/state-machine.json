@@ -107,7 +107,7 @@
                     "jobId.$": "$$.Execution.Name",
                     "imagerydate_after.$": "$$.Execution.Input.vintage",
                     "meta": {
-                      "s3Uri": "s3://app-dev-1x0-s3-property-data-orchestrator/sim-pipeline"
+                      "s3Uri": "s3://${resource_name_prefix}-s3-property-data-orchestrator/sim-pipeline"
                     }
                   },
                   "callType": "sqs",
@@ -270,9 +270,9 @@
                     "Lambda.SdkClientException",
                     "RetriableError"
                   ],
-                  "IntervalSeconds": 120,
+                  "IntervalSeconds": 60,
                   "MaxAttempts": 3,
-                  "BackoffRate": 1
+                  "BackoffRate": 2
                 }
               ],
               "End": true,
