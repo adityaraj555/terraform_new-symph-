@@ -12,12 +12,12 @@
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-datastorelambda",
-                "Payload": {
-                  "input.$": "$$.Execution.Input",
-                  "workflowId.$": "$$.Execution.Name",
-                  "action": "insert"
-                }
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
+                  "Payload": {
+                      "input.$": "$$.Execution.Input",
+                      "workflowId.$": "$$.Execution.Name",
+                      "action": "insert"
+                  }
               },
               "Retry": [
                 {
@@ -42,7 +42,7 @@
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "vintage.$": "$$.Execution.Input.vintage",
@@ -52,7 +52,7 @@
                     "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
                   },
                   "callType": "lambda",
-                  "arn": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-querypdw",
+                  "arn": "${ARN_QUERY_PDW}",
                   "headers": {},
                   "isWaitTask": false,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -97,7 +97,7 @@
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
                     "latitude.$": "$.PDW_Query.response.latitude",
@@ -109,7 +109,7 @@
                     }
                   },
                   "callType": "sqs",
-                  "queueUrl": "https://sqs.us-east-2.amazonaws.com/356071200662/app-dev-1x0-sqs-sim-request-queue",
+                  "queueUrl": "${SIM_QUEUE_URL}",
                   "headers": {},
                   "isWaitTask": true,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
@@ -144,25 +144,25 @@
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
-                "Payload": {
-                  "requestData": {
-                    "workflowId.$": "$$.Execution.Name",
-                    "simOutput.$": "$.Invoke_SIM_Model.response.simOutput",
-                    "address.$": "$.PDW_Query.response.address",
-                    "parcelId.$": "$.PDW_Query.response.parcelId"
-                  },
-                  "callType": "lambda",
-                  "arn": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-sim2pdw",
-                  "headers": {},
-                  "isWaitTask": false,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 10,
-                  "storeDataToS3": "",
-                  "taskName": "SIMToPDWConversion",
-                  "workflowId.$": "$$.Execution.Name",
-                  "auth": {}
-                }
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                      "requestData": {
+                          "workflowId.$": "$$.Execution.Name",
+                          "simOutput.$": "$.Invoke_SIM_Model.response.simOutput",
+                          "address.$": "$.PDW_Query.response.address",
+                          "parcelId.$": "$.PDW_Query.response.parcelId"
+                      },
+                      "callType": "lambda",
+                      "arn": "${ARN_SIM2_PDW}",
+                      "headers": {},
+                      "isWaitTask": false,
+                      "retry": "number of times we want to retry on specific error types like timeout, 500",
+                      "timeout": 10,
+                      "storeDataToS3": "",
+                      "taskName": "SIMToPDWConversion",
+                      "workflowId.$": "$$.Execution.Name",
+                      "auth": {}
+                  }
               },
               "Retry": [
                 {
@@ -187,31 +187,31 @@
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
-                "Payload": {
-                  "requestData": {
-                    "S3Path.$": "$.SIMToPDWConversion.response.pdwPayload"
-                  },
-                  "url": "https://dx-services.cmh.platform-dev2.evinternal.net/graph-publish/api/v2/publish",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "InvokeGraphPublisher",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskToken.$": "$$.Task.Token",
-                  "auth": {
-                    "type": "bearer",
-                    "authData": {
-                      "secretStoreType": "pdo_secret_manager",
-                      "clientIdKey": "ClientID",
-                      "clientSecretKey": "ClientSecret",
-                      "url": "https://api.cmh.platform-dev2.evinternal.com/auth-service/v1/token"
-                    }
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                      "requestData": {
+                          "S3Path.$": "$.SIMToPDWConversion.response.pdwPayload"
+                      },
+                      "url": "${GRAPH_PUBLISH_URL}",
+                      "requestMethod": "POST",
+                      "headers": {},
+                      "isWaitTask": true,
+                      "retry": "number of times we want to retry on specific error types like timeout, 500",
+                      "timeout": 45,
+                      "storeDataToS3": "",
+                      "taskName": "InvokeGraphPublisher",
+                      "workflowId.$": "$$.Execution.Name",
+                      "taskToken.$": "$$.Task.Token",
+                      "auth": {
+                          "type": "bearer",
+                          "authData": {
+                              "secretStoreType": "pdo_secret_manager",
+                              "clientIdKey": "ClientID",
+                              "clientSecretKey": "ClientSecret",
+                              "url": "${ENPOINT_AUTH_URL}"
+                          }
+                      }
                   }
-                }
               },
               "Retry": [
                 {
@@ -237,26 +237,26 @@
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
               "Parameters": {
-                "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-calloutlambda",
-                "Payload": {
-                  "requestData": {
-                    "vintage.$": "$$.Execution.Input.vintage",
-                    "action": "querydata",
-                    "address.$": "$$.Execution.Input.address",
-                    "callbackId.$": "$$.Execution.Input.meta.callbackId",
-                    "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
-                  },
-                  "callType": "lambda",
-                  "arn": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-querypdw",
-                  "headers": {},
-                  "isWaitTask": false,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 30,
-                  "storeDataToS3": "",
-                  "taskName": "PDW_Query_After_Ingestion",
-                  "workflowId.$": "$$.Execution.Name",
-                  "auth": {}
-                }
+                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                  "Payload": {
+                      "requestData": {
+                          "vintage.$": "$$.Execution.Input.vintage",
+                          "action": "querydata",
+                          "address.$": "$$.Execution.Input.address",
+                          "callbackId.$": "$$.Execution.Input.meta.callbackId",
+                          "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
+                      },
+                      "callType": "lambda",
+                      "arn": "${ARN_QUERY_PDW}",
+                      "headers": {},
+                      "isWaitTask": false,
+                      "retry": "number of times we want to retry on specific error types like timeout, 500",
+                      "timeout": 30,
+                      "storeDataToS3": "",
+                      "taskName": "PDW_Query_After_Ingestion",
+                      "workflowId.$": "$$.Execution.Name",
+                      "auth": {}
+                  }
               },
               "Retry": [
                 {
@@ -303,13 +303,13 @@
       "Resource": "arn:aws:states:::lambda:invoke",
       "OutputPath": "$.Payload",
       "Parameters": {
-        "FunctionName": "arn:aws:lambda:us-east-2:356071200662:function:app-dev-1x0-lambda-sfnnotifier",
-        "Payload": {
-          "callbackId.$": "$$.Execution.Input.meta.callbackId",
-          "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl",
-          "errorMessage.$": "$.errorMessage",
-          "workflowId.$": "$$.Execution.Name"
-        }
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-sfnnotifier:$LATEST",
+          "Payload": {
+              "callbackId.$": "$$.Execution.Input.meta.callbackId",
+              "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl",
+              "errorMessage.$": "$.errorMessage",
+              "workflowId.$": "$$.Execution.Name"
+          }
       },
       "Retry": [
         {
