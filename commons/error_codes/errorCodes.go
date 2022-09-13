@@ -87,7 +87,7 @@ const (
 // Messagecodes map for async tasks from callback range 4080-4100
 var AsyncTaskMsgCodeMap = map[string]interface{}{
 	"InvokeGraphPublisher":                  4080,
-	"Invoke_SIM_Model":                      4081,
+	"InvokeSIMModel":                        4081,
 	"ImageryCheck":                          4082,
 	"BuildingDetection":                     4083,
 	"ImageSelection":                        4084,

@@ -12,12 +12,12 @@
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
-                  "Payload": {
-                      "input.$": "$$.Execution.Input",
-                      "workflowId.$": "$$.Execution.Name",
-                      "action": "insert"
-                  }
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
+                "Payload": {
+                  "input.$": "$$.Execution.Input",
+                  "workflowId.$": "$$.Execution.Name",
+                  "action": "insert"
+                }
               },
               "Retry": [
                 {
@@ -35,9 +35,10 @@
                 "response.$": "$.Payload"
               },
               "ResultPath": "$.InsertToDocDB",
-              "Next": "PDW_Query"
+              "Next": "PDWQuery",
+              "TimeoutSeconds": 60
             },
-            "PDW_Query": {
+            "PDWQuery": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
@@ -58,7 +59,7 @@
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 30,
                   "storeDataToS3": "",
-                  "taskName": "PDW_Query",
+                  "taskName": "PDWQuery",
                   "workflowId.$": "$$.Execution.Name",
                   "auth": {}
                 }
@@ -78,21 +79,22 @@
               "ResultSelector": {
                 "response.$": "$.Payload"
               },
-              "ResultPath": "$.PDW_Query",
-              "Next": "Call_Model"
+              "ResultPath": "$.PDWQuery",
+              "Next": "CallModel",
+              "TimeoutSeconds": 60
             },
-            "Call_Model": {
+            "CallModel": {
               "Type": "Choice",
               "Choices": [
                 {
-                  "Variable": "$.PDW_Query.response.triggerSIM",
+                  "Variable": "$.PDWQuery.response.triggerSIM",
                   "BooleanEquals": false,
                   "Next": "Pass"
                 }
               ],
-              "Default": "Invoke_SIM_Model"
+              "Default": "InvokeSIMModel"
             },
-            "Invoke_SIM_Model": {
+            "InvokeSIMModel": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
               "OutputPath": "$",
@@ -100,8 +102,8 @@
                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
                   "requestData": {
-                    "latitude.$": "$.PDW_Query.response.latitude",
-                    "longitude.$": "$.PDW_Query.response.longitude",
+                    "latitude.$": "$.PDWQuery.response.latitude",
+                    "longitude.$": "$.PDWQuery.response.longitude",
                     "jobId.$": "$$.Execution.Name",
                     "imagerydate_after.$": "$$.Execution.Input.vintage",
                     "meta": {
@@ -115,7 +117,7 @@
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
                   "timeout": 30,
                   "storeDataToS3": "",
-                  "taskName": "Invoke_SIM_Model",
+                  "taskName": "InvokeSIMModel",
                   "workflowId.$": "$$.Execution.Name",
                   "taskToken.$": "$$.Task.Token",
                   "auth": {}
@@ -136,33 +138,34 @@
               "ResultSelector": {
                 "response.$": "$"
               },
-              "ResultPath": "$.Invoke_SIM_Model",
-              "Next": "SIMToPDWConversion"
+              "ResultPath": "$.InvokeSIMModel",
+              "Next": "SIMToPDWConversion",
+              "TimeoutSeconds": 120
             },
             "SIMToPDWConversion": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
               "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                  "Payload": {
-                      "requestData": {
-                          "workflowId.$": "$$.Execution.Name",
-                          "simOutput.$": "$.Invoke_SIM_Model.response.simOutput",
-                          "address.$": "$.PDW_Query.response.address",
-                          "parcelId.$": "$.PDW_Query.response.parcelId"
-                      },
-                      "callType": "lambda",
-                      "arn": "${ARN_SIM2_PDW}",
-                      "headers": {},
-                      "isWaitTask": false,
-                      "retry": "number of times we want to retry on specific error types like timeout, 500",
-                      "timeout": 10,
-                      "storeDataToS3": "",
-                      "taskName": "SIMToPDWConversion",
-                      "workflowId.$": "$$.Execution.Name",
-                      "auth": {}
-                  }
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                  "requestData": {
+                    "workflowId.$": "$$.Execution.Name",
+                    "simOutput.$": "$.InvokeSIMModel.response.simOutput",
+                    "address.$": "$.PDWQuery.response.address",
+                    "parcelId.$": "$.PDWQuery.response.parcelId"
+                  },
+                  "callType": "lambda",
+                  "arn": "${ARN_SIM2_PDW}",
+                  "headers": {},
+                  "isWaitTask": false,
+                  "retry": "number of times we want to retry on specific error types like timeout, 500",
+                  "timeout": 10,
+                  "storeDataToS3": "",
+                  "taskName": "SIMToPDWConversion",
+                  "workflowId.$": "$$.Execution.Name",
+                  "auth": {}
+                }
               },
               "Retry": [
                 {
@@ -180,38 +183,39 @@
               "ResultSelector": {
                 "response.$": "$.Payload"
               },
-              "Next": "InvokeGraphPublisher"
+              "Next": "InvokeGraphPublisher",
+              "TimeoutSeconds": 70
             },
             "InvokeGraphPublisher": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
               "OutputPath": "$",
               "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                  "Payload": {
-                      "requestData": {
-                          "S3Path.$": "$.SIMToPDWConversion.response.pdwPayload"
-                      },
-                      "url": "${GRAPH_PUBLISH_URL}",
-                      "requestMethod": "POST",
-                      "headers": {},
-                      "isWaitTask": true,
-                      "retry": "number of times we want to retry on specific error types like timeout, 500",
-                      "timeout": 45,
-                      "storeDataToS3": "",
-                      "taskName": "InvokeGraphPublisher",
-                      "workflowId.$": "$$.Execution.Name",
-                      "taskToken.$": "$$.Task.Token",
-                      "auth": {
-                          "type": "bearer",
-                          "authData": {
-                              "secretStoreType": "pdo_secret_manager",
-                              "clientIdKey": "ClientID",
-                              "clientSecretKey": "ClientSecret",
-                              "url": "${ENDPOINT_AUTH_TOKEN}"
-                          }
-                      }
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                  "requestData": {
+                    "S3Path.$": "$.SIMToPDWConversion.response.pdwPayload"
+                  },
+                  "url": "${GRAPH_PUBLISH_URL}",
+                  "requestMethod": "POST",
+                  "headers": {},
+                  "isWaitTask": true,
+                  "retry": "number of times we want to retry on specific error types like timeout, 500",
+                  "timeout": 45,
+                  "storeDataToS3": "",
+                  "taskName": "InvokeGraphPublisher",
+                  "workflowId.$": "$$.Execution.Name",
+                  "taskToken.$": "$$.Task.Token",
+                  "auth": {
+                    "type": "bearer",
+                    "authData": {
+                      "secretStoreType": "pdo_secret_manager",
+                      "clientIdKey": "ClientID",
+                      "clientSecretKey": "ClientSecret",
+                      "url": "${ENDPOINT_AUTH_TOKEN}"
+                    }
                   }
+                }
               },
               "Retry": [
                 {
@@ -225,47 +229,48 @@
                   "BackoffRate": 2
                 }
               ],
-              "Next": "PDW_Query_After_Ingestion",
-              "TimeoutSeconds": 120,
+              "Next": "PDWQueryAfterIngestion",
               "ResultSelector": {
                 "response.$": "$"
               },
-              "ResultPath": "$.PDW_Query_After_Ingestion"
+              "ResultPath": "$.PDWQueryAfterIngestion",
+              "TimeoutSeconds": 120
             },
-            "PDW_Query_After_Ingestion": {
+            "PDWQueryAfterIngestion": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke",
               "OutputPath": "$",
               "Parameters": {
-                  "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                  "Payload": {
-                      "requestData": {
-                          "vintage.$": "$$.Execution.Input.vintage",
-                          "action": "querydata",
-                          "address.$": "$$.Execution.Input.address",
-                          "callbackId.$": "$$.Execution.Input.meta.callbackId",
-                          "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
-                      },
-                      "callType": "lambda",
-                      "arn": "${ARN_QUERY_PDW}",
-                      "headers": {},
-                      "isWaitTask": false,
-                      "retry": "number of times we want to retry on specific error types like timeout, 500",
-                      "timeout": 30,
-                      "storeDataToS3": "",
-                      "taskName": "PDW_Query_After_Ingestion",
-                      "workflowId.$": "$$.Execution.Name",
-                      "auth": {}
-                  }
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                  "requestData": {
+                    "vintage.$": "$$.Execution.Input.vintage",
+                    "action": "querydata",
+                    "address.$": "$$.Execution.Input.address",
+                    "callbackId.$": "$$.Execution.Input.meta.callbackId",
+                    "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl"
+                  },
+                  "callType": "lambda",
+                  "arn": "${ARN_QUERY_PDW}",
+                  "headers": {},
+                  "isWaitTask": false,
+                  "retry": "number of times we want to retry on specific error types like timeout, 500",
+                  "timeout": 30,
+                  "storeDataToS3": "",
+                  "taskName": "PDWQueryAfterIngestion",
+                  "workflowId.$": "$$.Execution.Name",
+                  "auth": {}
+                }
               },
               "Retry": [
                 {
                   "ErrorEquals": [
                     "Lambda.ServiceException",
                     "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
+                    "Lambda.SdkClientException",
+                    "RetriableError"
                   ],
-                  "IntervalSeconds": 60,
+                  "IntervalSeconds": 120,
                   "MaxAttempts": 3,
                   "BackoffRate": 1
                 }
@@ -274,7 +279,8 @@
               "ResultSelector": {
                 "response.$": "$.Payload"
               },
-              "ResultPath": "$.PDW_Query_After_Ingestion"
+              "ResultPath": "$.PDWQueryAfterIngestion",
+              "TimeoutSeconds": 60
             },
             "Pass": {
               "Type": "Pass",
@@ -288,7 +294,7 @@
           "ErrorEquals": [
             "States.ALL"
           ],
-          "Next": "Notify_Error",
+          "Next": "NotifyError",
           "ResultPath": "$.errorMessage"
         }
       ],
@@ -298,29 +304,30 @@
       "OutputPath": "$.response",
       "End": true
     },
-    "Notify_Error": {
+    "NotifyError": {
       "Type": "Task",
       "Resource": "arn:aws:states:::lambda:invoke",
       "OutputPath": "$.Payload",
       "Parameters": {
-          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-sfnnotifier:$LATEST",
-          "Payload": {
-              "callbackId.$": "$$.Execution.Input.meta.callbackId",
-              "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl",
-              "errorMessage.$": "$.errorMessage",
-              "workflowId.$": "$$.Execution.Name"
-          }
+        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-sfnnotifier:$LATEST",
+        "Payload": {
+          "callbackId.$": "$$.Execution.Input.meta.callbackId",
+          "callbackUrl.$": "$$.Execution.Input.meta.callbackUrl",
+          "errorMessage.$": "$.errorMessage",
+          "workflowId.$": "$$.Execution.Name"
+        }
       },
       "Retry": [
         {
           "ErrorEquals": [
             "Lambda.ServiceException",
             "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
+            "Lambda.SdkClientException",
+            "RetriableError"
           ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
+          "IntervalSeconds": 60,
+          "MaxAttempts": 3,
+          "BackoffRate": 1
         }
       ],
       "End": true
