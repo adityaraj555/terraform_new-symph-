@@ -208,7 +208,7 @@
                               "secretStoreType": "pdo_secret_manager",
                               "clientIdKey": "ClientID",
                               "clientSecretKey": "ClientSecret",
-                              "url": "${ENPOINT_AUTH_URL}"
+                              "url": "${ENDPOINT_AUTH_TOKEN}"
                           }
                       }
                   }
