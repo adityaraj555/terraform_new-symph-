@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/labstack/gommon/log"
@@ -85,6 +86,20 @@ func handler(ctx context.Context, eventData eventData) error {
 }
 
 func makeCallBack(ctx context.Context, message, callbackId, callbackUrl string, messageCode int) error {
+	callbackRequest := map[string]interface{}{
+		"callbackId":  callbackId,
+		"status":      failure,
+		"message":     message,
+		"messageCode": messageCode,
+	}
+	if strings.HasPrefix(callbackUrl, "arn") {
+		_, err := commonHandler.AwsClient.InvokeLambda(ctx, callbackUrl, callbackRequest, false)
+		if err != nil {
+			log.Error(ctx, "Error while making callbackRequest, error: ", err.Error())
+			return err
+		}
+		return nil
+	}
 	headers := map[string]string{
 		"Content-Type": "application/json",
 	}
@@ -96,12 +111,7 @@ func makeCallBack(ctx context.Context, message, callbackId, callbackUrl string, 
 		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
 		return err
 	}
-	callbackRequest := map[string]interface{}{
-		"callbackId":  callbackId,
-		"status":      failure,
-		"message":     message,
-		"messageCode": messageCode,
-	}
+
 	ByteArray, err := json.Marshal(callbackRequest)
 	if err != nil {
 		log.Error(ctx, "Error while marshalling callbackRequest, error: ", err.Error())

@@ -521,8 +521,12 @@ func CallService(ctx context.Context, data MyEvent, stepID string) (map[string]i
 
 		if body, ok := data.Payload.(map[string]interface{}); ok {
 			if val, ok := body["meta"]; ok {
-				val.(map[string]interface{})["callbackId"] = metaObj.CallbackID
-				val.(map[string]interface{})["callbackUrl"] = metaObj.CallbackURL
+				if _, ok := val.(map[string]interface{})["callbackUrl"]; ok {
+					val.(map[string]interface{})["callbackId"] = metaObj.CallbackID
+				} else {
+					val.(map[string]interface{})["callbackUrl"] = metaObj.CallbackURL
+					val.(map[string]interface{})["callbackId"] = metaObj.CallbackID
+				}
 			} else {
 				body["meta"] = metaObj
 			}

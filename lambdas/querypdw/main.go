@@ -203,7 +203,21 @@ func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl 
 		"messageCode": messageCode,
 	}
 	if status == success {
-		callbackRequest["data"] = graphresponse
+		if strings.HasPrefix(callbackUrl, "arn") {
+			callbackRequest["response"] = map[string]interface{}{
+				"data": graphresponse,
+			}
+		} else {
+			callbackRequest["data"] = graphresponse
+		}
+	}
+	if strings.HasPrefix(callbackUrl, "arn") {
+		_, err := commonHandler.AwsClient.InvokeLambda(ctx, callbackUrl, callbackRequest, false)
+		if err != nil {
+			log.Error(ctx, "Error while making callbackRequest, error: ", err.Error())
+			return err
+		}
+		return nil
 	}
 	ByteArray, err := json.Marshal(callbackRequest)
 	if err != nil {
