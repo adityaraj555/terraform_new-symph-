@@ -123,7 +123,7 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			// NOTIFY Lambda
 			notifyError := NotifyRequestErrorMessage{
 				Error: err.Error(),
-				Cause: fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"]),
+				Cause: fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"].(string)),
 			}
 
 			payload := map[string]interface{}{
