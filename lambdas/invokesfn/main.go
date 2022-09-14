@@ -58,10 +58,11 @@ var (
 )
 
 const (
-	StateMachineARN    = "StateMachineARN"
-	AISStateMachineARN = "AISStateMachineARN"
-	SIMStateMachineARN = "SIMStateMachineARN"
-	loglevel           = "info"
+	StateMachineARN      = "StateMachineARN"
+	AISStateMachineARN   = "AISStateMachineARN"
+	SIMStateMachineARN   = "SIMStateMachineARN"
+	SFNNotifierLambdaARN = "SFNNotifierLambdaARN"
+	loglevel             = "info"
 )
 
 func main() {
@@ -70,7 +71,7 @@ func main() {
 	lambda.Start(notificationWrapper)
 }
 
-func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
+func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) {
 	req, err := Handler(ctx, sqsEvent)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
@@ -78,7 +79,6 @@ func notificationWrapper(ctx context.Context, sqsEvent events.SQSEvent) error {
 			"request": strings.Join(req, " : "),
 		})
 	}
-	return err
 }
 
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err error) {
@@ -108,12 +108,20 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
 		if err != nil {
 			log.Error(ctx, err)
+			// NOTIFY Lambda
+			payload := map[string]interface{}{
+				"Error": error_handler.NewServiceError(error_codes.ErrorInvokingStepFunction, err.Error()),
+				"Cause": fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"]),
+			}
+			sfnnotifierlambdaarn := os.Getenv("SFNNotifierLambdaARN")
+			_, invokeErr := commonHandler.AwsClient.InvokeLambda(ctx, sfnnotifierlambdaarn, payload, false)
+			log.Error(ctx, invokeErr)
 			return req, error_handler.NewServiceError(error_codes.ErrorInvokingStepFunction, err.Error())
 		}
 
 	}
 	log.Infof(ctx, "Invokesfn Lambda successful...")
-	return req, err
+	return req, nil
 }
 
 func GetSfnDataBySource(ctx context.Context, input string, source string) (error, string, string) {
