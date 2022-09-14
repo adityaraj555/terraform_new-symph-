@@ -23,7 +23,7 @@ func TestInvokeSFN(t *testing.T) {
 	notificationWrapper(context.Background(), InvokeSFNRequestObj)
 }
 
-var InvokeSFNSIMRequest string = "{\"address\": { \"parcelAddress\":\"23 HAVENSHIRE RD, ROCHESTER, NY, 14625\",        \"lat\":  43.172988,        \"long\":  -77.501957    },    \"meta\":{        \"callbackId\":\"callback-test-00001\",        \"callbackUrl\":\"callback\"    },    \"vintage\":\"2017-08-16T09:19:47.051096+00:00\"  }"
+var InvokeSFNSIMRequest string = "{\"address\": { \"parcelAddress\":\"23 HAVENSHIRE RD, ROCHESTER, NY, 14625\",        \"lat\":  43.172988,        \"long\":  -77.501957    },    \"meta\":{        \"callbackId\":\"callback-test-00001\",        \"callbackUrl\":\"callback\"    },  \"source\":\"SIM\" ,   \"vintage\":\"2017-08-16T09:19:47.051096+00:00\"  }"
 
 func TestInvokeSFNSIM(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)
