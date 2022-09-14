@@ -52,6 +52,18 @@ type Meta struct {
 	CallbackURL string `json:"callbackUrl" validate:"required"`
 }
 
+type NotifyRequest struct {
+	CallbackID   string                    `json:"callbackId"`
+	ErrorMessage NotifyRequestErrorMessage `json:"errorMessage"`
+	CallbackURL  string                    `json:"callbackUrl"`
+	WorkflowID   string                    `json:"workflowId"`
+}
+
+type NotifyRequestErrorMessage struct {
+	Error string `json:"Error"`
+	Cause string `json:"Cause"`
+}
+
 var (
 	commonHandler        common_handler.CommonHandler
 	reportId, workflowId string
@@ -109,10 +121,17 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 		if err != nil {
 			log.Error(ctx, err)
 			// NOTIFY Lambda
-			payload := map[string]interface{}{
-				"Error": error_handler.NewServiceError(error_codes.ErrorInvokingStepFunction, err.Error()),
-				"Cause": fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"]),
+			notifyError := NotifyRequestErrorMessage{
+				Error: err.Error(),
+				Cause: fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"]),
 			}
+
+			payload := map[string]interface{}{
+				"CallbackID":   sfnreq["callbackId"].(string),
+				"CallbackURL":  sfnreq["callbackUrl"].(string),
+				"ErrorMessage": notifyError,
+			}
+
 			sfnnotifierlambdaarn := os.Getenv("SFNNotifierLambdaARN")
 			_, invokeErr := commonHandler.AwsClient.InvokeLambda(ctx, sfnnotifierlambdaarn, payload, false)
 			log.Error(ctx, invokeErr)
