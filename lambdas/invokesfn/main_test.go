@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
@@ -19,10 +20,22 @@ func TestInvokeSFN(t *testing.T) {
 	InvokeSFNRequestObj := events.SQSEvent{}
 	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequest}}
 	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", nil)
-	err := notificationWrapper(context.Background(), InvokeSFNRequestObj)
-	assert.NoError(t, err)
+	notificationWrapper(context.Background(), InvokeSFNRequestObj)
 }
 
+var InvokeSFNSIMRequest string = "{\"address\": { \"parcelAddress\":\"23 HAVENSHIRE RD, ROCHESTER, NY, 14625\",        \"lat\":  43.172988,        \"long\":  -77.501957    },    \"meta\":{        \"callbackId\":\"callback-test-00001\",        \"callbackUrl\":\"callback\"    },  \"source\":\"SIM\" ,   \"vintage\":\"2017-08-16T09:19:47.051096+00:00\"  }"
+
+func TestInvokeSFNSIM(t *testing.T) {
+	awsclient := new(mocks.IAWSClient)
+	slackClient := new(mocks.ISlackClient)
+	slackClient.On("SendErrorMessage", mock.Anything, mock.Anything, "", mock.Anything, "invokesfn", mock.Anything, mock.Anything).Return(nil)
+	commonHandler.AwsClient = awsclient
+	commonHandler.SlackClient = slackClient
+	InvokeSFNSIMRequestObj := events.SQSEvent{}
+	InvokeSFNSIMRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNSIMRequest}}
+	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", nil)
+	notificationWrapper(context.Background(), InvokeSFNSIMRequestObj)
+}
 func TestInvokeSFNerrorNoBody(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
@@ -31,15 +44,16 @@ func TestInvokeSFNerrorNoBody(t *testing.T) {
 	commonHandler.SlackClient = slackClient
 	InvokeSFNRequestObj := events.SQSEvent{}
 	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: ""}}
-	err := notificationWrapper(context.Background(), InvokeSFNRequestObj)
+	_, err := Handler(context.Background(), InvokeSFNRequestObj)
 	assert.Error(t, err)
 }
 func TestInvokeSFNerror(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)
 	commonHandler.AwsClient = awsclient
 	InvokeSFNRequestObj := events.SQSEvent{}
-	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequest}}
+	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNSIMRequest}}
 	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", errors.New("some error"))
+	awsclient.Mock.On("InvokeLambda", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
 	_, err := Handler(context.Background(), InvokeSFNRequestObj)
 	assert.Error(t, err)
 }
