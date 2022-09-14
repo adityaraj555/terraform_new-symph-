@@ -51,7 +51,7 @@ func TestInvokeSFNerror(t *testing.T) {
 	awsclient := new(mocks.IAWSClient)
 	commonHandler.AwsClient = awsclient
 	InvokeSFNRequestObj := events.SQSEvent{}
-	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNRequest}}
+	InvokeSFNRequestObj.Records = []events.SQSMessage{events.SQSMessage{Body: InvokeSFNSIMRequest}}
 	awsclient.Mock.On("InvokeSFN", mock.Anything, mock.Anything, mock.Anything).Return("ExecutionARN", errors.New("some error"))
 	awsclient.Mock.On("InvokeLambda", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&lambda.InvokeOutput{Payload: []byte("")}, nil)
 	_, err := Handler(context.Background(), InvokeSFNRequestObj)
