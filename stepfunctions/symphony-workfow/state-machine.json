@@ -68,7 +68,7 @@
         }
       ],
       "Next": "MeasurementAutomation",
-      "TimeoutSeconds": 300
+      "TimeoutSeconds": 210
     },
     "MeasurementAutomation": {
       "Type": "Parallel",
@@ -95,7 +95,7 @@
                   },
                   "isWaitTask": false,
                   "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 5,
+                  "timeout": 45,
                   "storeDataToS3.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
                   "taskName": "GetImageMetaData",
                   "orderId.$": "$$.Execution.Input.orderId",
@@ -119,7 +119,7 @@
                 }
               ],
               "Next": "ImageSelection",
-              "TimeoutSeconds": 300
+              "TimeoutSeconds": 60
             },
             "ImageSelection": {
               "Type": "Task",
@@ -315,7 +315,7 @@
         }
       ],
       "Next": "Hipster/Twister",
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 60
     },
     "Hipster/Twister": {
       "Type": "Choice",
@@ -363,7 +363,7 @@
         }
       ],
       "Next": "Hipster",
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 210
     },
     "Hipster": {
       "Type": "Parallel",
@@ -457,7 +457,7 @@
                 }
               ],
               "Next": "UpdateHipsterJobAndWaitForQC",
-              "TimeoutSeconds": 30
+              "TimeoutSeconds": 210
             },
             "UpdateHipsterJobAndWaitForQC": {
               "Type": "Task",
@@ -620,7 +620,7 @@
         }
       ],
       "Next": "updateWorkflowDataToDocDB",
-      "TimeoutSeconds": 30
+      "TimeoutSeconds": 210
     },
     "PMF-EVJSON Converter Upload to EVOSS": {
       "Type": "Parallel",
@@ -658,7 +658,7 @@
                 }
               ],
               "Next": "PMFConverter",
-              "TimeoutSeconds": 300
+              "TimeoutSeconds": 60
             },
             "PMFConverter": {
               "Type": "Task",
@@ -705,7 +705,7 @@
                 "response.$": "$"
               },
               "ResultPath": "$.PMFConverter",
-              "TimeoutSeconds": 180
+              "TimeoutSeconds": 1200
             },
             "UploadToEVOSS": {
               "Type": "Task",
@@ -751,7 +751,7 @@
                 "response.$": "$.Payload"
               },
               "ResultPath": "$.UploadToEVOSS",
-              "TimeoutSeconds": 30
+              "TimeoutSeconds": 180
             }
           }
         }
@@ -802,72 +802,8 @@
           "BackoffRate": 1
         }
       ],
-      "Next": "IsUploadToPDWRequired",
-      "TimeoutSeconds": 300
-    },
-    "IsUploadToPDWRequired": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.GetPMFPath.response.legacyStatus",
-          "StringEquals": "QCCompleted",
-          "Next": "UploadToPDW"
-        }
-      ],
-      "Default": "updateWorkflowDataToDocDB"
-    },
-    "UploadToPDW": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-      "ResultSelector": {
-        "response.$": "$"
-      },
-      "OutputPath": "$",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-        "Payload": {
-          "requestData": {
-            "orderId.$": "$$.Execution.Input.orderId",
-            "address.$": "$$.Execution.Input.address",
-            "evjsonEvossLocation.$": "$.UploadToEVOSS.response.ReferenceId",
-            "propertyModelLocation.$": "$.UpdateHipsterJobAndWaitForQC.response.propertyModelLocation"
-          },
-          "url": "${ENDPOINT_URL_UPLOAD_PDW}",
-          "requestMethod": "POST",
-          "headers": {},
-          "isWaitTask": true,
-          "retry": "number of times we want to retry on specific error types like timeout, 500",
-          "timeout": 15,
-          "storeDataToS3": "",
-          "taskName": "UploadToPDW",
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskToken.$": "$$.Task.Token",
-          "auth": {}
-        }
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
-        }
-      ],
       "Next": "updateWorkflowDataToDocDB",
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "Next": "updateWorkflowDataToDocDB"
-        }
-      ]
+      "TimeoutSeconds": 60
     },
     "updateWorkflowDataToDocDB": {
       "Type": "Task",
