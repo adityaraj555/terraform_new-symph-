@@ -127,8 +127,8 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 			}
 
 			payload := map[string]interface{}{
-				"CallbackID":   sfnreq["callbackId"].(string),
-				"CallbackURL":  sfnreq["callbackUrl"].(string),
+				"CallbackID":   sfnreq["meta"].(map[string]interface{})["callbackId"].(string),
+				"CallbackURL":  sfnreq["meta"].(map[string]interface{})["callbackUrl"].(string),
 				"ErrorMessage": notifyError,
 			}
 
