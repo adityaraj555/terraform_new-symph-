@@ -185,17 +185,7 @@ func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 }
 
 func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl string, messageCode int, graphresponse map[string]interface{}) error {
-	headers := map[string]string{
-		"Content-Type": "application/json",
-	}
-	secretMap := commonHandler.Secrets
-	clientID := secretMap["ClientID"].(string)
-	clientSecret := secretMap["ClientSecret"].(string)
-	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
-	if err != nil {
-		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
-		return err
-	}
+
 	callbackRequest := map[string]interface{}{
 		"callbackId":  callbackId,
 		"status":      status,
@@ -223,6 +213,17 @@ func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl 
 	if err != nil {
 		log.Error(ctx, "Error while marshalling callbackRequest, error: ", err.Error())
 		return error_handler.NewServiceError(error_codes.ErrorSerializingCallOutPayload, err.Error())
+	}
+	headers := map[string]string{
+		"Content-Type": "application/json",
+	}
+	secretMap := commonHandler.Secrets
+	clientID := secretMap["ClientID"].(string)
+	clientSecret := secretMap["ClientSecret"].(string)
+	err = auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	if err != nil {
+		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
+		return err
 	}
 	_, err = commonHandler.MakePostCall(ctx, callbackUrl, ByteArray, headers)
 	if err != nil {
