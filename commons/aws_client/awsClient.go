@@ -174,6 +174,7 @@ func (ac *AWSClient) InvokeSFN(Input, StateMachineArn, Name *string) (string, er
 		StateMachineArn: StateMachineArn,
 		Name:            Name,
 	})
+
 	if err != nil {
 		return "", err
 	}
