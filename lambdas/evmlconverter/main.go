@@ -138,6 +138,10 @@ func updateDocumentDbAndGetResponse(ctx context.Context, status, legacyStatus, p
 	} else {
 		response["legacyStatus"] = legacyStatus
 		response["propertyModelS3Path"] = propertyModelS3Path
+		response["path"] = "Twister"
+		if legacyStatus == "QCCompleted" {
+			response["path"] = "Hipster"
+		}
 		stepExecutionData.Status = success
 		stepExecutionData.Output = response
 	}

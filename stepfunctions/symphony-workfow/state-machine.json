@@ -670,7 +670,10 @@
                   "requestData": {
                     "reportId.$": "$$.Execution.Input.reportId",
                     "propertyModelLocation.$": "$.GetPMFPath.response.propertyModelS3Path",
-                    "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
+                    "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation",
+                    "meta": {
+                      "path.$": "$.GetPMFPath.response.path"
+                    }
                   },
                   "url": "${ENDPOINT_URL_PMF_CONVERTER}",
                   "requestMethod": "POST",
