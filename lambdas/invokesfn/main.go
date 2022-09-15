@@ -118,12 +118,13 @@ func Handler(ctx context.Context, sqsEvent events.SQSEvent) (req []string, err e
 
 		ExecutionArn, err := commonHandler.AwsClient.InvokeSFN(&message.Body, &SFNStateMachineARN, &sfnName)
 		log.Infof(ctx, "executionARN of Step function:  %s", ExecutionArn)
+
 		if err != nil {
 			log.Error(ctx, err)
 			// NOTIFY Lambda
 			notifyError := NotifyRequestErrorMessage{
 				Error: err.Error(),
-				Cause: fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["callbackId"].(string)),
+				Cause: fmt.Sprintf("Unable to trigger workflow as callback Id %s is not unique", sfnreq["meta"].(map[string]interface{})["callbackId"].(string)),
 			}
 
 			payload := map[string]interface{}{
