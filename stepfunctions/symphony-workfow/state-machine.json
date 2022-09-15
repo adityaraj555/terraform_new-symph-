@@ -1,905 +1,838 @@
 {
-  "Comment": "A description of my state machine",
-  "StartAt": "InsertWorkflowDataToDocDB",
-  "States": {
-    "InsertWorkflowDataToDocDB": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.InsertWorkflowDataToDocDB",
-      "OutputPath": "$",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
-        "Payload": {
-          "input.$": "$$.Execution.Input",
-          "orderId.$": "$$.Execution.Input.orderId",
-          "workflowId.$": "$$.Execution.Name",
-          "action": "insert"
-        }
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "UpdateLegacyMLAutomationStart",
-      "TimeoutSeconds": 30
-    },
-    "UpdateLegacyMLAutomationStart": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.UpdateLegacyMLAutomationStart",
-      "OutputPath": "$",
-      "Parameters": {
-        "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyMLAutomationStart",
-          "callType": "eagleflow",
-          "status": "MAStarted",
-          "requestData": {}
+    "Comment": "A description of my state machine",
+    "StartAt": "InsertWorkflowDataToDocDB",
+    "States": {
+        "InsertWorkflowDataToDocDB": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
+                "response.$": "$.Payload"
+            },
+            "ResultPath": "$.InsertWorkflowDataToDocDB",
+            "OutputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
+                "Payload": {
+                    "input.$": "$$.Execution.Input",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "action": "insert"
+                }
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "UpdateLegacyMLAutomationStart",
+            "TimeoutSeconds": 30
         },
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "MeasurementAutomation",
-      "TimeoutSeconds": 300
-    },
-    "MeasurementAutomation": {
-      "Type": "Parallel",
-      "Next": "ThrottleService",
-      "Branches": [
-        {
-          "StartAt": "GetImageMetaData",
-          "States": {
-            "GetImageMetaData": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke",
-              "ResultSelector": {
+        "UpdateLegacyMLAutomationStart": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
                 "response.$": "$.Payload"
-              },
-              "ResultPath": "$.GetImageMetaData",
-              "OutputPath": "$",
-              "Parameters": {
-                "Payload": {
-                  "requestData": {},
-                  "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.reportId)",
-                  "requestMethod": "GET",
-                  "headers": {
-                    "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
-                  },
-                  "isWaitTask": false,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 5,
-                  "storeDataToS3.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
-                  "taskName": "GetImageMetaData",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "auth": {}
-                },
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "ImageSelection",
-              "TimeoutSeconds": 300
             },
-            "ImageSelection": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.ImageSelection",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+            "ResultPath": "$.UpdateLegacyMLAutomationStart",
+            "OutputPath": "$",
+            "Parameters": {
                 "Payload": {
-                  "requestData": {
                     "orderId.$": "$$.Execution.Input.orderId",
-                    "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation"
-                  },
-                  "url": "${ENDPOINT_URL_MA}/ma-image-selector/v2/image-selection",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "ImageSelection",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskToken.$": "$$.Task.Token",
-                  "auth": {}
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "FacetKeyPointDetection",
-              "TimeoutSeconds": 7200
-            },
-            "FacetKeyPointDetection": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.FacetKeyPointDetection",
-              "OutputPath": "$",
-              "Parameters": {
-                "Payload": {
-                  "requestData": {
-                    "orderId.$": "$$.Execution.Input.orderId",
-                    "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
-                    "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation"
-                  },
-                  "url": "${ENDPOINT_URL_MA}/measurement-automation/v2/measurement-automation",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "FacetKeyPointDetection",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskToken.$": "$$.Task.Token",
-                  "auth": {}
-                },
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "3DModellingService",
-              "TimeoutSeconds": 7200
-            },
-            "3DModellingService": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.3DModellingService",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                "Payload": {
-                  "requestData": {
-                    "orderId.$": "$$.Execution.Input.orderId",
-                    "address.$": "$$.Execution.Input.address",
-                    "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
-                    "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
-                    "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
-                  },
-                  "url": "${ENDPOINT_URL_3DMODELLING}/runs",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "3DModellingService",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskToken.$": "$$.Task.Token",
-                  "auth": {}
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "End": true,
-              "TimeoutSeconds": 7200
-            }
-          }
-        }
-      ],
-      "ResultSelector": {
-        "response.$": "$[0]"
-      },
-      "OutputPath": "$.response",
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "Next": "updateMLAutomationRejected",
-          "ResultPath": "$.MAError"
-        }
-      ]
-    },
-    "ThrottleService": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.ThrottleService",
-      "OutputPath": "$",
-      "Parameters": {
-        "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "isPenetration.$": "$$.Execution.Input.isPenetration",
-          "isHipsterEnabled.$": "$$.Execution.Input.isHipsterEnabled",
-          "orderType.$": "$$.Execution.Input.orderType"
-        },
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "Hipster/Twister",
-      "TimeoutSeconds": 30
-    },
-    "Hipster/Twister": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.ThrottleService.response.Path",
-          "StringEquals": "Twister",
-          "Comment": "twister flow",
-          "Next": "PMF-EVJSON Converter Upload to EVOSS"
-        }
-      ],
-      "Default": "UpdateLegacyMLSymphonyAutomationComplete"
-    },
-    "UpdateLegacyMLSymphonyAutomationComplete": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.UpdateLegacyMLAutomationComplete",
-      "OutputPath": "$",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-        "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyMLSymphonyAutomationComplete",
-          "callType": "eagleflow",
-          "status": "MASymphonyCompleted",
-          "requestData": {}
-        }
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "Hipster",
-      "TimeoutSeconds": 30
-    },
-    "Hipster": {
-      "Type": "Parallel",
-      "Next": "PMF-EVJSON Converter Upload to EVOSS",
-      "Branches": [
-        {
-          "StartAt": "CreateHipsterJobAndWaitForMeasurement",
-          "States": {
-            "CreateHipsterJobAndWaitForMeasurement": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.CreateHipsterJobAndWaitForMeasurement",
-              "OutputPath": "$",
-              "Parameters": {
-                "Payload": {
-                  "requestData": {
-                    "orderId.$": "$$.Execution.Input.orderId",
-                    "address.$": "$$.Execution.Input.address",
-                    "customerNotes.$": "$$.Execution.Input.customerNotes",
-                    "measurementInstructions.$": "$$.Execution.Input.measurementInstructions",
-                    "orderType.$": "$$.Execution.Input.orderType",
-                    "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
-                  },
-                  "url": "${ENDPOINT_URL_HIPSTER}/hipster/v2/job",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "CreateHipsterJobAndWaitForMeasurement",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "callType": "hipster",
-                  "taskToken.$": "$$.Task.Token",
-                  "status": "MeasurementStarted",
-                  "auth": {}
-                },
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "UpdateHipsterMeasurementCompleteInLegacy"
-            },
-            "UpdateHipsterMeasurementCompleteInLegacy": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke",
-              "ResultSelector": {
-                "response.$": "$.Payload"
-              },
-              "ResultPath": "$.UpdateHipsterMeasurementCompleteInLegacy",
-              "OutputPath": "$",
-              "Parameters": {
-                "Payload": {
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskName": "UpdateHipsterMeasurementCompleteInLegacy",
-                  "callType": "eagleflow",
-                  "status": "MeasurementCompleted",
-                  "requestData": {}
-                },
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "UpdateHipsterJobAndWaitForQC",
-              "TimeoutSeconds": 30
-            },
-            "UpdateHipsterJobAndWaitForQC": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                "Payload": {
-                  "requestData": {
-                    "mode": "QC"
-                  },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "PUT",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "UpdateHipsterJobAndWaitForQC",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "callType": "hipster",
-                  "taskToken.$": "$$.Task.Token",
-                  "status": "QCStarted",
-                  "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
-                  "auth": {}
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "Rework"
-            },
-            "Rework": {
-              "Type": "Choice",
-              "Choices": [
-                {
-                  "Variable": "$.UpdateHipsterJobAndWaitForQC.response.isReworkRequired",
-                  "BooleanEquals": true,
-                  "Comment": "Rework",
-                  "Next": "UpdateHipsterJobAndWaitForMeasurement"
-                }
-              ],
-              "Default": "Pass"
-            },
-            "Pass": {
-              "Type": "Pass",
-              "End": true
-            },
-            "UpdateHipsterJobAndWaitForMeasurement": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.UpdateHipsterJobAndWaitForMeasurement",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                "Payload": {
-                  "requestData": {
-                    "mode": "Measurement"
-                  },
-                  "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
-                  "requestMethod": "PUT",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "UpdateHipsterJobAndWaitForMeasurement",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "callType": "hipster",
-                  "taskToken.$": "$$.Task.Token",
-                  "status": "MeasurementStarted",
-                  "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
-                  "auth": {}
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "UpdateHipsterMeasurementCompleteInLegacy"
-            }
-          }
-        }
-      ],
-      "ResultSelector": {
-        "response.$": "$[0]"
-      },
-      "OutputPath": "$.response",
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "Next": "PMF-EVJSON Converter Upload to EVOSS",
-          "ResultPath": "$.HipsterError"
-        }
-      ]
-    },
-    "updateMLAutomationRejected": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.updateMLAutomationRejected",
-      "OutputPath": "$",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-        "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskName": "updateMLAutomationRejected",
-          "callType": "eagleflow",
-          "status": "MAFailed",
-          "requestData": {}
-        }
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "updateWorkflowDataToDocDB",
-      "TimeoutSeconds": 30
-    },
-    "PMF-EVJSON Converter Upload to EVOSS": {
-      "Type": "Parallel",
-      "Next": "UpdateLegacyStatus",
-      "Branches": [
-        {
-          "StartAt": "GetPMFPath",
-          "States": {
-            "GetPMFPath": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke",
-              "ResultSelector": {
-                "response.$": "$.Payload"
-              },
-              "ResultPath": "$.GetPMFPath",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-evmlconverter:$LATEST",
-                "Payload": {
-                  "workflowId.$": "$$.Execution.Name",
-                  "reportId.$": "$$.Execution.Input.reportId"
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "RetriableError",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "PMFConverter",
-              "TimeoutSeconds": 300
-            },
-            "PMFConverter": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-              "OutputPath": "$",
-              "Parameters": {
-                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-                "Payload": {
-                  "requestData": {
                     "reportId.$": "$$.Execution.Input.reportId",
-                    "propertyModelLocation.$": "$.GetPMFPath.response.propertyModelS3Path",
-                    "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation"
-                  },
-                  "url": "${ENDPOINT_URL_PMF_CONVERTER}",
-                  "requestMethod": "POST",
-                  "headers": {},
-                  "isWaitTask": true,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "taskName": "ConvertPropertyModelToEVJson",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "taskToken.$": "$$.Task.Token",
-                  "auth": {}
-                }
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": [
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException",
-                    "RetriableError"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
-                }
-              ],
-              "Next": "UploadToEVOSS",
-              "ResultSelector": {
-                "response.$": "$"
-              },
-              "ResultPath": "$.PMFConverter",
-              "TimeoutSeconds": 180
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskName": "UpdateLegacyMLAutomationStart",
+                    "callType": "eagleflow",
+                    "status": "MAStarted",
+                    "requestData": {}
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
             },
-            "UploadToEVOSS": {
-              "Type": "Task",
-              "Resource": "arn:aws:states:::lambda:invoke",
-              "OutputPath": "$",
-              "Parameters": {
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "MeasurementAutomation",
+            "TimeoutSeconds": 210
+        },
+        "MeasurementAutomation": {
+            "Type": "Parallel",
+            "Next": "ThrottleService",
+            "Branches": [
+                {
+                    "StartAt": "GetImageMetaData",
+                    "States": {
+                        "GetImageMetaData": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.GetImageMetaData",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "Payload": {
+                                    "requestData": {},
+                                    "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/GetReportFile?reportId={}&fileTypeId=149', $$.Execution.Input.reportId)",
+                                    "requestMethod": "GET",
+                                    "headers": {
+                                        "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
+                                    },
+                                    "isWaitTask": false,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
+                                    "taskName": "GetImageMetaData",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "auth": {}
+                                },
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "ImageSelection",
+                            "TimeoutSeconds": 60
+                        },
+                        "ImageSelection": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.ImageSelection",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "orderId.$": "$$.Execution.Input.orderId",
+                                        "address.$": "$$.Execution.Input.address",
+                                        "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation"
+                                    },
+                                    "url": "${ENDPOINT_URL_MA}/ma-image-selector/v2/image-selection",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "ImageSelection",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "FacetKeyPointDetection",
+                            "TimeoutSeconds": 7200
+                        },
+                        "FacetKeyPointDetection": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.FacetKeyPointDetection",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "Payload": {
+                                    "requestData": {
+                                        "orderId.$": "$$.Execution.Input.orderId",
+                                        "address.$": "$$.Execution.Input.address",
+                                        "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
+                                        "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation"
+                                    },
+                                    "url": "${ENDPOINT_URL_MA}/measurement-automation/v2/measurement-automation",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "FacetKeyPointDetection",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "auth": {}
+                                },
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "3DModellingService",
+                            "TimeoutSeconds": 7200
+                        },
+                        "3DModellingService": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.3DModellingService",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "orderId.$": "$$.Execution.Input.orderId",
+                                        "address.$": "$$.Execution.Input.address",
+                                        "getImageMetadata.$": "$.GetImageMetaData.response.s3DataLocation",
+                                        "imageSelectionService.$": "$.ImageSelection.response.imageSelectionLocation",
+                                        "facetKeyPointDetection.$": "$.FacetKeyPointDetection.response.facetKeyPointLocation"
+                                    },
+                                    "url": "${ENDPOINT_URL_3DMODELLING}/runs",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "3DModellingService",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "End": true,
+                            "TimeoutSeconds": 7200
+                        }
+                    }
+                }
+            ],
+            "ResultSelector": {
+                "response.$": "$[0]"
+            },
+            "OutputPath": "$.response",
+            "Catch": [
+                {
+                    "ErrorEquals": ["States.ALL"],
+                    "Next": "updateMLAutomationRejected",
+                    "ResultPath": "$.MAError"
+                }
+            ]
+        },
+        "ThrottleService": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
+                "response.$": "$.Payload"
+            },
+            "ResultPath": "$.ThrottleService",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "isPenetration.$": "$$.Execution.Input.isPenetration",
+                    "isHipsterEnabled.$": "$$.Execution.Input.isHipsterEnabled",
+                    "orderType.$": "$$.Execution.Input.orderType"
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-throttleservice:$LATEST"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "Hipster/Twister",
+            "TimeoutSeconds": 60
+        },
+        "Hipster/Twister": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.ThrottleService.response.Path",
+                    "StringEquals": "Twister",
+                    "Comment": "twister flow",
+                    "Next": "PMF-EVJSON Converter Upload to EVOSS"
+                }
+            ],
+            "Default": "UpdateLegacyMLSymphonyAutomationComplete"
+        },
+        "UpdateLegacyMLSymphonyAutomationComplete": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
+                "response.$": "$.Payload"
+            },
+            "ResultPath": "$.UpdateLegacyMLAutomationComplete",
+            "OutputPath": "$",
+            "Parameters": {
                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                 "Payload": {
-                  "requestData": {},
-                  "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
-                  "requestMethod": "POST",
-                  "headers": {
-                    "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
-                  },
-                  "isWaitTask": false,
-                  "retry": "number of times we want to retry on specific error types like timeout, 500",
-                  "timeout": 45,
-                  "storeDataToS3": "",
-                  "getRequestBodyFromS3.$": "$.PMFConverter.response.evJsonLocation",
-                  "s3RequestBodyType": "base64",
-                  "taskName": "UploadEVJSONtoEVOSS",
-                  "orderId.$": "$$.Execution.Input.orderId",
-                  "reportId.$": "$$.Execution.Input.reportId",
-                  "workflowId.$": "$$.Execution.Name",
-                  "auth": {}
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskName": "UpdateLegacyMLSymphonyAutomationComplete",
+                    "callType": "eagleflow",
+                    "status": "MASymphonyCompleted",
+                    "requestData": {}
                 }
-              },
-              "Retry": [
+            },
+            "Retry": [
                 {
-                  "ErrorEquals": [
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                    "Lambda.SdkClientException",
-                    "RetriableError"
-                  ],
-                  "IntervalSeconds": 60,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 1
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
-              ],
-              "End": true,
-              "ResultSelector": {
+            ],
+            "Next": "Hipster",
+            "TimeoutSeconds": 210
+        },
+        "Hipster": {
+            "Type": "Parallel",
+            "Next": "PMF-EVJSON Converter Upload to EVOSS",
+            "Branches": [
+                {
+                    "StartAt": "CreateHipsterJobAndWaitForMeasurement",
+                    "States": {
+                        "CreateHipsterJobAndWaitForMeasurement": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.CreateHipsterJobAndWaitForMeasurement",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "Payload": {
+                                    "requestData": {
+                                        "orderId.$": "$$.Execution.Input.orderId",
+                                        "address.$": "$$.Execution.Input.address",
+                                        "customerNotes.$": "$$.Execution.Input.customerNotes",
+                                        "measurementInstructions.$": "$$.Execution.Input.measurementInstructions",
+                                        "orderType.$": "$$.Execution.Input.orderType",
+                                        "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
+                                    },
+                                    "url": "${ENDPOINT_URL_HIPSTER}/hipster/v2/job",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "CreateHipsterJobAndWaitForMeasurement",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "callType": "hipster",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "status": "MeasurementStarted",
+                                    "auth": {}
+                                },
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "UpdateHipsterMeasurementCompleteInLegacy"
+                        },
+                        "UpdateHipsterMeasurementCompleteInLegacy": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.UpdateHipsterMeasurementCompleteInLegacy",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "Payload": {
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "taskName": "UpdateHipsterMeasurementCompleteInLegacy",
+                                    "callType": "eagleflow",
+                                    "status": "MeasurementCompleted",
+                                    "requestData": {}
+                                },
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "UpdateHipsterJobAndWaitForQC",
+                            "TimeoutSeconds": 210
+                        },
+                        "UpdateHipsterJobAndWaitForQC": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "mode": "QC"
+                                    },
+                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                                    "requestMethod": "PUT",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "UpdateHipsterJobAndWaitForQC",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "callType": "hipster",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "status": "QCStarted",
+                                    "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "Rework"
+                        },
+                        "Rework": {
+                            "Type": "Choice",
+                            "Choices": [
+                                {
+                                    "Variable": "$.UpdateHipsterJobAndWaitForQC.response.isReworkRequired",
+                                    "BooleanEquals": true,
+                                    "Comment": "Rework",
+                                    "Next": "UpdateHipsterJobAndWaitForMeasurement"
+                                }
+                            ],
+                            "Default": "Pass"
+                        },
+                        "Pass": {
+                            "Type": "Pass",
+                            "End": true
+                        },
+                        "UpdateHipsterJobAndWaitForMeasurement": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.UpdateHipsterJobAndWaitForMeasurement",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "mode": "Measurement"
+                                    },
+                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                                    "requestMethod": "PUT",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "UpdateHipsterJobAndWaitForMeasurement",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "callType": "hipster",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "status": "MeasurementStarted",
+                                    "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "UpdateHipsterMeasurementCompleteInLegacy"
+                        }
+                    }
+                }
+            ],
+            "ResultSelector": {
+                "response.$": "$[0]"
+            },
+            "OutputPath": "$.response",
+            "Catch": [
+                {
+                    "ErrorEquals": ["States.ALL"],
+                    "Next": "PMF-EVJSON Converter Upload to EVOSS",
+                    "ResultPath": "$.HipsterError"
+                }
+            ]
+        },
+        "updateMLAutomationRejected": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
                 "response.$": "$.Payload"
-              },
-              "ResultPath": "$.UploadToEVOSS",
-              "TimeoutSeconds": 30
-            }
-          }
-        }
-      ],
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "Next": "updateMLAutomationRejected"
-        }
-      ],
-      "ResultSelector": {
-        "response.$": "$[0]"
-      },
-      "OutputPath": "$.response"
-    },
-    "UpdateLegacyStatus": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.UpdateLegacyStatus",
-      "OutputPath": "$",
-      "Parameters": {
-        "Payload": {
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskName": "UpdateLegacyStatus",
-          "callType": "eagleflow",
-          "status.$": "$.GetPMFPath.response.legacyStatus",
-          "requestData": {}
+            },
+            "ResultPath": "$.updateMLAutomationRejected",
+            "OutputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                "Payload": {
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskName": "updateMLAutomationRejected",
+                    "callType": "eagleflow",
+                    "status": "MAFailed",
+                    "requestData": {}
+                }
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "updateWorkflowDataToDocDB",
+            "TimeoutSeconds": 210
         },
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "RetriableError",
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
-        }
-      ],
-      "Next": "IsUploadToPDWRequired",
-      "TimeoutSeconds": 300
-    },
-    "IsUploadToPDWRequired": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.GetPMFPath.response.legacyStatus",
-          "StringEquals": "QCCompleted",
-          "Next": "UploadToPDW"
-        }
-      ],
-      "Default": "updateWorkflowDataToDocDB"
-    },
-    "UploadToPDW": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-      "ResultSelector": {
-        "response.$": "$"
-      },
-      "OutputPath": "$",
-      "Parameters": {
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
-        "Payload": {
-          "requestData": {
-            "orderId.$": "$$.Execution.Input.orderId",
-            "address.$": "$$.Execution.Input.address",
-            "evjsonEvossLocation.$": "$.UploadToEVOSS.response.ReferenceId",
-            "propertyModelLocation.$": "$.UpdateHipsterJobAndWaitForQC.response.propertyModelLocation"
-          },
-          "url": "${ENDPOINT_URL_UPLOAD_PDW}",
-          "requestMethod": "POST",
-          "headers": {},
-          "isWaitTask": true,
-          "retry": "number of times we want to retry on specific error types like timeout, 500",
-          "timeout": 15,
-          "storeDataToS3": "",
-          "taskName": "UploadToPDW",
-          "orderId.$": "$$.Execution.Input.orderId",
-          "reportId.$": "$$.Execution.Input.reportId",
-          "workflowId.$": "$$.Execution.Name",
-          "taskToken.$": "$$.Task.Token",
-          "auth": {}
-        }
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
-        }
-      ],
-      "Next": "updateWorkflowDataToDocDB",
-      "Catch": [
-        {
-          "ErrorEquals": [
-            "States.ALL"
-          ],
-          "Next": "updateWorkflowDataToDocDB"
-        }
-      ]
-    },
-    "updateWorkflowDataToDocDB": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "ResultSelector": {
-        "response.$": "$.Payload"
-      },
-      "ResultPath": "$.updateWorkflowDataToDocDB",
-      "OutputPath": "$",
-      "Parameters": {
-        "Payload": {
-          "input.$": "$$.Execution.Input",
-          "orderId.$": "$$.Execution.Input.orderId",
-          "workflowId.$": "$$.Execution.Name",
-          "action": "update"
+        "PMF-EVJSON Converter Upload to EVOSS": {
+            "Type": "Parallel",
+            "Next": "UpdateLegacyStatus",
+            "Branches": [
+                {
+                    "StartAt": "GetPMFPath",
+                    "States": {
+                        "GetPMFPath": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.GetPMFPath",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-evmlconverter:$LATEST",
+                                "Payload": {
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "reportId.$": "$$.Execution.Input.reportId"
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "RetriableError",
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "PMFConverter",
+                            "TimeoutSeconds": 60
+                        },
+                        "PMFConverter": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "reportId.$": "$$.Execution.Input.reportId",
+                                        "propertyModelLocation.$": "$.GetPMFPath.response.propertyModelS3Path",
+                                        "imageMetaDataLocation.$": "$.GetImageMetaData.response.s3DataLocation",
+                                        "meta": {
+                                            "path.$": "$.GetPMFPath.response.path"
+                                        }
+                                    },
+                                    "url": "${ENDPOINT_URL_PMF_CONVERTER}",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": true,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "ConvertPropertyModelToEVJson",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "taskToken.$": "$$.Task.Token",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException",
+                                        "RetriableError"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "UploadToEVOSS",
+                            "ResultSelector": {
+                                "response.$": "$"
+                            },
+                            "ResultPath": "$.PMFConverter",
+                            "TimeoutSeconds": 1200
+                        },
+                        "UploadToEVOSS": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {},
+                                    "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
+                                    "requestMethod": "POST",
+                                    "headers": {
+                                        "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
+                                    },
+                                    "isWaitTask": false,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "getRequestBodyFromS3.$": "$.PMFConverter.response.evJsonLocation",
+                                    "s3RequestBodyType": "base64",
+                                    "taskName": "UploadEVJSONtoEVOSS",
+                                    "orderId.$": "$$.Execution.Input.orderId",
+                                    "reportId.$": "$$.Execution.Input.reportId",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "auth": {}
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException",
+                                        "RetriableError"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "End": true,
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.UploadToEVOSS",
+                            "TimeoutSeconds": 180
+                        }
+                    }
+                }
+            ],
+            "Catch": [
+                {
+                    "ErrorEquals": ["States.ALL"],
+                    "Next": "updateMLAutomationRejected"
+                }
+            ],
+            "ResultSelector": {
+                "response.$": "$[0]"
+            },
+            "OutputPath": "$.response"
         },
-        "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException"
-          ],
-          "IntervalSeconds": 60,
-          "MaxAttempts": 2,
-          "BackoffRate": 1
+        "UpdateLegacyStatus": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
+                "response.$": "$.Payload"
+            },
+            "ResultPath": "$.UpdateLegacyStatus",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "reportId.$": "$$.Execution.Input.reportId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskName": "UpdateLegacyStatus",
+                    "callType": "eagleflow",
+                    "status.$": "$.GetPMFPath.response.legacyStatus",
+                    "requestData": {}
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "updateWorkflowDataToDocDB",
+            "TimeoutSeconds": 60
+        },
+        "updateWorkflowDataToDocDB": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "ResultSelector": {
+                "response.$": "$.Payload"
+            },
+            "ResultPath": "$.updateWorkflowDataToDocDB",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "input.$": "$$.Execution.Input",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "action": "update"
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "End": true,
+            "TimeoutSeconds": 30
         }
-      ],
-      "End": true,
-      "TimeoutSeconds": 30
     }
-  }
 }

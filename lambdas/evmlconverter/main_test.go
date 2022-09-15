@@ -139,6 +139,7 @@ func TestHandler(t *testing.T) {
 		"status":              success,
 		"legacyStatus":        "QCCompleted",
 		"propertyModelS3Path": "s3Location",
+		"path":                "Hipster",
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
@@ -178,6 +179,7 @@ func TestHandlerTwisterFlow(t *testing.T) {
 		"status":              success,
 		"legacyStatus":        "MACompleted",
 		"propertyModelS3Path": "s3Location",
+		"path":                "Twister",
 	}
 
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
@@ -219,6 +221,7 @@ func TestHandlerFailureCase(t *testing.T) {
 		"status":              success,
 		"legacyStatus":        "QCFailed",
 		"propertyModelS3Path": "s3Location",
+		"path":                "Twister",
 	}
 	workflowData := documentDB_client.WorkflowExecutionDataBody{}
 	json.Unmarshal(mockWorkflowDetails, &workflowData)
