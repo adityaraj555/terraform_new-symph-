@@ -9,7 +9,7 @@ def deploymentTargetBranchMapOverrides = [
     test:"develop",
     stage: "release-1.2.0",
     develop: "develop",
-    prod: "release-1.0.0"
+    prod: "release-1.2.0"
 ]
 
 String deploymentStack = "terraform/symphony"
