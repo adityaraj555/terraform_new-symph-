@@ -84,7 +84,7 @@
                                 }
                             ],
                             "Next": "BuildingDetection",
-                            "TimeoutSeconds": 60
+                            "TimeoutSeconds": 600
                         },
                         "BuildingDetection": {
                             "Type": "Task",
@@ -133,7 +133,7 @@
                                 }
                             ],
                             "Next": "ImageSelection",
-                            "TimeoutSeconds": 60
+                            "TimeoutSeconds": 600
                         },
                         "ImageSelection": {
                             "Type": "Task",
@@ -184,7 +184,7 @@
                                 }
                             ],
                             "Next": "RetrieveandStoreImagesMetadata",
-                            "TimeoutSeconds": 60
+                            "TimeoutSeconds": 600
                         },
                         "RetrieveandStoreImagesMetadata": {
                             "Type": "Task",
@@ -232,14 +232,16 @@
                                 }
                             ],
                             "End": true,
-                            "TimeoutSeconds": 60
+                            "TimeoutSeconds": 210
                         }
                     }
                 }
             ],
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "AutomatedImageSelectionFailed",
                     "ResultPath": "$.errorMessage"
                 }
@@ -274,7 +276,8 @@
                     "BackoffRate": 1
                 }
             ],
-            "Next": "updateWorkflowDataToDocDB"
+            "Next": "updateWorkflowDataToDocDB",
+            "TimeoutSeconds": 210
         },
         "AutomatedImageSelectionFailed": {
             "Type": "Task",
@@ -306,7 +309,8 @@
                     "BackoffRate": 2
                 }
             ],
-            "Next": "updateWorkflowDataToDocDB"
+            "Next": "updateWorkflowDataToDocDB",
+            "TimeoutSeconds": 210
         },
         "updateWorkflowDataToDocDB": {
             "Type": "Task",
@@ -333,7 +337,8 @@
                     "BackoffRate": 1
                 }
             ],
-            "End": true
+            "End": true,
+            "TimeoutSeconds": 210
         }
     }
 }
