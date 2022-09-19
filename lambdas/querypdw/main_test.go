@@ -47,6 +47,10 @@ func TestHandlerTriggerSIM(t *testing.T) {
 				  "state": "NY",
 				  "zip": "14625",
 				  "id": "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
+				  "_detectedBuildingCount": {
+                    "marker": "2019-08-29",
+                    "value": 1
+                   },
 				  "structures": [
 					{
 					  "_outline": {
@@ -143,6 +147,10 @@ func TestHandlerStructureExists(t *testing.T) {
 					  "id": "5085a802-89fa-48a8-8c3c-bd8480f0378a"
 					}
 				  ],
+				  "_detectedBuildingCount": {
+                    "marker": "2021-08-29",
+                    "value": 1
+                   },
 				  "lat": 43.172988,
 				  "lon": -77.501957,
 				  "address": "23 HAVENSHIRE RD",
@@ -206,6 +214,10 @@ func TestHandlerNoStructuresAfterIngestion(t *testing.T) {
 					  "id": "5085a802-89fa-48a8-8c3c-bd8480f0378a"
 					}
 				  ],
+				  "_detectedBuildingCount": {
+                    "marker": "2019-08-29",
+                    "value": 1
+                   },
 				  "lat": 43.172988,
 				  "lon": -77.501957,
 				  "address": "23 HAVENSHIRE RD",
@@ -264,6 +276,9 @@ func TestCallbackError(t *testing.T) {
 		Body:       ioutil.NopCloser(bytes.NewBufferString(string(``))),
 		StatusCode: 500,
 	}, nil)
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
 	commonHandler.HttpClient = http_Client
 	err := makeCallBack(context.Background(), success, "", "", "", 0, map[string]interface{}{})
 	assert.Error(t, err)
