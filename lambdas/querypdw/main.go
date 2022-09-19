@@ -35,13 +35,11 @@ type eventData struct {
 type pdwValidationResponse struct {
 	Data struct {
 		Parcels []struct {
-			ID         string `json:"id"`
-			Structures []struct {
-				Outline struct {
-					Marker string `json:"marker"`
-				} `json:"_outline"`
-				ID string `json:"id"`
-			} `json:"structures"`
+			ID                    string `json:"id"`
+			DetectedBuildingCount struct {
+				Marker string      `json:"marker"`
+				Value  interface{} `json:"value"`
+			} `json:"_detectedBuildingCount"`
 			Lat     float64 `json:"lat"`
 			Lon     float64 `json:"lon"`
 			Address string  `json:"address"`
@@ -150,7 +148,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 
 func generateValidationQuery(eventData eventData) string {
 	commonattributelist := []string{"lat", "lon", "address", "city", "state", "zip", "id"}
-	validationattributelist := []string{"structures%s._outline.marker", "structures%s.id"}
+	validationattributelist := []string{"_detectedBuildingCount.marker", "_detectedBuildingCount.value"}
 	validationattributelist = append(validationattributelist, commonattributelist...)
 	query := GenerateGQL(validationattributelist, eventData.Address.Lat, eventData.Address.Long, eventData.ParcelID, eventData.Address.ParcelAddress, "")
 	return query
@@ -233,14 +231,12 @@ func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl 
 	return nil
 }
 func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool {
-	if len(pdwResponse.Data.Parcels[0].Structures) == 0 {
+	if pdwResponse.Data.Parcels[0].DetectedBuildingCount.Value == nil {
 		return false
 	}
-	for _, structure := range pdwResponse.Data.Parcels[0].Structures {
-		structuremarker := structure.Outline.Marker
-		if structuremarker == "" || (minDate != "" && structuremarker < minDate) {
-			return false
-		}
+	marker := pdwResponse.Data.Parcels[0].DetectedBuildingCount.Marker
+	if marker == "" || (minDate != "" && marker < minDate) {
+		return false
 	}
 	return true
 }
@@ -266,11 +262,6 @@ func GenerateGQL(attributes []string, lat, long float64, parcelID, address, stru
 		}
 	}
 	query := "{ " + generatequery(parentChildAttributesMap, topnode) + " }"
-	if structureType == primary {
-		query = fmt.Sprintf(query, `(type: "main")`)
-	} else {
-		query = fmt.Sprintf(query, "")
-	}
 	return query
 }
 
