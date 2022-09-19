@@ -1,7 +1,12 @@
 {
     "Comment": "A description of my state machine",
-    "StartAt": "InsertIntoDocumentDb",
+    "StartAt": "Wait",
     "States": {
+      "Wait": {
+        "Type": "Wait",
+        "Next": "InsertIntoDocumentDb",
+        "SecondsPath": "$.waitDuration"
+      },
       "InsertIntoDocumentDb": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
@@ -9,11 +14,11 @@
         "Parameters": {
           "Payload": {
             "input.$": "$$.Execution.Input",
-            "orderId.$": "$$.Execution.Input.orderId",
+            "orderId.$": "$$.Execution.Input.reportId",
             "workflowId.$": "$$.Execution.Name",
             "action": "insert"
           },
-          "FunctionName": "arn:aws:lambda:us-east-2:app-test-1x0-lambda-datastorelambda:$LATEST"
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST"
         },
         "Retry": [
           {
@@ -32,7 +37,8 @@
       "ConvertPmfToEVJson": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
-        "OutputPath": "$.Payload",
+        "OutputPath": "$",
+        "ResultPath": "$.ConvertPmfToEVJson",
         "Parameters": {
           "Payload": {
             "requestData": {
@@ -40,7 +46,7 @@
               "propertyModelLocation.$": "States.Format('s3://app-test-1x0-s3-property-data-orchestrator/{}/hipster_output.json', $$.Execution.Input.reportId)",
               "imageMetaDataLocation.$": "States.Format('s3://app-test-1x0-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)"
             },
-            "url": "https://api.cmh.platform-test2.evinternal.net/factory-dx-human-extraction/pmf-conversion/converter",
+            "url": "${ENDPOINT_URL_PMF_CONVERTER}",
             "requestMethod": "POST",
             "headers": {},
             "isWaitTask": true,
@@ -48,13 +54,13 @@
             "timeout": 45,
             "storeDataToS3": "",
             "taskName": "ConvertPmfToEVJson",
-            "orderId.$": "$$.Execution.Input.orderId",
+            "orderId.$": "$$.Execution.Input.reportId",
             "reportId.$": "$$.Execution.Input.reportId",
             "workflowId.$": "$$.Execution.Name",
             "taskToken.$": "$$.Task.Token",
             "auth": {}
           },
-          "FunctionName": "arn:aws:lambda:us-east-2:app-test-1x0-lambda-calloutlambda:$LATEST"
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
         },
         "Retry": [
           {
@@ -73,11 +79,12 @@
       "UploadToEvoss": {
         "Type": "Task",
         "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
+        "OutputPath": "$",
+        "ResultPath": "$.UploadToEvoss",
         "Parameters": {
           "Payload": {
             "requestData": {},
-            "url.$": "States.Format('https://intranetrest.cmh.reportstest.evinternal.net/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
+            "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
             "requestMethod": "POST",
             "headers": {
               "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
@@ -86,15 +93,15 @@
             "retry": "number of times we want to retry on specific error types like timeout, 500",
             "timeout": 45,
             "storeDataToS3": "",
-            "getRequestBodyFromS3.$": "$.ConvertPmfToEVJson.response.evJsonLocation",
+            "getRequestBodyFromS3.$": "$.ConvertPmfToEVJson.evJsonLocation",
             "s3RequestBodyType": "base64",
             "taskName": "UploadToEvoss",
-            "orderId.$": "$$.Execution.Input.orderId",
+            "orderId.$": "$$.Execution.Input.reportId",
             "reportId.$": "$$.Execution.Input.reportId",
             "workflowId.$": "$$.Execution.Name",
             "auth": {}
           },
-          "FunctionName": "arn:aws:lambda:us-east-2:app-test-1x0-lambda-calloutlambda:$LATEST"
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
         },
         "Retry": [
           {
@@ -116,15 +123,15 @@
         "OutputPath": "$.Payload",
         "Parameters": {
           "Payload": {
-            "orderId.$": "$$.Execution.Input.orderId",
+            "orderId.$": "$$.Execution.Input.reportId",
             "reportId.$": "$$.Execution.Input.reportId",
             "workflowId.$": "$$.Execution.Name",
             "taskName": "UpdateLegacyStatus",
             "callType": "eagleflow",
-            "status": "HipsterQCCompleted",
+            "status": "QCCompleted",
             "requestData": {}
           },
-          "FunctionName": "arn:aws:lambda:us-east-2:app-test-1x0-lambda-calloutlambda:$LATEST"
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
         },
         "Retry": [
           {
