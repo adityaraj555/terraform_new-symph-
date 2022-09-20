@@ -42,7 +42,7 @@ func handler(ctx context.Context, input pdwOutput) error {
 	status := "success"
 
 	if input.Status == "success" && len(input.Response.Data.Parcels) > 0 && input.Response.Data.Parcels[0].DetectedBuildingCount.Value != nil {
-		if buildingCount := input.Response.Data.Parcels[0].DetectedBuildingCount.Value.(int); buildingCount == 1 {
+		if buildingCount := input.Response.Data.Parcels[0].DetectedBuildingCount.Value.(float64); int(buildingCount) == 1 {
 			isHipsterCompatible = true
 		}
 	} else if input.Status == "failure" {

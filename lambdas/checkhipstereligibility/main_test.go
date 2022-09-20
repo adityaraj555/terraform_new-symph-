@@ -33,7 +33,7 @@ func TestIsHipsterEligibleInvokeFailed(t *testing.T) {
 		} "json:\"_detectedBuildingCount\""
 	}{DetectedBuildingCount: struct {
 		Value interface{} "json:\"value\""
-	}{Value: 0}})
+	}{Value: 0.0}})
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
 	slackClient.On("SendErrorMessage", 4041, "", "", "checkHipsterEligibility", "checkHipsterEligibility", mock.Anything, mock.Anything).Return(nil)
@@ -54,7 +54,7 @@ func TestCheckHipsterEligibilityBuildingCount(t *testing.T) {
 		} "json:\"_detectedBuildingCount\""
 	}{DetectedBuildingCount: struct {
 		Value interface{} "json:\"value\""
-	}{Value: 2}})
+	}{Value: 2.0}})
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
 	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false}, "status": "success"}, false).Return(nil, nil)
@@ -74,7 +74,7 @@ func TestCheckHipsterEligibilityBuildingCount0(t *testing.T) {
 		} "json:\"_detectedBuildingCount\""
 	}{DetectedBuildingCount: struct {
 		Value interface{} "json:\"value\""
-	}{Value: 0}})
+	}{Value: 0.0}})
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
 	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false}, "status": "success"}, false).Return(nil, nil)
@@ -94,7 +94,7 @@ func TestCheckHipsterEligibilityBuildingCount1(t *testing.T) {
 		} "json:\"_detectedBuildingCount\""
 	}{DetectedBuildingCount: struct {
 		Value interface{} "json:\"value\""
-	}{Value: 1}})
+	}{Value: 1.0}})
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
 	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true}, "status": "success"}, false).Return(nil, nil)
