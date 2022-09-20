@@ -371,13 +371,14 @@
             "Retry": [
                 {
                     "ErrorEquals": [
+                        "RetriableError",
                         "Lambda.ServiceException",
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
             ],
             "Next": "isHipsterCompatible",
@@ -388,7 +389,7 @@
                     "ResultPath": "$.CheckIsMultiStructure"
                 }
             ],
-            "TimeoutSeconds": 90
+            "TimeoutSeconds": 300
         },
         "isHipsterCompatible": {
             "Type": "Choice",
@@ -418,13 +419,14 @@
             "Retry": [
                 {
                     "ErrorEquals": [
+                        "RetriableError",
                         "Lambda.ServiceException",
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
             ],
             "Next": "PMF-EVJSON Converter Upload to EVOSS",
@@ -447,13 +449,14 @@
             "Retry": [
                 {
                     "ErrorEquals": [
+                        "RetriableError",
                         "Lambda.ServiceException",
                         "Lambda.AWSLambdaException",
                         "Lambda.SdkClientException"
                     ],
-                    "IntervalSeconds": 2,
-                    "MaxAttempts": 6,
-                    "BackoffRate": 2
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
                 }
             ],
             "Next": "UpdateLegacyMLSymphonyAutomationComplete",
