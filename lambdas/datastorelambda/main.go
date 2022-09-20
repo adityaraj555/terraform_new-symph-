@@ -31,6 +31,7 @@ type RequestBody struct {
 	OrderId    string                 `json:"orderId"`
 	WorkflowId string                 `json:"workflowId"`
 	Action     string                 `json:"action"`
+	FlowType   string                 `json:"flowType"`
 }
 
 const DBSecretARN = "DBSecretARN"
@@ -71,6 +72,18 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 		err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, update, documentDB_client.WorkflowDataCollection)
 		if err != nil {
 			log.Error(ctx, "Error while updating workflowExecutionData, error: ", err.Error())
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+	case "updateFlowType":
+		query := bson.M{"_id": Request.WorkflowId}
+		setrecord := bson.M{
+			"$set": bson.M{
+				"flowType": Request.FlowType,
+			}}
+
+		err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	}
