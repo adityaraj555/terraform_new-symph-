@@ -346,7 +346,7 @@
                             "callbackUrl": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-checkhipstereligibility"
                         }
                     },
-                    "url": "${SIM_ENDPOINT}/pdo/api/v1/sim/job",
+                    "url": "${SIM_HOST_URL}/pdo/api/v1/sim/job",
                     "requestMethod": "POST",
                     "headers": {},
                     "isWaitTask": true,
