@@ -48,16 +48,18 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 		return map[string]interface{}{"status": failed}, err
 	}
 
-	query := bson.M{"_id": eventData.WorkflowID}
-	setrecord := bson.M{
-		"$set": bson.M{
-			"flowType": Path,
-		}}
+	if Path == "Twister" {
+		query := bson.M{"_id": eventData.WorkflowID}
+		setrecord := bson.M{
+			"$set": bson.M{
+				"flowType": Path,
+			}}
 
-	err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
-	if err != nil {
-		log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
-		return map[string]interface{}{"status": failed}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		err = commonHandler.DBClient.UpdateDocumentDB(ctx, query, setrecord, documentDB_client.WorkflowDataCollection)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+			return map[string]interface{}{"status": failed}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
 	}
 	return map[string]interface{}{"Path": Path, "status": Success}, nil
 }
