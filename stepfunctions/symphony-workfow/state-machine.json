@@ -325,7 +325,139 @@
                     "Next": "PMF-EVJSON Converter Upload to EVOSS"
                 }
             ],
-            "Default": "UpdateLegacyMLSymphonyAutomationComplete"
+            "Default": "CheckIsMultiStructure"
+        },
+        "CheckIsMultiStructure": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "ResultSelector": {
+                "response.$": "$"
+            },
+            "ResultPath": "$.CheckIsMultiStructure",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "requestData": {
+                        "address": {
+                            "lat.$": "$$.Execution.Input.address.latitude",
+                            "long.$": "$$.Execution.Input.address.longitude"
+                        },
+                        "meta": {
+                            "callbackUrl": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-checkhipstereligibility"
+                        }
+                    },
+                    "url": "${SIM_ENDPOINT}/pdo/api/v1/sim/job",
+                    "requestMethod": "POST",
+                    "headers": {},
+                    "isWaitTask": true,
+                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                    "timeout": 45,
+                    "storeDataToS3": "",
+                    "taskName": "CheckIsMultiStructure",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskToken.$": "$$.Task.Token",
+                    "auth": {
+                        "type": "bearer",
+                        "authData": {
+                            "secretStoreType": "pdo_secret_manager",
+                            "clientIdKey": "ClientID",
+                            "clientSecretKey": "ClientSecret",
+                            "url": "${ENDPOINT_AUTH_TOKEN}"
+                        }
+                    }
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "isHipsterCompatible",
+            "Catch": [
+                {
+                    "ErrorEquals": ["States.ALL"],
+                    "Next": "UpdateFlowTypeToTwister",
+                    "ResultPath": "$.CheckIsMultiStructure"
+                }
+            ],
+            "TimeoutSeconds": 90
+        },
+        "isHipsterCompatible": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.CheckIsMultiStructure.response.isHipsterCompatible",
+                    "BooleanEquals": true,
+                    "Next": "UpdateFlowTypeToHipster"
+                }
+            ],
+            "Default": "UpdateFlowTypeToTwister"
+        },
+        "UpdateFlowTypeToTwister": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "input.$": "$$.Execution.Input",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "action": "updateFlowType",
+                    "flowType": "Twister"
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "PMF-EVJSON Converter Upload to EVOSS",
+            "ResultPath": "$.UpdateFlowTypeToTwister"
+        },
+        "UpdateFlowTypeToHipster": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "OutputPath": "$",
+            "Parameters": {
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST",
+                "Payload": {
+                    "input.$": "$$.Execution.Input",
+                    "orderId.$": "$$.Execution.Input.orderId",
+                    "workflowId.$": "$$.Execution.Name",
+                    "action": "updateFlowType",
+                    "flowType": "Hipster"
+                }
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 2,
+                    "MaxAttempts": 6,
+                    "BackoffRate": 2
+                }
+            ],
+            "Next": "UpdateLegacyMLSymphonyAutomationComplete",
+            "ResultPath": "$.UpdateFlowTypeToHipster"
         },
         "UpdateLegacyMLSymphonyAutomationComplete": {
             "Type": "Task",
