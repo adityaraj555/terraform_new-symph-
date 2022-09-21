@@ -646,7 +646,7 @@
                                     "Variable": "$.${TaskUpdateHipsterJobAndWaitForQC}.response.isReworkRequired",
                                     "BooleanEquals": true,
                                     "Comment": "Rework",
-                                    "Next": "${UpdateHipsterJobAndWaitForMeasurement}"
+                                    "Next": "UpdateHipsterJobAndWaitForMeasurement"
                                 }
                             ],
                             "Default": "Pass"
@@ -655,13 +655,13 @@
                             "Type": "Pass",
                             "End": true
                         },
-                        "${UpdateHipsterJobAndWaitForMeasurement}": {
+                        "UpdateHipsterJobAndWaitForMeasurement": {
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                             "ResultSelector": {
                                 "response.$": "$"
                             },
-                            "ResultPath": "$.${UpdateHipsterJobAndWaitForMeasurement}",
+                            "ResultPath": "$.UpdateHipsterJobAndWaitForMeasurement",
                             "OutputPath": "$",
                             "Parameters": {
                                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
@@ -676,7 +676,7 @@
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
                                     "timeout": 45,
                                     "storeDataToS3": "",
-                                    "taskName": "${UpdateHipsterJobAndWaitForMeasurement}",
+                                    "taskName": "UpdateHipsterJobAndWaitForMeasurement",
                                     "orderId.$": "$$.Execution.Input.orderId",
                                     "reportId.$": "$$.Execution.Input.reportId",
                                     "workflowId.$": "$$.Execution.Name",
