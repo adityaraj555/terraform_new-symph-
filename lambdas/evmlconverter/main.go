@@ -82,8 +82,15 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
 	stepscount := len(workflowData.StepsPassedThrough)
 	var lastCompletedTask documentDB_client.StepsPassedThroughBody
+	var isQCTaskCompleted, isHipsterTaskCompleted bool
 	for i := stepscount - 1; i >= 0; i-- {
-		for _, task := range tasksWithPMFOutputArray { //3d, Hipster, QC
+		for _, task := range tasksWithPMFOutputArray {
+			switch workflowData.StepsPassedThrough[i].TaskName {
+			case "UpdateHipsterJobAndWaitForQC":
+				isQCTaskCompleted = true
+			case "CreateHipsterJobAndWaitForMeasurement":
+				isHipsterTaskCompleted = true
+			}
 			if workflowData.StepsPassedThrough[i].TaskName == task {
 				if workflowData.StepsPassedThrough[i].Status == success {
 					lastCompletedTask = workflowData.StepsPassedThrough[i]
@@ -97,6 +104,10 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 				}
 			}
 		}
+	}
+
+	if !isQCTaskCompleted && isHipsterTaskCompleted {
+		legacyStatus = "MeasurementFailed"
 	}
 
 	ctxlog.Info(ctx, fmt.Sprintf("Last executed taskwith PMF Output: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
