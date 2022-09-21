@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -50,7 +52,8 @@ type eventData struct {
 func handler(ctx context.Context, eventData eventData) (map[string]interface{}, error) {
 	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
 	ctxlog.Info(ctx, "EVMLConverter Lambda Reached")
-
+	tasksWithPMFOutputString := os.Getenv("tasksWithPMFOutput")
+	tasksWithPMFOutputArray := strings.Split(tasksWithPMFOutputString, ",")
 	var (
 		err                 error
 		ok                  bool
@@ -59,7 +62,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		propertyModelS3Path string
 		legacyStatus        string = "QCCompleted"
 	)
-	// evossLocationUrl := os.Getenv(EvossLocationUrl)
+
 	starttime := time.Now().Unix()
 	stepID := uuid.New().String()
 	StepExecutionData := documentDB_client.StepExecutionDataBody{
@@ -79,38 +82,44 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	ctxlog.Info(ctx, "Workflow Data Fetched from DocumentDb...")
 	stepscount := len(workflowData.StepsPassedThrough)
 	var lastCompletedTask documentDB_client.StepsPassedThroughBody
+	var isQCTaskCompleted, isHipsterTaskCompleted bool
+	ctxlog.Info(ctx, "WorkflowID: %s and Flow type: %s", eventData.WorkflowID, workflowData.FlowType)
+	ctxlog.Infof(ctx, "Workflow tasks list: %+v", workflowData.StepsPassedThrough)
+	//iterate in reverse over list of tasks
 	for i := stepscount - 1; i >= 0; i-- {
-		if workflowData.StepsPassedThrough[i].TaskName != taskName &&
-			workflowData.StepsPassedThrough[i].TaskName != UploadMLJsonToEvossTaskName &&
-			workflowData.StepsPassedThrough[i].TaskName != ConvertPropertyModelToEVJsonTaskName {
-			lastCompletedTask = workflowData.StepsPassedThrough[i]
-			break
-		}
-	}
-	ctxlog.Info(ctx, fmt.Sprintf("Last executed task: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
-
-	ctxlog.Info(ctx, "FLow type: ", workflowData.FlowType)
-	if lastCompletedTask.Status == success {
-		finalTaskStepID = lastCompletedTask.StepId
-		if workflowData.FlowType == "Twister" {
-			ctxlog.Info(ctx, "Job being pushed to Twister...")
-			legacyStatus = "MACompleted"
-		}
-	}
-	if lastCompletedTask.Status != success || (lastCompletedTask.Status == success && lastCompletedTask.TaskName != UpdateHipsterJobAndWaitForQCTaskName && workflowData.FlowType != "Twister") {
-		if failureOutput, ok := status.FailedTaskStatusMap[lastCompletedTask.TaskName]; !ok {
-			ctxlog.Error(ctx, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
-			return updateDocumentDbAndGetResponse(ctx, failure, "", "", eventData.WorkflowID, StepExecutionData), error_handler.NewServiceError(error_codes.TaskRecordNotFoundInFailureTaskOutputMap, lastCompletedTask.TaskName+" record not found in failureTaskOutputMap map")
-		} else {
-			legacyStatus = failureOutput.StatusKey
-			for i := stepscount - 1; i >= 0; i-- {
-				if workflowData.StepsPassedThrough[i].TaskName == failureOutput.FallbackTaskName {
-					finalTaskStepID = workflowData.StepsPassedThrough[i].StepId
+		for _, task := range tasksWithPMFOutputArray {
+			//check if workflow reached both hipster measure and qc in case of faliure in between.
+			switch workflowData.StepsPassedThrough[i].TaskName {
+			case "UpdateHipsterJobAndWaitForQC":
+				isQCTaskCompleted = true
+			case "CreateHipsterJobAndWaitForMeasurement":
+				isHipsterTaskCompleted = true
+			}
+			//finding first task from set of tasks with PMF output
+			if workflowData.StepsPassedThrough[i].TaskName == task {
+				//if status==success, return PMF from this task
+				if workflowData.StepsPassedThrough[i].Status == success {
+					lastCompletedTask = workflowData.StepsPassedThrough[i]
+					if workflowData.FlowType == "Twister" {
+						ctxlog.Info(ctx, "Job being pushed to Twister...")
+						legacyStatus = "MACompleted"
+					}
 					break
+					//if status == failure, get status to update back to legacy
+				} else if workflowData.StepsPassedThrough[i].Status == failure {
+					legacyStatus = status.FailedTaskStatusMap[task].StatusKey
 				}
 			}
 		}
 	}
+
+	//check if Hipster Measure is completed which Hipster QC hasn't been reached
+	if !isQCTaskCompleted && isHipsterTaskCompleted {
+		legacyStatus = "MeasurementFailed"
+	}
+
+	ctxlog.Info(ctx, fmt.Sprintf("Last executed taskwith PMF Output: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
+	finalTaskStepID = lastCompletedTask.StepId
 
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, finalTaskStepID)
 	if err != nil {
