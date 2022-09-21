@@ -83,7 +83,8 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	stepscount := len(workflowData.StepsPassedThrough)
 	var lastCompletedTask documentDB_client.StepsPassedThroughBody
 	var isQCTaskCompleted, isHipsterTaskCompleted bool
-
+	ctxlog.Info(ctx, "WorkflowID: %s and Flow type: %s", eventData.WorkflowID, workflowData.FlowType)
+	ctxlog.Infof(ctx, "Workflow tasks list: %+v", workflowData.StepsPassedThrough)
 	//iterate in reverse over list of tasks
 	for i := stepscount - 1; i >= 0; i-- {
 		for _, task := range tasksWithPMFOutputArray {
@@ -119,7 +120,6 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 
 	ctxlog.Info(ctx, fmt.Sprintf("Last executed taskwith PMF Output: %s, status: %s", lastCompletedTask.TaskName, lastCompletedTask.Status))
 	finalTaskStepID = lastCompletedTask.StepId
-	ctxlog.Info(ctx, "FLow type: ", workflowData.FlowType)
 
 	taskData, err := commonHandler.DBClient.FetchStepExecutionData(ctx, finalTaskStepID)
 	if err != nil {
