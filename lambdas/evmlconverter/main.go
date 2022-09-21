@@ -83,15 +83,20 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	stepscount := len(workflowData.StepsPassedThrough)
 	var lastCompletedTask documentDB_client.StepsPassedThroughBody
 	var isQCTaskCompleted, isHipsterTaskCompleted bool
+
+	//iterate in reverse over list of tasks
 	for i := stepscount - 1; i >= 0; i-- {
 		for _, task := range tasksWithPMFOutputArray {
+			//check if workflow reached both hipster measure and qc in case of faliure in between.
 			switch workflowData.StepsPassedThrough[i].TaskName {
 			case "UpdateHipsterJobAndWaitForQC":
 				isQCTaskCompleted = true
 			case "CreateHipsterJobAndWaitForMeasurement":
 				isHipsterTaskCompleted = true
 			}
+			//finding first task from set of tasks with PMF output
 			if workflowData.StepsPassedThrough[i].TaskName == task {
+				//if status==success, return PMF from this task
 				if workflowData.StepsPassedThrough[i].Status == success {
 					lastCompletedTask = workflowData.StepsPassedThrough[i]
 					if workflowData.FlowType == "Twister" {
@@ -99,6 +104,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 						legacyStatus = "MACompleted"
 					}
 					break
+					//if status == failure, get status to update back to legacy
 				} else if workflowData.StepsPassedThrough[i].Status == failure {
 					legacyStatus = status.FailedTaskStatusMap[task].StatusKey
 				}
@@ -106,6 +112,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 		}
 	}
 
+	//check if Hipster Measure is completed which Hipster QC hasn't been reached
 	if !isQCTaskCompleted && isHipsterTaskCompleted {
 		legacyStatus = "MeasurementFailed"
 	}
