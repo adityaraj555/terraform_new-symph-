@@ -267,11 +267,13 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 			payload.Asset.Type = "Pool"
 			poolCount += 1
 		case "extension":
-			if v.SubType == "deck" {
-				payload.Attributes["type"] = pdwAttributes{
-					Value: "Deck",
-				}
+			if v.SubType != "deck" {
+				continue
 			}
+			payload.Attributes["type"] = pdwAttributes{
+				Value: "Deck",
+			}
+			payload.Asset.Type = "Structure"
 		default:
 			log.Info(ctx, "unsupported type: "+v.Type)
 			continue
