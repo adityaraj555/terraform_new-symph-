@@ -82,4 +82,8 @@ var FailedTaskStatusMap = map[string]failedTaskMetaData{
 		StatusKey:        "MeasurementFailed",
 		FallbackTaskName: "3DModellingService",
 	},
+	"CheckIsMultiStructure": {
+		StatusKey:        "MACompleted",
+		FallbackTaskName: "3DModellingService",
+	},
 }
