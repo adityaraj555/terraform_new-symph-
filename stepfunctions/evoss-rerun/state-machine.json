@@ -43,8 +43,8 @@
           "Payload": {
             "requestData": {
               "reportId.$": "$$.Execution.Input.reportId",
-              "propertyModelLocation.$": "States.Format('s3://app-test-1x0-s3-property-data-orchestrator/{}/hipster_output.json', $$.Execution.Input.reportId)",
-              "imageMetaDataLocation.$": "States.Format('s3://app-test-1x0-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)"
+              "propertyModelLocation.$": "States.Format('s3://{}-s3-property-data-orchestrator/{}/hipster_output.json',${resource_name_prefix},$$.Execution.Input.reportId)",
+              "imageMetaDataLocation.$": "States.Format('s3://{}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', ${resource_name_prefix}, $$.Execution.Input.reportId)"
             },
             "url": "${ENDPOINT_URL_PMF_CONVERTER}",
             "requestMethod": "POST",
