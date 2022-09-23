@@ -86,6 +86,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 	ctxlog.Info(ctx, "WorkflowID: %s and Flow type: %s", eventData.WorkflowID, workflowData.FlowType)
 	ctxlog.Infof(ctx, "Workflow tasks list: %+v", workflowData.StepsPassedThrough)
 	//iterate in reverse over list of tasks
+out:
 	for i := stepscount - 1; i >= 0; i-- {
 		for _, task := range tasksWithPMFOutputArray {
 			//check if workflow reached both hipster measure and qc in case of faliure in between.
@@ -104,7 +105,7 @@ func handler(ctx context.Context, eventData eventData) (map[string]interface{}, 
 						ctxlog.Info(ctx, "Job being pushed to Twister...")
 						legacyStatus = "MACompleted"
 					}
-					break
+					break out
 					//if status == failure, get status to update back to legacy
 				} else if workflowData.StepsPassedThrough[i].Status == failure {
 					legacyStatus = status.FailedTaskStatusMap[task].StatusKey
