@@ -91,7 +91,24 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 ],
                 "Effect": "Allow",
                 "Sid": "AccessCallback2"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "states:DescribeStateMachine",
+                "states:StartExecution",
+                "states:DeleteStateMachine",
+                "states:ListExecutions",
+                "states:UpdateStateMachine"
+              ],
+              "Resource": [ 
+                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-evoss-rerun-sfn",
+                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-sim",
+                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-ais",
+                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-symphony_workflow"
+              ]
             }
+
         ]
     }
     POLICY
