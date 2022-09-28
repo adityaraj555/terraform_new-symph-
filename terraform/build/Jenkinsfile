@@ -6,7 +6,7 @@ def deploymentTargetChoices = TerraformChoices.getdeploymentTargetChoices()
 def fullTestDeploymentManualVerificationTimeChoices = TerraformChoices.getfullTestDeploymentManualVerificationTimeChoices()
 def deploymentTargetBranchMapOverrides = [
     sandbox: "develop",
-    test:"release-1.3.0",
+    test:"develop",
     stage: "release-1.3.0",
     develop: "develop",
     prod: "release-1.3.0"
