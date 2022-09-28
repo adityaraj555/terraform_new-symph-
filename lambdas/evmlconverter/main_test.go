@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,10 @@ import (
 	"github.eagleview.com/engineering/symphony-service/commons/log_config"
 	"github.eagleview.com/engineering/symphony-service/commons/mocks"
 )
+
+func init() {
+	os.Setenv("tasksWithPMFOutput", "3DModellingService,CreateHipsterJobAndWaitForMeasurement,UpdateHipsterJobAndWaitForQC")
+}
 
 var testContext = log_config.SetTraceIdInContext(context.Background(), "", "")
 
@@ -244,47 +249,6 @@ func TestHandlerFailureCase(t *testing.T) {
 
 	resp, err := handler(context.Background(), eventDataObj)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedResp, resp)
-}
-
-func TestHandlerFailureCaseErrorUnknownTask(t *testing.T) {
-	awsClient := new(mocks.IAWSClient)
-	httpClient := new(mocks.MockHTTPClient)
-	dBClient := new(mocks.IDocDBClient)
-
-	eventDataObj := eventData{
-		WorkflowID: "",
-	}
-
-	taskdata := documentDB_client.StepExecutionDataBody{
-		StepId: "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		Output: map[string]interface{}{
-			"propertyModelLocation": "s3Location",
-		},
-	}
-
-	expectedResp := map[string]interface{}{"status": "failure"}
-	workflowData := documentDB_client.WorkflowExecutionDataBody{}
-	json.Unmarshal(mockWorkflowDetails, &workflowData)
-	workflowData.StepsPassedThrough[len(workflowData.StepsPassedThrough)-1] = documentDB_client.StepsPassedThroughBody{
-		StartTime: 1651826230,
-		Status:    failure,
-		StepId:    "03caaccc-cca9-4f7a-9dee-2d72d6a6a944",
-		TaskName:  "wrong task name",
-	}
-	dBClient.Mock.On("FetchWorkflowExecutionData", testContext, eventDataObj.WorkflowID).Return(workflowData, nil)
-	dBClient.Mock.On("FetchStepExecutionData", testContext, "03caaccc-cca9-4f7a-9dee-2d72d6a6a944").Return(taskdata, nil)
-	dBClient.Mock.On("InsertStepExecutionData", testContext, mock.Anything).Return(nil)
-	dBClient.Mock.On("BuildQueryForUpdateWorkflowDataCallout", testContext, taskName, mock.Anything, failure, mock.Anything, false).Return(nil)
-	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, nil, mock.Anything).Return(nil)
-
-	commonHandler.AwsClient = awsClient
-	commonHandler.DBClient = dBClient
-	commonHandler.HttpClient = httpClient
-
-	resp, err := handler(context.Background(), eventDataObj)
-	assert.Error(t, err)
-	// assert.Equal(t, "wrong task name record not found in failureTaskOutputMap map", err.Error())
 	assert.Equal(t, expectedResp, resp)
 }
 
