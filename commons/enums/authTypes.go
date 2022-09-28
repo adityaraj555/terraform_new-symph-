@@ -10,10 +10,11 @@ const (
 	AuthXApiKey          = "x-api-key"
 	AuthSecretManagerKey = "secret_manager_key"
 	AuthBearer           = "bearer"
+	AuthBearerSecret     = "bearer_secret"
 )
 
 func AuthTypeList() []string {
-	return []string{AuthNone, AuthBasic, AuthXApiKey, AuthSecretManagerKey, AuthBearer}
+	return []string{AuthNone, AuthBasic, AuthXApiKey, AuthSecretManagerKey, AuthBearer, AuthBearerSecret}
 }
 
 func (a AuthType) String() string {
