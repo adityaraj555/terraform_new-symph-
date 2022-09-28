@@ -18,7 +18,8 @@ const (
 )
 
 var (
-	commonHandler common_handler.CommonHandler
+	commonHandler   common_handler.CommonHandler
+	validFacetCount = []int{1, 2, 4}
 )
 
 type pdwOutput struct {
@@ -30,8 +31,18 @@ type pdwOutput struct {
 		Data struct {
 			Parcels []struct {
 				DetectedBuildingCount struct {
-					Value interface{} `json:"value"`
+					Value *int `json:"value"`
 				} `json:"_detectedBuildingCount"`
+				Structures []struct {
+					Type struct {
+						Value *string `json:"value"`
+					} `json:"_type"`
+					Roof struct {
+						CountRoofFacets struct {
+							Value *int `json:"value"`
+						} `json:"_countRoofFacets"`
+					} `json:"roof"`
+				} `json:"structures"`
 			} `json:"parcels"`
 		} `json:"data"`
 	} `json:"response"`
@@ -40,12 +51,28 @@ type pdwOutput struct {
 func handler(ctx context.Context, input pdwOutput) error {
 	isHipsterCompatible := false
 	status := "success"
+	bCount := 0
+	facetCount := 0
 
 	if input.Status == "success" && len(input.Response.Data.Parcels) > 0 && input.Response.Data.Parcels[0].DetectedBuildingCount.Value != nil {
-		if buildingCount := input.Response.Data.Parcels[0].DetectedBuildingCount.Value.(float64); int(buildingCount) == 1 {
+		if *input.Response.Data.Parcels[0].DetectedBuildingCount.Value == 1 {
 			isHipsterCompatible = true
+			bCount = *input.Response.Data.Parcels[0].DetectedBuildingCount.Value
 		}
-	} else if input.Status == "failure" {
+	}
+
+	if input.Status == "success" && len(input.Response.Data.Parcels) > 0 && len(input.Response.Data.Parcels[0].Structures) > 0 {
+		for _, s := range input.Response.Data.Parcels[0].Structures {
+			if s.Type.Value != nil && *s.Type.Value == "main" {
+				if s.Roof.CountRoofFacets.Value != nil {
+					isHipsterCompatible = isHipsterCompatible && findInIntArray(validFacetCount, *s.Roof.CountRoofFacets.Value)
+					facetCount = *s.Roof.CountRoofFacets.Value
+				}
+			}
+		}
+	}
+
+	if input.Status == "failure" {
 		status = "failure"
 	}
 
@@ -56,6 +83,8 @@ func handler(ctx context.Context, input pdwOutput) error {
 		"callbackId":  input.CallbackId,
 		"response": map[string]interface{}{
 			"isHipsterCompatible": isHipsterCompatible,
+			"buildingCount":       bCount,
+			"facetCount":          facetCount,
 		},
 	}
 	callBackLambdaArn := os.Getenv(callBackEnv)
@@ -67,6 +96,15 @@ func handler(ctx context.Context, input pdwOutput) error {
 	}
 
 	return nil
+}
+
+func findInIntArray(arr []int, val int) bool {
+	for _, v := range arr {
+		if v == val {
+			return true
+		}
+	}
+	return false
 }
 
 func notificationWrapper(ctx context.Context, req pdwOutput) error {
