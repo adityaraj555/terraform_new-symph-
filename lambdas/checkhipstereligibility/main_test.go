@@ -16,7 +16,7 @@ func TestIsHipsterCompatibleSIMfailed(t *testing.T) {
 	}
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0}, "status": "failure"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0, "isValidFacetCount": false}, "status": "failure"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -34,7 +34,7 @@ func TestIsHipsterEligibleInvokeFailed(t *testing.T) {
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
 	slackClient.On("SendErrorMessage", 4041, "", "", "checkHipsterEligibility", "checkHipsterEligibility", mock.Anything, mock.Anything).Return(nil)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 2}, "status": "success"}, false).Return(nil, errors.New("some error"))
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 2, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, errors.New("some error"))
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -51,7 +51,7 @@ func TestCheckHipsterEligibilityBuildingCount(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 2}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 2, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -69,7 +69,7 @@ func TestCheckHipsterEligibilityBuildingCount0(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -101,7 +101,7 @@ func TestCheckHipsterEligibilityBuildingCount1FC1(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 1, "buildingCount": 1}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 1, "buildingCount": 1, "isValidFacetCount": true}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -134,7 +134,7 @@ func TestCheckHipsterEligibilityBuildingCount1FC2(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 2, "buildingCount": 1}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 2, "buildingCount": 1, "isValidFacetCount": true}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -167,7 +167,7 @@ func TestCheckHipsterEligibilityBuildingCount1FC4(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 4, "buildingCount": 1}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": true, "facetCount": 4, "buildingCount": 1, "isValidFacetCount": true}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -200,7 +200,7 @@ func TestCheckHipsterEligibilityBuildingCount1FC4NotMain(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 1}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 1, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -233,7 +233,7 @@ func TestCheckHipsterEligibilityBuildingCount1FC5(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 5, "buildingCount": 1}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 5, "buildingCount": 1, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)
@@ -249,7 +249,7 @@ func TestCheckHipsterEligibilityBuildingCountNil(t *testing.T) {
 	in.Response.Data.Parcels = append(in.Response.Data.Parcels, pa)
 	awsClient := new(mocks.IAWSClient)
 	slackClient := new(mocks.ISlackClient)
-	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0}, "status": "success"}, false).Return(nil, nil)
+	awsClient.On("InvokeLambda", context.Background(), "", map[string]interface{}{"callbackId": "", "message": "", "messageCode": 0, "response": map[string]interface{}{"isHipsterCompatible": false, "facetCount": 0, "buildingCount": 0, "isValidFacetCount": false}, "status": "success"}, false).Return(nil, nil)
 	commonHandler.SlackClient = slackClient
 	commonHandler.AwsClient = awsClient
 	err := notificationWrapper(context.Background(), in)

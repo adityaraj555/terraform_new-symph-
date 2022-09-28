@@ -52,7 +52,7 @@ type structure struct {
 }
 
 func handler(ctx context.Context, input pdwOutput) error {
-	isMultiStructure := false
+	notMultiStructure := false
 	isValidFacetCount := false
 	status := "success"
 	bCount := 0
@@ -69,7 +69,7 @@ func handler(ctx context.Context, input pdwOutput) error {
 	if input.Status == "success" && len(input.Response.Data.Parcels) > 0 && input.Response.Data.Parcels[0].DetectedBuildingCount.Value != nil {
 		bCount = *input.Response.Data.Parcels[0].DetectedBuildingCount.Value
 		if *input.Response.Data.Parcels[0].DetectedBuildingCount.Value == 1 {
-			isMultiStructure = true
+			notMultiStructure = true
 		}
 	}
 
@@ -80,6 +80,7 @@ func handler(ctx context.Context, input pdwOutput) error {
 					isValidFacetCount = findInIntArray(validFacetCount, *s.Roof.CountRoofFacets.Value)
 					facetCount = *s.Roof.CountRoofFacets.Value
 				}
+				break
 			}
 		}
 	}
@@ -94,9 +95,10 @@ func handler(ctx context.Context, input pdwOutput) error {
 		"message":     input.Message,
 		"callbackId":  input.CallbackId,
 		"response": map[string]interface{}{
-			"isHipsterCompatible": isMultiStructure && isValidFacetCount,
+			"isHipsterCompatible": notMultiStructure && isValidFacetCount,
 			"buildingCount":       bCount,
 			"facetCount":          facetCount,
+			"isValidFacetCount":   isValidFacetCount,
 		},
 	}
 	callBackLambdaArn := os.Getenv(callBackEnv)
