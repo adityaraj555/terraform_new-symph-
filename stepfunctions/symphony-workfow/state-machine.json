@@ -274,7 +274,9 @@
             "OutputPath": "$.response",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "updateMLAutomationRejected",
                     "ResultPath": "$.MAError"
                 }
@@ -384,7 +386,9 @@
             "Next": "isHipsterCompatible",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "UpdateFlowTypeToTwister",
                     "ResultPath": "$.CheckIsMultiStructure"
                 }
@@ -503,8 +507,75 @@
             "Next": "PMF-EVJSON Converter Upload to EVOSS",
             "Branches": [
                 {
-                    "StartAt": "${TaskCreateHipsterJobAndWaitForMeasurement}",
+                    "StartAt": "HipsterSlackNotification",
                     "States": {
+                        "HipsterSlackNotification": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "channel": "${Hipster_Notification_Channel}",
+                                        "blocks": [
+                                            {
+                                                "type": "header",
+                                                "text": {
+                                                    "type": "plain_text",
+                                                    "text": "Ready for Hipster measurement"
+                                                }
+                                            },
+                                            {
+                                                "type": "section",
+                                                "text": {
+                                                    "type": "mrkdwn",
+                                                    "text.$": "States.Format('ReportID - {}', $$.Execution.Input.reportId)"
+                                                }
+                                            },
+                                            {
+                                                "type": "divider"
+                                            }
+                                        ]
+                                    },
+                                    "url": "${SLACK_ENDPOINT}",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": false,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "HipsterSlackNotification",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "auth": {
+                                        "type": "bearer_secret",
+                                        "authData": {
+                                            "secretStoreType": "pdo_secret_manager",
+                                            "bearerTokenKey": "SLACK_TOKEN"
+                                        }
+                                    }
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException",
+                                        "RetriableError"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "${TaskCreateHipsterJobAndWaitForMeasurement}",
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.HipsterSlackNotification",
+                            "TimeoutSeconds": 60
+                        },
                         "${TaskCreateHipsterJobAndWaitForMeasurement}": {
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
@@ -711,7 +782,9 @@
             "OutputPath": "$.response",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "PMF-EVJSON Converter Upload to EVOSS",
                     "ResultPath": "$.HipsterError"
                 }
@@ -892,7 +965,9 @@
             ],
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "updateMLAutomationRejected"
                 }
             ],
