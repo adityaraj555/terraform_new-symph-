@@ -188,7 +188,6 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 			bearerTokenKey := payoadAuthData.RequiredAuthData.BearerTokenKey
 			authToken = commonHandler.Secrets[bearerTokenKey].(string)
 		}
-		authToken = ""
 		headers["Authorization"] = "Bearer " + authToken
 	}
 	log.Info(ctx, "handleAuth successful...")
