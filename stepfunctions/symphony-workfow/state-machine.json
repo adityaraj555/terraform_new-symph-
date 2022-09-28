@@ -517,20 +517,20 @@
                                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
                                 "Payload": {
                                     "requestData": {
-                                        "channel": "reports-workflow-cicd",
+                                        "channel": "${Hipster_Notification_Channel}",
                                         "blocks": [
                                             {
                                                 "type": "header",
                                                 "text": {
                                                     "type": "plain_text",
-                                                    "text": "States.Format('Hipster measurement for reportID - {}', $$.Execution.Input.reportId)"
+                                                    "text": "Ready for Hipster measurement"
                                                 }
                                             },
                                             {
                                                 "type": "section",
                                                 "text": {
                                                     "type": "mrkdwn",
-                                                    "text": "DueDate: DateTime"
+                                                    "text.$": "States.Format('ReportID - {}', $$.Execution.Input.reportId)"
                                                 }
                                             },
                                             {
@@ -538,7 +538,7 @@
                                             }
                                         ]
                                     },
-                                    "url": "https://slack.com/api/chat.postMessage",
+                                    "url": "${SLACK_ENDPOINT}",
                                     "requestMethod": "POST",
                                     "headers": {},
                                     "isWaitTask": false,
@@ -551,7 +551,7 @@
                                         "type": "bearer_secret",
                                         "authData": {
                                             "secretStoreType": "pdo_secret_manager",
-                                            "bearerTokenKey": "ClientID"
+                                            "bearerTokenKey": "SLACK_TOKEN"
                                         }
                                     }
                                 }
