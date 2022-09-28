@@ -105,6 +105,7 @@
                     "latitude.$": "$.PDWQuery.response.latitude",
                     "longitude.$": "$.PDWQuery.response.longitude",
                     "jobId.$": "$$.Execution.Name",
+                    "workflow": "ma_switch",
                     "imagerydate_after.$": "$$.Execution.Input.vintage",
                     "meta": {
                       "s3Uri": "s3://${resource_name_prefix}-s3-property-data-orchestrator/sim-pipeline"
@@ -151,7 +152,7 @@
                 "Payload": {
                   "requestData": {
                     "workflowId.$": "$$.Execution.Name",
-                    "simOutput.$": "$.InvokeSIMModel.response.simOutput",
+                    "simOutput.$": "$.InvokeSIMModel.response.finalOutput",
                     "address.$": "$.PDWQuery.response.address",
                     "parcelId.$": "$.PDWQuery.response.parcelId"
                   },

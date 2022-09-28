@@ -42,6 +42,10 @@ type pdwValidationResponse struct {
 				Marker string      `json:"marker"`
 				Value  interface{} `json:"value"`
 			} `json:"_detectedBuildingCount"`
+			Structures []struct {
+				ID   string                 `json:"id"`
+				Roof map[string]interface{} `json:"roof"`
+			} `json:"structures"`
 			GeoCoder struct {
 				Lat float64 `json:"lat"`
 				Lon float64 `json:"lon"`
@@ -165,7 +169,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 
 func generateValidationQuery(eventData eventData) string {
 	commonattributelist := []string{"geocoder.lat", "geocoder.lon", "_input", "id"}
-	validationattributelist := []string{"_detectedBuildingCount.marker", "_detectedBuildingCount.value"}
+	validationattributelist := []string{"_detectedBuildingCount.marker", "_detectedBuildingCount.value", `structures(type: "main").roof._countRoofFacets.marker`, `structures(type: "main").roof._countRoofFacets.value`}
 	validationattributelist = append(validationattributelist, commonattributelist...)
 	query := GenerateGQL(validationattributelist, eventData.Address.Lat, eventData.Address.Long, eventData.ParcelID, eventData.Address.ParcelAddress, "")
 	return query
@@ -297,6 +301,13 @@ func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool 
 	}
 	marker := pdwResponse.Data.Parcels[0].DetectedBuildingCount.Marker
 	if marker == "" || (minDate != "" && marker < minDate) {
+		return false
+	}
+	if pdwResponse.Data.Parcels[0].Structures[0].Roof["_countRoofFacets"].(map[string]interface{})["value"] == nil {
+		return false
+	}
+	facetCountmarker := pdwResponse.Data.Parcels[0].Structures[0].Roof["_countRoofFacets"].(map[string]interface{})["marker"].(string)
+	if facetCountmarker == "" || (minDate != "" && facetCountmarker < minDate) {
 		return false
 	}
 	return true
