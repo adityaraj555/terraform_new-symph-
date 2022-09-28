@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-lambda-go/lambda"
@@ -40,12 +42,15 @@ type pdwValidationResponse struct {
 				Marker string      `json:"marker"`
 				Value  interface{} `json:"value"`
 			} `json:"_detectedBuildingCount"`
-			Lat     float64 `json:"lat"`
-			Lon     float64 `json:"lon"`
-			Address string  `json:"address"`
-			City    string  `json:"city"`
-			State   string  `json:"state"`
-			Zip     string  `json:"zip"`
+			Structures []struct {
+				ID   string                 `json:"id"`
+				Roof map[string]interface{} `json:"roof"`
+			} `json:"structures"`
+			GeoCoder struct {
+				Lat float64 `json:"lat"`
+				Lon float64 `json:"lon"`
+			} `json:"geocoder"`
+			Input string `json:"_input"`
 		} `json:"parcels"`
 	} `json:"data"`
 }
@@ -57,6 +62,11 @@ type eventResponse struct {
 	ParcelID   string  `json:"parcelId,omitempty"`
 	TriggerSIM bool    `json:"triggerSIM"`
 	Message    string  `json:"message,omitempty"`
+}
+
+type geocoderResponse struct {
+	Address  string `json:"address"`
+	ParcelId string `json:"parcelID"`
 }
 
 var commonHandler common_handler.CommonHandler
@@ -81,7 +91,17 @@ const (
 func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 	ctx = log_config.SetTraceIdInContext(ctx, "", eventData.WorkflowID)
 
-	log.Info(ctx, "querypdw reached...")
+	log.Info(ctx, "querypdw reached...", eventData)
+
+	if eventData.Address.ParcelAddress == "" && eventData.ParcelID == "" {
+		log.Info(ctx, "calling geocoder service")
+		address, parcelId, err := getAddressFromLatLong(ctx, eventData.Address.Lat, eventData.Address.Long)
+		if err != nil {
+			return eventResponse{}, err
+		}
+		eventData.Address.ParcelAddress = address
+		eventData.ParcelID = parcelId
+	}
 
 	// build the validation graph query
 	query := generateValidationQuery(eventData)
@@ -112,14 +132,15 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 			err = error_handler.NewRetriableError(error_codes.ErrorQueryingPDWAfterIngestion, "unable to query data after ingestion")
 			return eventResponse{}, err
 		}
-		Address := fmt.Sprintf("%s %s %s %s", validationgraphResponse.Data.Parcels[0].Address, validationgraphResponse.Data.Parcels[0].City, validationgraphResponse.Data.Parcels[0].State, validationgraphResponse.Data.Parcels[0].Zip)
+		//Address := fmt.Sprintf("%s %s %s %s", validationgraphResponse.Data.Parcels[0].Address, validationgraphResponse.Data.Parcels[0].City, validationgraphResponse.Data.Parcels[0].State, validationgraphResponse.Data.Parcels[0].Zip)
 		// Trigger SIM
+		eventData = populateData(ctx, eventData, validationgraphResponse)
 		triggerSIMResponse := eventResponse{
-			Latitude:   validationgraphResponse.Data.Parcels[0].Lat,
-			Longitude:  validationgraphResponse.Data.Parcels[0].Lon,
+			Latitude:   eventData.Address.Lat,
+			Longitude:  eventData.Address.Long,
 			ParcelID:   validationgraphResponse.Data.Parcels[0].ID,
 			TriggerSIM: true,
-			Address:    Address,
+			Address:    eventData.Address.ParcelAddress,
 			Message:    NoStructureMessage,
 		}
 		return triggerSIMResponse, nil
@@ -147,12 +168,55 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 }
 
 func generateValidationQuery(eventData eventData) string {
-	commonattributelist := []string{"lat", "lon", "address", "city", "state", "zip", "id"}
-	validationattributelist := []string{"_detectedBuildingCount.marker", "_detectedBuildingCount.value"}
+	commonattributelist := []string{"geocoder.lat", "geocoder.lon", "_input", "id"}
+	validationattributelist := []string{"_detectedBuildingCount.marker", "_detectedBuildingCount.value", `structures(type: "main").roof._countRoofFacets.marker`, `structures(type: "main").roof._countRoofFacets.value`}
 	validationattributelist = append(validationattributelist, commonattributelist...)
 	query := GenerateGQL(validationattributelist, eventData.Address.Lat, eventData.Address.Long, eventData.ParcelID, eventData.Address.ParcelAddress, "")
 	return query
 }
+
+func populateData(ctx context.Context, req eventData, pdwResp pdwValidationResponse) eventData {
+	if req.Address.Lat == 0 && req.Address.Long == 0 {
+		req.Address.Lat = pdwResp.Data.Parcels[0].GeoCoder.Lat
+		req.Address.Long = pdwResp.Data.Parcels[0].GeoCoder.Lon
+	}
+	return req
+}
+
+func getAddressFromLatLong(ctx context.Context, lat, long float64) (string, string, error) {
+	headers := make(map[string]string)
+	secretMap := commonHandler.Secrets
+	log.Info(ctx, "fetched secrets from secrets manager...")
+	clientID := secretMap["ClientID"].(string)
+	clientSecret := secretMap["ClientSecret"].(string)
+	err := auth_client.AddAuthorizationTokenHeader(ctx, commonHandler.HttpClient, headers, appCode, clientID, clientSecret)
+	if err != nil {
+		log.Error(ctx, "Error while adding token to header, error: ", err.Error())
+		return "", "", err
+	}
+	geoCoderUrl := os.Getenv("GeoCoderUrl")
+	url := fmt.Sprintf("%s?lat=%v&lon=%v&parcelID=true", geoCoderUrl, lat, long)
+	resp, err := commonHandler.HttpClient.Get(ctx, url, headers)
+	if err != nil {
+		log.Error(ctx, "error in http get call", err.Error())
+		return "", "", error_handler.NewServiceError(error_codes.ErrorMakingGetCall, "error calling EGS : "+err.Error())
+	}
+	if resp.StatusCode == http.StatusInternalServerError || resp.StatusCode == http.StatusServiceUnavailable {
+		return "", "", error_handler.NewRetriableError(error_codes.ReceivedInternalServerError, fmt.Sprintf("%d status code received", resp.StatusCode))
+	}
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), "20") {
+		log.Error(ctx, "invalid http status code received, statusCode: ", resp.StatusCode)
+		return "", "", error_handler.NewServiceError(error_codes.ReceivedInvalidHTTPStatusCode, "received invalid http status code: "+strconv.Itoa(resp.StatusCode))
+	}
+	respBody := geocoderResponse{}
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	if err != nil {
+		return "", "", error_handler.NewServiceError(error_codes.ErrorDecodingServiceResponse, "geocoding error "+err.Error())
+	}
+	return respBody.Address, respBody.ParcelId, nil
+}
+
 func fetchDataFromPDW(ctx context.Context, query string) ([]byte, error) {
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/json"
@@ -230,6 +294,7 @@ func makeCallBack(ctx context.Context, status, message, callbackId, callbackUrl 
 	}
 	return nil
 }
+
 func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool {
 	if pdwResponse.Data.Parcels[0].DetectedBuildingCount.Value == nil {
 		return false
@@ -238,8 +303,16 @@ func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool 
 	if marker == "" || (minDate != "" && marker < minDate) {
 		return false
 	}
+	if pdwResponse.Data.Parcels[0].Structures[0].Roof["_countRoofFacets"].(map[string]interface{})["value"] == nil {
+		return false
+	}
+	facetCountmarker := pdwResponse.Data.Parcels[0].Structures[0].Roof["_countRoofFacets"].(map[string]interface{})["marker"].(string)
+	if facetCountmarker == "" || (minDate != "" && facetCountmarker < minDate) {
+		return false
+	}
 	return true
 }
+
 func GenerateGQL(attributes []string, lat, long float64, parcelID, address, structureType string) string {
 	topnode := ""
 	if parcelID != "" {
@@ -280,7 +353,7 @@ func generatequery(parentChildAttributesMap map[string][]string, node string) st
 
 func inserttomap(parentChildAttributesMap map[string][]string, key, value string) map[string][]string {
 	if _, ok := parentChildAttributesMap[key]; ok {
-		if contains(parentChildAttributesMap[key], value) == false {
+		if !contains(parentChildAttributesMap[key], value) {
 			parentChildAttributesMap[key] = append(parentChildAttributesMap[key], value)
 		}
 	} else {
@@ -288,6 +361,7 @@ func inserttomap(parentChildAttributesMap map[string][]string, key, value string
 	}
 	return parentChildAttributesMap
 }
+
 func contains(myarray []string, checkval string) bool {
 	for _, value := range myarray {
 		if value == checkval {
@@ -296,6 +370,7 @@ func contains(myarray []string, checkval string) bool {
 	}
 	return false
 }
+
 func notificationWrapper(ctx context.Context, req eventData) (eventResponse, error) {
 	resp, err := handler(ctx, req)
 	if err != nil {
@@ -304,6 +379,7 @@ func notificationWrapper(ctx context.Context, req eventData) (eventResponse, err
 	}
 	return resp, err
 }
+
 func main() {
 	log_config.InitLogging("info")
 	commonHandler = common_handler.New(true, true, false, true, true)

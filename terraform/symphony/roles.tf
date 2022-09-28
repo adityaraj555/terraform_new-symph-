@@ -108,6 +108,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-symphony_workflow"
               ]
             }
+
         ]
     }
     POLICY

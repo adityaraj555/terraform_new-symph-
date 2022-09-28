@@ -34,6 +34,10 @@ var (
 		Value: "Footprint",
 	}
 
+	outlineTypeBuildingFP = pdwAttributes2{
+		Value: "BuildingFootprint",
+	}
+
 	tags = map[string]interface{}{
 		"appID":  "SD",
 		"domain": "PDO", // have to confirm
@@ -66,16 +70,18 @@ type imageSource struct {
 }
 
 type structure struct {
-	Type       string  `json:"type"`
-	SubType    string  `json:"sub_type"`
-	Confidence float64 `json:"confidence"`
-	Centroid   struct {
-		Lat  float64 `json:"latitude"`
-		Long float64 `json:"longitude"`
-	} `json:"centroid"`
-	Geometry geometry               `json:"geometry"`
-	Primary  bool                   `json:"primary"`
-	Details  map[string]interface{} `json:"details"`
+	Type       string                 `json:"type"`
+	SubType    string                 `json:"sub_type"`
+	Confidence float64                `json:"confidence"`
+	Centroid   point                  `json:"centroid"`
+	Geometry   geometry               `json:"geometry"`
+	Primary    bool                   `json:"primary"`
+	Details    map[string]interface{} `json:"details"`
+}
+
+type point struct {
+	Lat  float64 `json:"latitude"`
+	Long float64 `json:"longitude"`
 }
 
 type geometry struct {
@@ -194,41 +200,8 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	}
 
 	for _, v := range simOutput.Structure {
-		var payload PDWPayload
 
-		payload.Addresses = append(payload.Addresses, address)
-		payload.Date = timeStamp
-		payload.Asset.Lat = v.Centroid.Lat
-		payload.Asset.Lon = v.Centroid.Long
-		payload.Version = "v3"
-		payload.Imagery = pdwImagery{
-			Source: simOutput.Image.Source,
-			UrnList: []pdwUrn{
-				{
-					Urn:  simOutput.Image.ImageURN,
-					Date: timeStamp,
-				},
-			},
-			Date: timeStamp,
-			Meta: imageryMeta,
-		}
-		payload.Tags = tags
-		payload.Source = pdwSource{
-			Type:        "ML",
-			DateCreated: dateCreated,
-		}
-
-		v.Geometry.CRS = crs4326
-		payload.Attributes = make(map[string]pdwAttributes)
-		payload.Attributes["outline"] = pdwAttributes{
-			Value: v.Geometry,
-			Attributes: map[string]pdwAttributes2{
-				"outlineType": outlineTypeFootPrint,
-			},
-			Meta: map[string]interface{}{
-				"confidence-exist": v.Confidence,
-			},
-		}
+		payload := setPayloadAttributes(ctx, *simOutput, v, imageryMeta, dateCreated, address, timeStamp)
 
 		switch v.Type {
 		case "building":
@@ -239,6 +212,11 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 				payload.Attributes["type"] = pdwAttributes{
 					Value: "main",
 				}
+				roofPayload := setPayloadAttributes(ctx, *simOutput, v, imageryMeta, dateCreated, address, timeStamp)
+				facetCount := getFacetCount(ctx, v)
+				roofPayload = getRoofPayload(ctx, roofPayload, v, facetCount)
+				resp = append(resp, roofPayload)
+
 			case v.SubType == "barn":
 				payload.Attributes["type"] = pdwAttributes{
 					Value: "Barn",
@@ -321,6 +299,59 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	resp = append(resp, parcel)
 
 	return resp, nil
+}
+
+func getRoofPayload(ctx context.Context, payload PDWPayload, v structure, facetCount int) PDWPayload {
+	payload.Asset.Type = "Roof"
+	payload.Attributes["outline"].Attributes["outlineType"] = outlineTypeBuildingFP
+	payload.Attributes["countRoofFacets"] = pdwAttributes{
+		Value: getFacetCount(ctx, v),
+	}
+	return payload
+}
+
+func setPayloadAttributes(ctx context.Context, simOutput SimOutput, v structure, imageryMeta map[string]interface{}, dateCreated, addr, timestamp string) PDWPayload {
+	payload := PDWPayload{}
+	payload.Addresses = append(payload.Addresses, addr)
+	payload.Date = timestamp
+	payload.Asset.Lat = v.Centroid.Lat
+	payload.Asset.Lon = v.Centroid.Long
+	payload.Version = "v3"
+	payload.Imagery = pdwImagery{
+		Source: simOutput.Image.Source,
+		UrnList: []pdwUrn{
+			{
+				Urn:  simOutput.Image.ImageURN,
+				Date: timestamp,
+			},
+		},
+		Date: timestamp,
+		Meta: imageryMeta,
+	}
+	payload.Tags = tags
+	payload.Source = pdwSource{
+		Type:        "ML",
+		DateCreated: dateCreated,
+	}
+
+	v.Geometry.CRS = crs4326
+	payload.Attributes = make(map[string]pdwAttributes)
+	payload.Attributes["outline"] = pdwAttributes{
+		Value: v.Geometry,
+		Attributes: map[string]pdwAttributes2{
+			"outlineType": outlineTypeFootPrint,
+		},
+		Meta: map[string]interface{}{
+			"confidence-exist": v.Confidence,
+		},
+	}
+	return payload
+}
+
+func getFacetCount(ctx context.Context, strucs structure) int {
+	facets := strucs.Details["facets"]
+	facetsList, _ := facets.([]interface{})
+	return len(facetsList)
 }
 
 func notificationWrapper(ctx context.Context, req sim2pdwInput) (map[string]interface{}, error) {

@@ -82,6 +82,7 @@ const (
 	TaskTimedOutError             = 4065
 	ErrorRetrievingMsgCode        = 4066
 	ErrorUnknownSource            = 4067
+	ErrorFromGeocodingService     = 4068
 )
 
 // Messagecodes map for async tasks from callback range 4080-4100
