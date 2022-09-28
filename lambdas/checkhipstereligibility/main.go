@@ -29,35 +29,47 @@ type pdwOutput struct {
 	CallbackId  string `json:"callbackId"`
 	Response    struct {
 		Data struct {
-			Parcels []struct {
-				DetectedBuildingCount struct {
-					Value *int `json:"value"`
-				} `json:"_detectedBuildingCount"`
-				Structures []struct {
-					Type struct {
-						Value *string `json:"value"`
-					} `json:"_type"`
-					Roof struct {
-						CountRoofFacets struct {
-							Value *int `json:"value"`
-						} `json:"_countRoofFacets"`
-					} `json:"roof"`
-				} `json:"structures"`
-			} `json:"parcels"`
+			Parcels []parcel `json:"parcels"`
 		} `json:"data"`
 	} `json:"response"`
 }
 
+type parcel struct {
+	DetectedBuildingCount struct {
+		Value *int `json:"value"`
+	} `json:"_detectedBuildingCount"`
+	Structures []structure `json:"structures"`
+}
+type structure struct {
+	Type struct {
+		Value *string `json:"value"`
+	} `json:"_type"`
+	Roof struct {
+		CountRoofFacets struct {
+			Value *int `json:"value"`
+		} `json:"_countRoofFacets"`
+	} `json:"roof"`
+}
+
 func handler(ctx context.Context, input pdwOutput) error {
-	isHipsterCompatible := false
+	isMultiStructure := false
+	isValidFacetCount := false
 	status := "success"
 	bCount := 0
 	facetCount := 0
 
+	/*
+		case 1 : bc = 1, fC = [1, 2, 4] , true
+		case 2 : bc = 0, >2, fc = [1,2,4], false
+		case 3,  bc = 1, fc != [1,2,4] : false
+		case 4 : bc = 1, main structure not found, false
+		case 5 : bc = 0, >2, fc != [1,2,4], false
+	*/
+
 	if input.Status == "success" && len(input.Response.Data.Parcels) > 0 && input.Response.Data.Parcels[0].DetectedBuildingCount.Value != nil {
+		bCount = *input.Response.Data.Parcels[0].DetectedBuildingCount.Value
 		if *input.Response.Data.Parcels[0].DetectedBuildingCount.Value == 1 {
-			isHipsterCompatible = true
-			bCount = *input.Response.Data.Parcels[0].DetectedBuildingCount.Value
+			isMultiStructure = true
 		}
 	}
 
@@ -65,7 +77,7 @@ func handler(ctx context.Context, input pdwOutput) error {
 		for _, s := range input.Response.Data.Parcels[0].Structures {
 			if s.Type.Value != nil && *s.Type.Value == "main" {
 				if s.Roof.CountRoofFacets.Value != nil {
-					isHipsterCompatible = isHipsterCompatible && findInIntArray(validFacetCount, *s.Roof.CountRoofFacets.Value)
+					isValidFacetCount = findInIntArray(validFacetCount, *s.Roof.CountRoofFacets.Value)
 					facetCount = *s.Roof.CountRoofFacets.Value
 				}
 			}
@@ -82,7 +94,7 @@ func handler(ctx context.Context, input pdwOutput) error {
 		"message":     input.Message,
 		"callbackId":  input.CallbackId,
 		"response": map[string]interface{}{
-			"isHipsterCompatible": isHipsterCompatible,
+			"isHipsterCompatible": isMultiStructure && isValidFacetCount,
 			"buildingCount":       bCount,
 			"facetCount":          facetCount,
 		},
