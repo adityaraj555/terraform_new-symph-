@@ -86,7 +86,7 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
-	case "sfnSummaryByOrderIds":
+	case "sfnSummary":
 		var listOfOrderIds, listOfWorkflowIds []string
 		if list, ok := Request.Input["orderIds"]; ok {
 			if value, ok := list.([]string); ok {
