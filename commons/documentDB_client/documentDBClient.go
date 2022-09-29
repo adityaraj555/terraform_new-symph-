@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -51,6 +52,7 @@ type IDocDBClient interface {
 	CheckConnection(ctx context.Context) error
 	GetHipsterCountPerDay(ctx context.Context) (int64, error)
 	GetTimedoutTask(ctx context.Context, WorkflowId string) string
+	FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, source string, workFlowIds, orderIDs []string) ([]WorkflowExecutionDataBody, error)
 }
 
 type DocDBClient struct {
@@ -181,6 +183,43 @@ func (DBClient *DocDBClient) FetchWorkflowExecutionData(ctx context.Context, wor
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionDataBody{}, err
+	}
+	return WorkflowExecutionData, nil
+}
+
+func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, source string, workFlowIds, orderIDs []string) ([]WorkflowExecutionDataBody, error) {
+	collection := db.DBClient.Database(Database).Collection(WorkflowDataCollection)
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
+	defer cancel()
+	var WorkflowExecutionData []WorkflowExecutionDataBody
+	query := []interface{}{}
+	for _, val := range orderIDs {
+		query = append(query, bson.D{{"orderId", val}})
+	}
+	for _, val := range workFlowIds {
+		query = append(query, bson.D{{"workflowId", val}})
+	}
+	orQuery := bson.D{{"$or", query}}
+	sourceQuery := bson.D{{"initialInput.source", source}}
+	curr, err := collection.Find(ctx, bson.D{{"$and", []interface{}{orQuery, sourceQuery}}})
+	if err != nil {
+		log.Errorf(ctx, "Failed to run find query: %v", err)
+		return WorkflowExecutionData, err
+	}
+
+	var results []bson.M
+	// check for errors in the conversion
+	if err = curr.All(ctx, &results); err != nil {
+		log.Errorf(ctx, "Failed to run find query: %v", err)
+		return WorkflowExecutionData, err
+	}
+
+	for _, result := range results {
+		bye, _ := json.Marshal(result)
+		var i WorkflowExecutionDataBody
+		json.Unmarshal(bye, &i)
+		WorkflowExecutionData = append(WorkflowExecutionData, i)
 	}
 	return WorkflowExecutionData, nil
 }

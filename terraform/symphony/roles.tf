@@ -83,6 +83,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 ],
                 "Resource": [
                     "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.callback_lambda_name}",
+                    "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.datastore_lambda_name}",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*",
                     "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveLegacyOrder",

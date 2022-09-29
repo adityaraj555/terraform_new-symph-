@@ -36,7 +36,7 @@ type RequestBody struct {
 
 const DBSecretARN = "DBSecretARN"
 
-func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, error) {
+func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 	var err error
 	ctx = log_config.SetTraceIdInContext(ctx, Request.OrderId, Request.WorkflowId)
 
@@ -86,13 +86,33 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
+	case "sfnSummaryByOrderIds":
+		var listOfOrderIds, listOfWorkflowIds []string
+		if list, ok := Request.Input["orderIds"]; ok {
+			if value, ok := list.([]string); ok {
+				listOfOrderIds = value
+			}
+		}
+
+		if list, ok := Request.Input["workflowIds"]; ok {
+			if value, ok := list.([]string); ok {
+				listOfWorkflowIds = value
+			}
+		}
+
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.Input["source"].(string), listOfWorkflowIds, listOfOrderIds)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		return response, nil
 	}
 
 	log.Info(ctx, "Datastorelambda successful...")
 	return map[string]interface{}{"status": Success}, nil
 }
 
-func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+func notificationWrapper(ctx context.Context, req RequestBody) (interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
