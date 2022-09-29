@@ -40,7 +40,7 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 	var err error
 	ctx = log_config.SetTraceIdInContext(ctx, Request.OrderId, Request.WorkflowId)
 
-	log.Info(ctx, "Datastorelambda reached...")
+	log.Infof(ctx, "Datastorelambda reached... %+v", Request)
 	switch Request.Action {
 	case "insert":
 		var data documentDB_client.WorkflowExecutionDataBody
@@ -99,12 +99,13 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 				listOfWorkflowIds = value
 			}
 		}
-
+		log.Infof(ctx, "Filter: %+v, %+v, %s", listOfOrderIds, listOfWorkflowIds, Request.Input["source"].(string))
 		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.Input["source"].(string), listOfWorkflowIds, listOfOrderIds)
 		if err != nil {
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
+		log.Infof(ctx, "Response: %+v", response)
 		return response, nil
 	}
 
