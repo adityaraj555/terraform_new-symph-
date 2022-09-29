@@ -1,0 +1,154 @@
+{
+    "Comment": "A description of my state machine",
+    "StartAt": "Wait",
+    "States": {
+      "Wait": {
+        "Type": "Wait",
+        "Next": "InsertIntoDocumentDb",
+        "SecondsPath": "$.waitDuration"
+      },
+      "InsertIntoDocumentDb": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload": {
+            "input.$": "$$.Execution.Input",
+            "orderId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "action": "insert"
+          },
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-datastorelambda:$LATEST"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "ConvertPmfToEVJson"
+      },
+      "ConvertPmfToEVJson": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+        "OutputPath": "$",
+        "ResultPath": "$.ConvertPmfToEVJson",
+        "Parameters": {
+          "Payload": {
+            "requestData": {
+              "reportId.$": "$$.Execution.Input.reportId",
+              "propertyModelLocation.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/hipster_output.json',$$.Execution.Input.reportId)",
+              "imageMetaDataLocation.$": "States.Format('s3://${resource_name_prefix}-s3-property-data-orchestrator/{}/get_image_metadata/imageMetadata.json', $$.Execution.Input.reportId)",
+              "meta": {
+                "path": "Hipster"
+              }
+            },
+            "url": "${ENDPOINT_URL_PMF_CONVERTER}",
+            "requestMethod": "POST",
+            "headers": {},
+            "isWaitTask": true,
+            "retry": "number of times we want to retry on specific error types like timeout, 500",
+            "timeout": 45,
+            "storeDataToS3": "",
+            "taskName": "ConvertPmfToEVJson",
+            "orderId.$": "$$.Execution.Input.reportId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "taskToken.$": "$$.Task.Token",
+            "auth": {}
+          },
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "UploadToEvoss"
+      },
+      "UploadToEvoss": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$",
+        "ResultPath": "$.UploadToEvoss",
+        "Parameters": {
+          "Payload": {
+            "requestData": {},
+            "url.$": "States.Format('${ENDPOINT_URL_LEGACY}/UploadMLJson?reportId={}', $$.Execution.Input.reportId)",
+            "requestMethod": "POST",
+            "headers": {
+              "Authorization": "Basic OTQ5RTU5MDEtM0EwQi00RjBGLTgyMEEtRkNBNDlCQ0FGQzc2OjcwMDg2RUMzNkZFNzdFRjE3NkE1MkQyQTQxNDM1MjlDRUUxNTgxN0M3RDA0QTBFMjAyNjY5NDE1NjZCM0ExQjY="
+            },
+            "isWaitTask": false,
+            "retry": "number of times we want to retry on specific error types like timeout, 500",
+            "timeout": 45,
+            "storeDataToS3": "",
+            "getRequestBodyFromS3.$": "$.ConvertPmfToEVJson.evJsonLocation",
+            "s3RequestBodyType": "base64",
+            "taskName": "UploadToEvoss",
+            "orderId.$": "$$.Execution.Input.reportId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "auth": {}
+          },
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "Next": "UpdateLegacyStatus"
+      },
+      "UpdateLegacyStatus": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "OutputPath": "$.Payload",
+        "Parameters": {
+          "Payload": {
+            "orderId.$": "$$.Execution.Input.reportId",
+            "reportId.$": "$$.Execution.Input.reportId",
+            "workflowId.$": "$$.Execution.Name",
+            "taskName": "UpdateLegacyStatus",
+            "callType": "eagleflow",
+            "status": "QCCompleted",
+            "requestData": {}
+          },
+          "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "End": true
+      }
+    }
+  }

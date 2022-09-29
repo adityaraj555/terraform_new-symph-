@@ -213,16 +213,16 @@
                                     "BackoffRate": 1
                                 }
                             ],
-                            "Next": "3DModellingService",
+                            "Next": "${Task3DModellingService}",
                             "TimeoutSeconds": 7200
                         },
-                        "3DModellingService": {
+                        "${Task3DModellingService}": {
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                             "ResultSelector": {
                                 "response.$": "$"
                             },
-                            "ResultPath": "$.3DModellingService",
+                            "ResultPath": "$.${Task3DModellingService}",
                             "OutputPath": "$",
                             "Parameters": {
                                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
@@ -241,7 +241,7 @@
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
                                     "timeout": 45,
                                     "storeDataToS3": "",
-                                    "taskName": "3DModellingService",
+                                    "taskName": "${Task3DModellingService}",
                                     "orderId.$": "$$.Execution.Input.orderId",
                                     "reportId.$": "$$.Execution.Input.reportId",
                                     "workflowId.$": "$$.Execution.Name",
@@ -274,7 +274,9 @@
             "OutputPath": "$.response",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "updateMLAutomationRejected",
                     "ResultPath": "$.MAError"
                 }
@@ -384,7 +386,9 @@
             "Next": "isHipsterCompatible",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "UpdateFlowTypeToTwister",
                     "ResultPath": "$.CheckIsMultiStructure"
                 }
@@ -503,15 +507,82 @@
             "Next": "PMF-EVJSON Converter Upload to EVOSS",
             "Branches": [
                 {
-                    "StartAt": "CreateHipsterJobAndWaitForMeasurement",
+                    "StartAt": "HipsterSlackNotification",
                     "States": {
-                        "CreateHipsterJobAndWaitForMeasurement": {
+                        "HipsterSlackNotification": {
+                            "Type": "Task",
+                            "Resource": "arn:aws:states:::lambda:invoke",
+                            "OutputPath": "$",
+                            "Parameters": {
+                                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
+                                "Payload": {
+                                    "requestData": {
+                                        "channel": "${Hipster_Notification_Channel}",
+                                        "blocks": [
+                                            {
+                                                "type": "header",
+                                                "text": {
+                                                    "type": "plain_text",
+                                                    "text": "Ready for Hipster measurement"
+                                                }
+                                            },
+                                            {
+                                                "type": "section",
+                                                "text": {
+                                                    "type": "mrkdwn",
+                                                    "text.$": "States.Format('ReportID - {}', $$.Execution.Input.reportId)"
+                                                }
+                                            },
+                                            {
+                                                "type": "divider"
+                                            }
+                                        ]
+                                    },
+                                    "url": "${SLACK_ENDPOINT}",
+                                    "requestMethod": "POST",
+                                    "headers": {},
+                                    "isWaitTask": false,
+                                    "retry": "number of times we want to retry on specific error types like timeout, 500",
+                                    "timeout": 45,
+                                    "storeDataToS3": "",
+                                    "taskName": "HipsterSlackNotification",
+                                    "workflowId.$": "$$.Execution.Name",
+                                    "auth": {
+                                        "type": "bearer_secret",
+                                        "authData": {
+                                            "secretStoreType": "pdo_secret_manager",
+                                            "bearerTokenKey": "SLACK_TOKEN"
+                                        }
+                                    }
+                                }
+                            },
+                            "Retry": [
+                                {
+                                    "ErrorEquals": [
+                                        "Lambda.ServiceException",
+                                        "Lambda.AWSLambdaException",
+                                        "Lambda.SdkClientException",
+                                        "RetriableError"
+                                    ],
+                                    "IntervalSeconds": 60,
+                                    "MaxAttempts": 2,
+                                    "BackoffRate": 1
+                                }
+                            ],
+                            "Next": "${TaskCreateHipsterJobAndWaitForMeasurement}",
+                            "ResultSelector": {
+                                "response.$": "$.Payload"
+                            },
+                            "ResultPath": "$.HipsterSlackNotification",
+                            "TimeoutSeconds": 60
+                        },
+                        "${TaskCreateHipsterJobAndWaitForMeasurement}": {
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                             "ResultSelector": {
                                 "response.$": "$"
                             },
-                            "ResultPath": "$.CreateHipsterJobAndWaitForMeasurement",
+                            "ResultPath": "$.${TaskCreateHipsterJobAndWaitForMeasurement}",
                             "OutputPath": "$",
                             "Parameters": {
                                 "Payload": {
@@ -521,7 +592,7 @@
                                         "customerNotes.$": "$$.Execution.Input.customerNotes",
                                         "measurementInstructions.$": "$$.Execution.Input.measurementInstructions",
                                         "orderType.$": "$$.Execution.Input.orderType",
-                                        "propertyModelLocation.$": "$.3DModellingService.response.propertyModelLocation"
+                                        "propertyModelLocation.$": "$.${Task3DModellingService}.response.propertyModelLocation"
                                     },
                                     "url": "${ENDPOINT_URL_HIPSTER}/hipster/v2/job",
                                     "requestMethod": "POST",
@@ -530,7 +601,7 @@
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
                                     "timeout": 45,
                                     "storeDataToS3": "",
-                                    "taskName": "CreateHipsterJobAndWaitForMeasurement",
+                                    "taskName": "${TaskCreateHipsterJobAndWaitForMeasurement}",
                                     "orderId.$": "$$.Execution.Input.orderId",
                                     "reportId.$": "$$.Execution.Input.reportId",
                                     "workflowId.$": "$$.Execution.Name",
@@ -589,16 +660,16 @@
                                     "BackoffRate": 1
                                 }
                             ],
-                            "Next": "UpdateHipsterJobAndWaitForQC",
+                            "Next": "${TaskUpdateHipsterJobAndWaitForQC}",
                             "TimeoutSeconds": 210
                         },
-                        "UpdateHipsterJobAndWaitForQC": {
+                        "${TaskUpdateHipsterJobAndWaitForQC}": {
                             "Type": "Task",
                             "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
                             "ResultSelector": {
                                 "response.$": "$"
                             },
-                            "ResultPath": "$.UpdateHipsterJobAndWaitForQC",
+                            "ResultPath": "$.${TaskUpdateHipsterJobAndWaitForQC}",
                             "OutputPath": "$",
                             "Parameters": {
                                 "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST",
@@ -606,21 +677,21 @@
                                     "requestData": {
                                         "mode": "QC"
                                     },
-                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.${TaskCreateHipsterJobAndWaitForMeasurement}.response.jobId)",
                                     "requestMethod": "PUT",
                                     "headers": {},
                                     "isWaitTask": true,
                                     "retry": "number of times we want to retry on specific error types like timeout, 500",
                                     "timeout": 45,
                                     "storeDataToS3": "",
-                                    "taskName": "UpdateHipsterJobAndWaitForQC",
+                                    "taskName": "${TaskUpdateHipsterJobAndWaitForQC}",
                                     "orderId.$": "$$.Execution.Input.orderId",
                                     "reportId.$": "$$.Execution.Input.reportId",
                                     "workflowId.$": "$$.Execution.Name",
                                     "callType": "hipster",
                                     "taskToken.$": "$$.Task.Token",
                                     "status": "QCStarted",
-                                    "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
+                                    "hipsterJobId.$": "$.${TaskCreateHipsterJobAndWaitForMeasurement}.response.jobId",
                                     "auth": {}
                                 }
                             },
@@ -643,7 +714,7 @@
                             "Type": "Choice",
                             "Choices": [
                                 {
-                                    "Variable": "$.UpdateHipsterJobAndWaitForQC.response.isReworkRequired",
+                                    "Variable": "$.${TaskUpdateHipsterJobAndWaitForQC}.response.isReworkRequired",
                                     "BooleanEquals": true,
                                     "Comment": "Rework",
                                     "Next": "UpdateHipsterJobAndWaitForMeasurement"
@@ -669,7 +740,7 @@
                                     "requestData": {
                                         "mode": "Measurement"
                                     },
-                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.CreateHipsterJobAndWaitForMeasurement.response.jobId)",
+                                    "url.$": "States.Format('${ENDPOINT_URL_HIPSTER}/hipster/v2/job/{}', $.${TaskCreateHipsterJobAndWaitForMeasurement}.response.jobId)",
                                     "requestMethod": "PUT",
                                     "headers": {},
                                     "isWaitTask": true,
@@ -683,7 +754,7 @@
                                     "callType": "hipster",
                                     "taskToken.$": "$$.Task.Token",
                                     "status": "MeasurementStarted",
-                                    "hipsterJobId.$": "$.CreateHipsterJobAndWaitForMeasurement.response.jobId",
+                                    "hipsterJobId.$": "$.${TaskCreateHipsterJobAndWaitForMeasurement}.response.jobId",
                                     "auth": {}
                                 }
                             },
@@ -711,7 +782,9 @@
             "OutputPath": "$.response",
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "PMF-EVJSON Converter Upload to EVOSS",
                     "ResultPath": "$.HipsterError"
                 }
@@ -892,7 +965,9 @@
             ],
             "Catch": [
                 {
-                    "ErrorEquals": ["States.ALL"],
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
                     "Next": "updateMLAutomationRejected"
                 }
             ],

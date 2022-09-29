@@ -46,6 +46,7 @@ type AuthData struct {
 		SecretManagerArn string            `json:"secretManagerArn,omitempty"`
 		ClientIDKey      string            `json:"clientIdKey,omitempty"`
 		ClientSecretKey  string            `json:"clientSecretKey,omitempty"`
+		BearerTokenKey   string            `json:"bearerTokenKey,omitempty"`
 		XAPIKeyKey       string            `json:"X-API-Key_Key,omitempty"`
 	} `json:"authData,omitempty"`
 }
@@ -158,6 +159,34 @@ func handleAuth(ctx context.Context, payoadAuthData AuthData, headers map[string
 			payoadAuthData.RequiredAuthData.Headers)
 		if err != nil {
 			return err
+		}
+		headers["Authorization"] = "Bearer " + authToken
+
+	case enums.AuthBearerSecret:
+		secretStoreType := strings.ToLower(payoadAuthData.RequiredAuthData.SecretStoreType)
+		var authToken string
+		switch secretStoreType {
+		case "secret_manager_key_value":
+			secretManagerArn := payoadAuthData.RequiredAuthData.SecretManagerArn
+			bearerTokenKey := payoadAuthData.RequiredAuthData.BearerTokenKey
+			secretString, err := commonHandler.AwsClient.GetSecretString(ctx, secretManagerArn)
+			if err != nil {
+				return err
+			}
+			secretStringMap := make(map[string]json.RawMessage)
+			json.Unmarshal([]byte(secretString), &secretStringMap)
+			authToken = string(secretStringMap[bearerTokenKey])
+		case "secret_manager_key":
+			bearerTokenKey := payoadAuthData.RequiredAuthData.BearerTokenKey
+			var err1 error
+			authToken, err1 = commonHandler.AwsClient.GetSecretString(ctx, bearerTokenKey)
+			if err1 != nil {
+				return err1
+			}
+
+		case "pdo_secret_manager":
+			bearerTokenKey := payoadAuthData.RequiredAuthData.BearerTokenKey
+			authToken = commonHandler.Secrets[bearerTokenKey].(string)
 		}
 		headers["Authorization"] = "Bearer " + authToken
 	}

@@ -44,6 +44,13 @@
         source
         value
       }
+      roof {
+        id
+        _countRoofFacets {
+          marker
+          value
+        }
+      }
     }
     trampolines {
       id

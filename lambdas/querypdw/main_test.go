@@ -415,6 +415,12 @@ func TestHandlerStructureExists(t *testing.T) {
 				  "id": "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
 				  "structures": [
 					{
+						"roof": {
+							"_countRoofFacets": {
+								"marker": null,
+								"value": null
+							}
+						},
 					  "_outline": {
 						"marker": "2021-08-29"
 					  },
@@ -453,7 +459,7 @@ func TestHandlerStructureExists(t *testing.T) {
 	commonHandler.Secrets = map[string]interface{}{
 		"ClientID":     "id",
 		"ClientSecret": "secret"}
-	expectedResp := eventResponse{Message: StructurePresentMessage}
+	expectedResp := eventResponse{Address: "23 HAVENSHIRE RD, ROCHESTER, NY, 14625", Latitude: 43.172988, Longitude: -77.501957, ParcelID: "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1", TriggerSIM: true, Message: "Structures does not exist in the graph response"}
 	resp, err := notificationWrapper(context.Background(), eventDataReq)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
@@ -482,6 +488,12 @@ func TestHandlerNoStructuresAfterIngestion(t *testing.T) {
 				  "id": "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
 				  "structures": [
 					{
+						"roof": {
+							"_countRoofFacets": {
+								"marker": null,
+								"value": null
+							}
+						},
 					  "_outline": {
 						"marker": "2019-08-29"
 					  },
