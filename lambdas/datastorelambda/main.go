@@ -87,15 +87,20 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	case "sfnSummary":
+		log.Infof(ctx, "OrderIDS: %+v WorkflowIDs: %*v", Request.Input["orderIds"], Request.Input["workflowIds"])
 		var listOfOrderIds, listOfWorkflowIds []string
 		if list, ok := Request.Input["orderIds"]; ok {
+			log.Info(ctx, "OrderID Preset")
 			if value, ok := list.([]string); ok {
+				log.Info(ctx, "Successful orderID parsed")
 				listOfOrderIds = value
 			}
 		}
 
 		if list, ok := Request.Input["workflowIds"]; ok {
+			log.Info(ctx, "workflowID Preset")
 			if value, ok := list.([]string); ok {
+				log.Info(ctx, "Successful workflowID parsed")
 				listOfWorkflowIds = value
 			}
 		}
@@ -126,6 +131,16 @@ func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true, true, false)
 	lambda.Start(notificationWrapper)
+	// req := RequestBody{
+	// 	Input: map[string]interface{}{
+	// 		"orderIds":    []string{"44836830"},
+	// 		"workflowIds": []string{"xyz"},
+	// 		"source":      "MA",
+	// 	},
+	// 	Action: "sfnSummary",
+	// }
+	// commonHandler.DBClient = new(documentDB_client.DocDBClient)
+	// Handler(context.Background(), req)
 }
 
 func handleTimeout(ctx context.Context, req RequestBody) error {
