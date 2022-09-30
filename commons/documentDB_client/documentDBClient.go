@@ -193,7 +193,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	var WorkflowExecutionData []WorkflowExecutionDataBody
-	query := []interface{}{}
+	query := []bson.D{}
 	for _, val := range orderIDs {
 		query = append(query, bson.D{{"orderId", val}})
 	}
@@ -202,7 +202,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 	}
 	orQuery := bson.D{{"$or", query}}
 	sourceQuery := bson.D{{"initialInput.source", source}}
-	curr, err := collection.Find(ctx, bson.D{{"$and", []interface{}{orQuery, sourceQuery}}})
+	curr, err := collection.Find(ctx, bson.D{{"$and", []bson.D{orQuery, sourceQuery}}})
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionData, err
