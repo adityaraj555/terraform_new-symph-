@@ -201,10 +201,9 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 		query = append(query, bson.D{{"workflowId", val}})
 	}
 	orQuery := bson.D{{"$or", query}}
-	// sourceQuery := bson.D{{"initialInput.source", source}}
-	// curr, err := collection.Find(ctx, bson.D{{"$and", bson.A{orQuery, sourceQuery}}})
+	sourceQuery := bson.D{{"initialInput.source", source}}
 	log.Infof(ctx, "Query: %+v", orQuery)
-	curr, err := collection.Find(ctx, orQuery)
+	curr, err := collection.Find(ctx, bson.D{{"$and", bson.A{orQuery, sourceQuery}}})
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionData, err

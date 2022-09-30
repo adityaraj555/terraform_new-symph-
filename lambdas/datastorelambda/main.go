@@ -27,11 +27,18 @@ const (
 )
 
 type RequestBody struct {
-	Input      map[string]interface{} `json:"input"`
-	OrderId    string                 `json:"orderId"`
-	WorkflowId string                 `json:"workflowId"`
-	Action     string                 `json:"action"`
-	FlowType   string                 `json:"flowType"`
+	Input             map[string]interface{} `json:"input"`
+	OrderId           string                 `json:"orderId"`
+	WorkflowId        string                 `json:"workflowId"`
+	Action            string                 `json:"action"`
+	FlowType          string                 `json:"flowType"`
+	SfnSummaryFilters sfnSummaryFilters      `json:"sfnSummaryFilters"`
+}
+
+type sfnSummaryFilters struct {
+	OrderIDs    []string `json:"orderIds"`
+	WorkflowIDs []string `json:"workflowIds"`
+	Source      string   `json:"source"`
 }
 
 const DBSecretARN = "DBSecretARN"
@@ -87,25 +94,8 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	case "sfnSummary":
-		log.Infof(ctx, "OrderIDS: %+v WorkflowIDs: %*v", Request.Input["orderIds"], Request.Input["workflowIds"])
-		var listOfOrderIds, listOfWorkflowIds []string
-		if list, ok := Request.Input["orderIds"]; ok {
-			log.Info(ctx, "OrderID Preset")
-			if value, ok := list.([]string); ok {
-				log.Info(ctx, "Successful orderID parsed")
-				listOfOrderIds = value
-			}
-		}
-
-		if list, ok := Request.Input["workflowIds"]; ok {
-			log.Info(ctx, "workflowID Preset")
-			if value, ok := list.([]string); ok {
-				log.Info(ctx, "Successful workflowID parsed")
-				listOfWorkflowIds = value
-			}
-		}
-		log.Infof(ctx, "Filter: %+v, %+v, %s", listOfOrderIds, listOfWorkflowIds, Request.Input["source"].(string))
-		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.Input["source"].(string), listOfWorkflowIds, listOfOrderIds)
+		log.Infof(ctx, "Filter: %+v, %+v, %s", Request.SfnSummaryFilters.OrderIDs, Request.SfnSummaryFilters.WorkflowIDs, Request.Action)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.Action, Request.SfnSummaryFilters.WorkflowIDs, Request.SfnSummaryFilters.OrderIDs)
 		if err != nil {
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
@@ -131,14 +121,20 @@ func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true, true, false)
 	lambda.Start(notificationWrapper)
-	// req := RequestBody{
-	// 	Input: map[string]interface{}{
-	// 		"orderIds":    []string{"44836830"},
-	// 		"workflowIds": []string{"xyz"},
-	// 		"source":      "MA",
+	// d := []byte(`{
+	// 	"input": {
+	// 	  "orderIds": [
+	// 		"44836830"
+	// 	  ],
+	// 	  "workflowIds": [
+	// 		"44836830"
+	// 	  ],
+	// 	  "source": "MA"
 	// 	},
-	// 	Action: "sfnSummary",
-	// }
+	// 	"action": "sfnSummary"
+	//   }`)
+	// req := RequestBody{}
+	// json.Unmarshal(d, &req)
 	// commonHandler.DBClient = new(documentDB_client.DocDBClient)
 	// Handler(context.Background(), req)
 }
