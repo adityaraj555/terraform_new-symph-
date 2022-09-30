@@ -193,14 +193,14 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	var WorkflowExecutionData []WorkflowExecutionDataBody
-	tempQuery := []interface{}{}
-	for _, val := range orderIDs {
-		tempQuery = append(tempQuery, bson.D{{"orderId", val}})
-	}
-	for _, val := range workFlowIds {
-		tempQuery = append(tempQuery, bson.D{{"workflowId", val}})
-	}
-	query := bson.A{tempQuery}
+	// tempQuery := []interface{}{}
+	// for _, val := range orderIDs {
+	// 	tempQuery = append(tempQuery, bson.D{{"orderId", val}})
+	// }
+	// for _, val := range workFlowIds {
+	// 	tempQuery = append(tempQuery, bson.D{{"workflowId", val}})
+	// }
+	query := bson.A{bson.D{{"orderId", "44836830"}}}
 	orQuery := bson.D{{"$or", query}}
 	sourceQuery := bson.D{{"initialInput.source", source}}
 	curr, err := collection.Find(ctx, bson.D{{"$and", bson.A{orQuery, sourceQuery}}})
