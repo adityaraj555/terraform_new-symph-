@@ -52,7 +52,7 @@ type IDocDBClient interface {
 	CheckConnection(ctx context.Context) error
 	GetHipsterCountPerDay(ctx context.Context) (int64, error)
 	GetTimedoutTask(ctx context.Context, WorkflowId string) string
-	FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, source string, workFlowIds, orderIDs []string) ([]WorkflowExecutionDataBody, error)
+	FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, SummaryFilters SummaryFilters) ([]WorkflowExecutionDataBody, error)
 }
 
 type DocDBClient struct {
@@ -93,6 +93,14 @@ type StepsPassedThroughBody struct {
 	StepId    string `bson:"stepId"`
 	StartTime int64  `bson:"startTime"`
 	Status    string `bson:"status"`
+}
+
+type SummaryFilters struct {
+	OrderIDs    []string `json:"orderIds"`
+	WorkflowIDs []string `json:"workflowIds"`
+	Source      string   `json:"source"`
+	StartDate   int64    `json:"startDate"`
+	EndDate     int64    `json:"endDate"`
 }
 
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
@@ -187,24 +195,45 @@ func (DBClient *DocDBClient) FetchWorkflowExecutionData(ctx context.Context, wor
 	return WorkflowExecutionData, nil
 }
 
-func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, source string, workFlowIds, orderIDs []string) ([]WorkflowExecutionDataBody, error) {
+func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, SummaryFilters SummaryFilters) ([]WorkflowExecutionDataBody, error) {
 	collection := db.DBClient.Database(Database).Collection(WorkflowDataCollection)
 
 	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
 	defer cancel()
 	var WorkflowExecutionData []WorkflowExecutionDataBody
-	query := bson.A{}
-	for _, val := range orderIDs {
+	query, finalQuery := bson.A{}, bson.A{}
+	for _, val := range SummaryFilters.OrderIDs {
 		query = append(query, bson.D{{"orderId", val}})
 	}
-	for _, val := range workFlowIds {
+	for _, val := range SummaryFilters.WorkflowIDs {
 		query = append(query, bson.D{{"initialInput.workflowId", val}})
 	}
-	orQuery := bson.D{{"$or", query}}
-	sourceQuery := bson.D{{"initialInput.source", source}}
-	log.Infof(ctx, "Query: %+v", orQuery)
-	curr, err := collection.Find(ctx, bson.A{sourceQuery, orQuery})
-	// curr, err := collection.Find(ctx, orQuery)
+	if len(query) > 0 {
+		orQuery := bson.D{{"$or", query}}
+		// log.Infof(ctx, "Query: %+v", orQuery)
+		finalQuery = append(finalQuery, orQuery)
+	}
+	if SummaryFilters.Source != "" {
+		sourceQuery := bson.D{{"initialInput.source", SummaryFilters.Source}}
+		finalQuery = append(finalQuery, sourceQuery)
+	}
+
+	dateFilter := bson.A{}
+	if SummaryFilters.StartDate != 0 {
+		startDateFilter := bson.M{"$gt": SummaryFilters.StartDate}
+		dateFilter = append(dateFilter, startDateFilter)
+	}
+
+	if SummaryFilters.EndDate != 0 {
+		endDateFilter := bson.M{"$lt": SummaryFilters.EndDate}
+		dateFilter = append(dateFilter, endDateFilter)
+	}
+
+	if len(dateFilter) > 0 {
+		finalQuery = append(finalQuery, dateFilter)
+	}
+	log.Infof(ctx, "Final Query: %+v", finalQuery)
+	curr, err := collection.Find(ctx, finalQuery)
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionData, err

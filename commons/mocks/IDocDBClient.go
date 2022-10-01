@@ -111,13 +111,13 @@ func (_m *IDocDBClient) FetchWorkflowExecutionData(ctx context.Context, workFlow
 	return r0, r1
 }
 
-// FetchWorkflowExecutionDataByListOfWorkflows provides a mock function with given fields: ctx, source, workFlowIds, orderIDs
-func (_m *IDocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, source string, workFlowIds []string, orderIDs []string) ([]documentDB_client.WorkflowExecutionDataBody, error) {
-	ret := _m.Called(ctx, source, workFlowIds, orderIDs)
+// FetchWorkflowExecutionDataByListOfWorkflows provides a mock function with given fields: ctx, SummaryFilters
+func (_m *IDocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, SummaryFilters documentDB_client.SummaryFilters) ([]documentDB_client.WorkflowExecutionDataBody, error) {
+	ret := _m.Called(ctx, SummaryFilters)
 
 	var r0 []documentDB_client.WorkflowExecutionDataBody
-	if rf, ok := ret.Get(0).(func(context.Context, string, []string, []string) []documentDB_client.WorkflowExecutionDataBody); ok {
-		r0 = rf(ctx, source, workFlowIds, orderIDs)
+	if rf, ok := ret.Get(0).(func(context.Context, documentDB_client.SummaryFilters) []documentDB_client.WorkflowExecutionDataBody); ok {
+		r0 = rf(ctx, SummaryFilters)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]documentDB_client.WorkflowExecutionDataBody)
@@ -125,8 +125,8 @@ func (_m *IDocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, []string, []string) error); ok {
-		r1 = rf(ctx, source, workFlowIds, orderIDs)
+	if rf, ok := ret.Get(1).(func(context.Context, documentDB_client.SummaryFilters) error); ok {
+		r1 = rf(ctx, SummaryFilters)
 	} else {
 		r1 = ret.Error(1)
 	}

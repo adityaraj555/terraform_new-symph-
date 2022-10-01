@@ -27,18 +27,12 @@ const (
 )
 
 type RequestBody struct {
-	Input             map[string]interface{} `json:"input"`
-	OrderId           string                 `json:"orderId"`
-	WorkflowId        string                 `json:"workflowId"`
-	Action            string                 `json:"action"`
-	FlowType          string                 `json:"flowType"`
-	SfnSummaryFilters sfnSummaryFilters      `json:"sfnSummaryFilters"`
-}
-
-type sfnSummaryFilters struct {
-	OrderIDs    []string `json:"orderIds"`
-	WorkflowIDs []string `json:"workflowIds"`
-	Source      string   `json:"source"`
+	Input             map[string]interface{}           `json:"input"`
+	OrderId           string                           `json:"orderId"`
+	WorkflowId        string                           `json:"workflowId"`
+	Action            string                           `json:"action"`
+	FlowType          string                           `json:"flowType"`
+	SfnSummaryFilters documentDB_client.SummaryFilters `json:"sfnSummaryFilters"`
 }
 
 const DBSecretARN = "DBSecretARN"
@@ -95,7 +89,7 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 		}
 	case "sfnSummary":
 		log.Infof(ctx, "Filter: %+v, %+v, %s", Request.SfnSummaryFilters.OrderIDs, Request.SfnSummaryFilters.WorkflowIDs, Request.Action)
-		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.Action, Request.SfnSummaryFilters.WorkflowIDs, Request.SfnSummaryFilters.OrderIDs)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters)
 		if err != nil {
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
@@ -122,14 +116,15 @@ func main() {
 	commonHandler = common_handler.New(false, false, true, true, false)
 	lambda.Start(notificationWrapper)
 	// d := []byte(`{
-	// 	"input": {
+	// 	"sfnSummaryFilters": {
 	// 	  "orderIds": [
 	// 		"44836830"
 	// 	  ],
 	// 	  "workflowIds": [
 	// 		"44836830"
 	// 	  ],
-	// 	  "source": "MA"
+	// 	  "source": "MA",
+	// 	  "startDate": 12344
 	// 	},
 	// 	"action": "sfnSummary"
 	//   }`)
