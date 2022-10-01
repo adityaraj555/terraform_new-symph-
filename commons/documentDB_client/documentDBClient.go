@@ -233,7 +233,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 		finalQuery = append(finalQuery, dateFilter)
 	}
 	log.Infof(ctx, "Final Query: %+v", finalQuery)
-	curr, err := collection.Find(ctx, finalQuery)
+	curr, err := collection.Find(ctx, bson.M{"$and": finalQuery})
 	if err != nil {
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return WorkflowExecutionData, err
