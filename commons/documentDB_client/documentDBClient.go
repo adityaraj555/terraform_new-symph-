@@ -60,7 +60,7 @@ type DocDBClient struct {
 }
 
 type WorkflowExecutionDataBody struct {
-	WorkflowId         string                   `bson:"_id"`
+	WorkflowId         string                   `json:"_id" bson:"_id"`
 	Status             string                   `bson:"status"`
 	OrderId            string                   `bson:"orderId"`
 	FlowType           string                   `bson:"flowType"`
@@ -206,7 +206,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 		query = append(query, bson.D{{"orderId", val}})
 	}
 	for _, val := range SummaryFilters.WorkflowIDs {
-		query = append(query, bson.D{{"initialInput.workflowId", val}})
+		query = append(query, bson.D{{"_id", val}})
 	}
 	if len(query) > 0 {
 		orQuery := bson.D{{"$or", query}}
@@ -250,6 +250,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 		bye, _ := json.Marshal(result)
 		var i WorkflowExecutionDataBody
 		json.Unmarshal(bye, &i)
+		log.Info(ctx, "Entry::::: ", i.WorkflowId)
 		WorkflowExecutionData = append(WorkflowExecutionData, i)
 	}
 	return WorkflowExecutionData, nil
@@ -383,3 +384,24 @@ func (DBClient *DocDBClient) GetTimedoutTask(ctx context.Context, WorkflowId str
 	log.Info(ctx, "task timed out: %s", timedOutStep.TaskName)
 	return timedOutStep.TaskName
 }
+
+// func (DBClient *DocDBClient) GetListOfWorkflows(ctx context.Context, count int64) {
+// 	collection := DBClient.DBClient.Database(Database).Collection(WorkflowDataCollection)
+// 	findOptions := options.Find()
+// 	findOptions.SetSort(bson.D{{"startTime", 1}})
+// 	findOptions.SetProjection(bson.D{{"_id", 1}})
+// 	curr, err := collection.Find(ctx, bson.D{}, findOptions)
+// 	if err != nil {
+// 		log.Errorf(ctx, "Failed to run find query: %v", err)
+// 		return WorkflowExecutionData, err
+// 	}
+// 	var results []bson.M
+// 	// check for errors in the conversion
+// 	if err = curr.All(ctx, &results); err != nil {
+// 		log.Errorf(ctx, "Failed to run find query: %v", err)
+// 		return WorkflowExecutionData, err
+// 	}
+// 	for _, result := range results {
+// 		log.Info()
+// 	}
+// }
