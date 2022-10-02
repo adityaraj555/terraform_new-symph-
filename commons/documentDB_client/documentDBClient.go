@@ -224,10 +224,10 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 	} else {
 		query, queryArray := bson.A{}, bson.A{}
 		for _, val := range SummaryFilters.OrderIDs {
-			query = append(query, bson.D{{"orderId", val}, {"$sort", bson.D{{"createdAt", 1}}}, {"$slice", 1}})
+			query = append(query, bson.D{{"orderId", val}, {"$slice", 1}})
 		}
 		for _, val := range SummaryFilters.WorkflowIDs {
-			query = append(query, bson.D{{"_id", val}, {"$sort", bson.D{{"createdAt", 1}}}, {"$slice", 1}})
+			query = append(query, bson.D{{"_id", val}})
 		}
 		if len(query) > 0 {
 			orQuery := bson.D{{"$or", query}}
