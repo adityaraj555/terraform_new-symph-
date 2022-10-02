@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 
 	"time"
 
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
@@ -88,14 +88,37 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	case "sfnSummary":
-		log.Infof(ctx, "Filter: %+v, %+v, %s", Request.SfnSummaryFilters.OrderIDs, Request.SfnSummaryFilters.WorkflowIDs, Request.Action)
-		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters)
+		log.Infof(ctx, "Filter: %+v", Request.SfnSummaryFilters)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters, false)
 		if err != nil {
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
-		log.Infof(ctx, "Response: %+v", response)
-		return response, nil
+		workflowSummary := []documentDB_client.WorkflowExecutionDataBody{}
+		for _, result := range response {
+			bye, _ := json.Marshal(result)
+			var temp documentDB_client.WorkflowExecutionDataBody
+			json.Unmarshal(bye, &temp)
+			workflowSummary = append(workflowSummary, temp)
+		}
+		log.Infof(ctx, "Response: %+v", workflowSummary)
+		return workflowSummary, nil
+	case "sfnListOfWorkflowIDs":
+		log.Infof(ctx, "Filter: %+v", Request.SfnSummaryFilters)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters, true)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		workflowIDs := []documentDB_client.WorkflowID{}
+		for _, result := range response {
+			bye, _ := json.Marshal(result)
+			var temp documentDB_client.WorkflowID
+			json.Unmarshal(bye, &temp)
+			workflowIDs = append(workflowIDs, temp)
+		}
+		log.Infof(ctx, "Response: %+v", workflowIDs)
+		return workflowIDs, nil
 	}
 
 	log.Info(ctx, "Datastorelambda successful...")
@@ -112,26 +135,23 @@ func notificationWrapper(ctx context.Context, req RequestBody) (interface{}, err
 }
 
 func main() {
-	log_config.InitLogging(loglevel)
-	commonHandler = common_handler.New(false, false, true, true, false)
-	lambda.Start(notificationWrapper)
-	// d := []byte(`{
-	// 	"sfnSummaryFilters": {
-	// 	  "orderIds": [
-	// 		"44836830"
-	// 	  ],
-	// 	  "workflowIds": [
-	// 		"44836830"
-	// 	  ],
-	// 	  "source": "MA",
-	// 	  "startDate": 12344
-	// 	},
-	// 	"action": "sfnSummary"
-	//   }`)
-	// req := RequestBody{}
-	// json.Unmarshal(d, &req)
-	// commonHandler.DBClient = new(documentDB_client.DocDBClient)
-	// Handler(context.Background(), req)
+	// log_config.InitLogging(loglevel)
+	// commonHandler = common_handler.New(false, false, true, true, false)
+	// lambda.Start(notificationWrapper)
+	d := []byte(`{
+		"sfnSummaryFilters": {
+		  "orderIds": [
+		  ],
+		  "workflowIds": [
+		  ],
+		  "source": "MA"
+		},
+		"action": "sfnListOfWorkflowIDs"
+	  }`)
+	req := RequestBody{}
+	json.Unmarshal(d, &req)
+	commonHandler.DBClient = documentDB_client.NewDBClientService(map[string]interface{}{})
+	Handler(context.Background(), req)
 }
 
 func handleTimeout(ctx context.Context, req RequestBody) error {
@@ -174,3 +194,5 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	})
 	return nil
 }
+
+// mongodb+srv://master:<password>@cluster0.qucxctq.mongodb.net/?retryWrites=true&w=majority
