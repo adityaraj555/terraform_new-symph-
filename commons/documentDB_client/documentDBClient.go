@@ -212,7 +212,7 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 	}
 	if SummaryFilters.MaxCount != 0 {
 		findOptions.SetLimit(SummaryFilters.MaxCount)
-		findOptions.SetSort(bson.D{{"createdAt", 1}})
+		findOptions.SetSort(bson.D{{"createdAt", -1}})
 		finalQuery = bson.M{"initialInput.source": SummaryFilters.Source}
 
 	} else if SummaryFilters.EndDate != 0 {
