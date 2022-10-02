@@ -100,7 +100,8 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 "states:StartExecution",
                 "states:DeleteStateMachine",
                 "states:ListExecutions",
-                "states:UpdateStateMachine"
+                "states:UpdateStateMachine",
+                "states:GetExecutionHistory"
               ],
               "Resource": [ 
                 "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-evoss-rerun-sfn",
