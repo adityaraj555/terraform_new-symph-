@@ -6,6 +6,7 @@ import (
 
 	"time"
 
+	"github.com/aws/aws-lambda-go/lambda"
 	"github.eagleview.com/engineering/assess-platform-library/log"
 	"github.eagleview.com/engineering/symphony-service/commons/common_handler"
 	"github.eagleview.com/engineering/symphony-service/commons/documentDB_client"
@@ -135,23 +136,23 @@ func notificationWrapper(ctx context.Context, req RequestBody) (interface{}, err
 }
 
 func main() {
-	// log_config.InitLogging(loglevel)
-	// commonHandler = common_handler.New(false, false, true, true, false)
-	// lambda.Start(notificationWrapper)
-	d := []byte(`{
-		"sfnSummaryFilters": {
-		  "orderIds": [
-		  ],
-		  "workflowIds": [
-		  ],
-		  "source": "MA"
-		},
-		"action": "sfnListOfWorkflowIDs"
-	  }`)
-	req := RequestBody{}
-	json.Unmarshal(d, &req)
-	commonHandler.DBClient = documentDB_client.NewDBClientService(map[string]interface{}{})
-	Handler(context.Background(), req)
+	log_config.InitLogging(loglevel)
+	commonHandler = common_handler.New(false, false, true, true, false)
+	lambda.Start(notificationWrapper)
+	// d := []byte(`{
+	// 	"sfnSummaryFilters": {
+	// 	  "orderIds": [
+	// 	  ],
+	// 	  "workflowIds": [
+	// 	  ],
+	// 	  "source": "MA"
+	// 	},
+	// 	"action": "sfnListOfWorkflowIDs"
+	//   }`)
+	// req := RequestBody{}
+	// json.Unmarshal(d, &req)
+	// commonHandler.DBClient = documentDB_client.NewDBClientService(map[string]interface{}{})
+	// Handler(context.Background(), req)
 }
 
 func handleTimeout(ctx context.Context, req RequestBody) error {
