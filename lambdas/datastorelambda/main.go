@@ -33,6 +33,7 @@ type RequestBody struct {
 	WorkflowId        string                           `json:"workflowId"`
 	Action            string                           `json:"action"`
 	FlowType          string                           `json:"flowType"`
+	StepID            string                           `json:"stepId"`
 	SfnSummaryFilters documentDB_client.SummaryFilters `json:"sfnSummaryFilters"`
 }
 
@@ -120,6 +121,13 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 		}
 		log.Infof(ctx, "Response: %+v", workflowIDs)
 		return workflowIDs, nil
+	case "getOutputByStep":
+		response, err := commonHandler.DBClient.FetchStepExecutionData(ctx, Request.StepID)
+		if err != nil {
+			log.Errorf(ctx, "Unable to Fetch from DocuumentDb error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		return response.Output, nil
 	}
 
 	log.Info(ctx, "Datastorelambda successful...")
