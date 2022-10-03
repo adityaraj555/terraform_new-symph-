@@ -137,6 +137,7 @@ func (DBClient *DocDBClient) FetchStepExecutionData(ctx context.Context, StepId 
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return StepExecutionDataBody{}, err
 	}
+	log.Infof(ctx, "Exection Data: %+v", StepExecutionData)
 	return StepExecutionData, nil
 }
 func (DBClient *DocDBClient) InsertStepExecutionData(ctx context.Context, StepExecutionData StepExecutionDataBody) error {
