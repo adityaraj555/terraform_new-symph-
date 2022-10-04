@@ -51,6 +51,7 @@ type IDocDBClient interface {
 	CheckConnection(ctx context.Context) error
 	GetHipsterCountPerDay(ctx context.Context) (int64, error)
 	GetTimedoutTask(ctx context.Context, WorkflowId string) string
+	FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, SummaryFilters SummaryFilters, onlyWorkflowIds bool) ([]bson.M, error)
 }
 
 type DocDBClient struct {
@@ -58,7 +59,7 @@ type DocDBClient struct {
 }
 
 type WorkflowExecutionDataBody struct {
-	WorkflowId         string                   `bson:"_id"`
+	WorkflowId         string                   `json:"_id" bson:"_id"`
 	Status             string                   `bson:"status"`
 	OrderId            string                   `bson:"orderId"`
 	FlowType           string                   `bson:"flowType"`
@@ -93,6 +94,19 @@ type StepsPassedThroughBody struct {
 	Status    string `bson:"status"`
 }
 
+type SummaryFilters struct {
+	OrderIDs    []string `json:"orderIds"`
+	WorkflowIDs []string `json:"workflowIds"`
+	Source      string   `json:"source"`
+	StartTime   int64    `json:"startTime"`
+	EndTime     int64    `json:"endTime"`
+	MaxCount    int64    `json:"maxCount"`
+}
+
+type WorkflowID struct {
+	WorkflowID string `json:"_id"`
+}
+
 func NewDBClientService(secrets map[string]interface{}) *DocDBClient {
 	Username = secrets["username"].(string)
 	Password = secrets["password"].(string)
@@ -123,6 +137,7 @@ func (DBClient *DocDBClient) FetchStepExecutionData(ctx context.Context, StepId 
 		log.Errorf(ctx, "Failed to run find query: %v", err)
 		return StepExecutionDataBody{}, err
 	}
+	log.Infof(ctx, "Exection Data: %+v", StepExecutionData)
 	return StepExecutionData, nil
 }
 func (DBClient *DocDBClient) InsertStepExecutionData(ctx context.Context, StepExecutionData StepExecutionDataBody) error {
@@ -183,6 +198,60 @@ func (DBClient *DocDBClient) FetchWorkflowExecutionData(ctx context.Context, wor
 		return WorkflowExecutionDataBody{}, err
 	}
 	return WorkflowExecutionData, nil
+}
+
+func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.Context, SummaryFilters SummaryFilters, onlyWorkflowIds bool) ([]bson.M, error) {
+	collection := db.DBClient.Database(Database).Collection(WorkflowDataCollection)
+
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout*time.Second)
+	defer cancel()
+	finalQuery := bson.M{}
+	var results []bson.M
+	findOptions := options.Find()
+	if onlyWorkflowIds {
+		findOptions.SetProjection(bson.D{{"_id", 1}})
+	}
+	if SummaryFilters.MaxCount != 0 {
+		findOptions.SetLimit(SummaryFilters.MaxCount)
+		findOptions.SetSort(bson.D{{"createdAt", -1}})
+		finalQuery = bson.M{"initialInput.source": SummaryFilters.Source}
+
+	} else if SummaryFilters.EndTime != 0 {
+		if SummaryFilters.StartTime != 0 {
+			finalQuery = bson.M{"createdAt": bson.M{"$lt": SummaryFilters.StartTime, "$gt": SummaryFilters.EndTime}, "initialInput.source": SummaryFilters.Source}
+		} else {
+			finalQuery = bson.M{"createdAt": bson.M{"$gt": SummaryFilters.EndTime}, "initialInput.source": SummaryFilters.Source}
+		}
+	} else {
+		query, queryArray := bson.A{}, bson.A{}
+		for _, val := range SummaryFilters.OrderIDs {
+			query = append(query, bson.D{{"orderId", val}})
+		}
+		for _, val := range SummaryFilters.WorkflowIDs {
+			query = append(query, bson.D{{"_id", val}})
+		}
+		if len(query) > 0 {
+			orQuery := bson.D{{"$or", query}}
+			queryArray = append(queryArray, orQuery)
+		}
+		if SummaryFilters.Source != "" {
+			sourceQuery := bson.D{{"initialInput.source", SummaryFilters.Source}}
+			queryArray = append(queryArray, sourceQuery)
+		}
+		finalQuery = bson.M{"$and": queryArray}
+	}
+	log.Infof(ctx, "Final Query: %+v", finalQuery)
+	curr, err := collection.Find(ctx, finalQuery, findOptions)
+	if err != nil {
+		log.Errorf(ctx, "Failed to run find query: %v", err)
+		return results, err
+	}
+
+	// check for errors in the conversion
+	if err = curr.All(ctx, &results); err != nil {
+		log.Errorf(ctx, "Failed to run find query: %v", err)
+	}
+	return results, err
 }
 
 func (DBClient *DocDBClient) BuildQueryForUpdateWorkflowDataCallout(ctx context.Context, TaskName, stepID, status string, starttime int64, IsWaitTask bool) interface{} {

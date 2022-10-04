@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 
 	"time"
 
@@ -27,20 +28,22 @@ const (
 )
 
 type RequestBody struct {
-	Input      map[string]interface{} `json:"input"`
-	OrderId    string                 `json:"orderId"`
-	WorkflowId string                 `json:"workflowId"`
-	Action     string                 `json:"action"`
-	FlowType   string                 `json:"flowType"`
+	Input             map[string]interface{}           `json:"input"`
+	OrderId           string                           `json:"orderId"`
+	WorkflowId        string                           `json:"workflowId"`
+	Action            string                           `json:"action"`
+	FlowType          string                           `json:"flowType"`
+	StepID            string                           `json:"stepId"`
+	SfnSummaryFilters documentDB_client.SummaryFilters `json:"sfnSummaryFilters"`
 }
 
 const DBSecretARN = "DBSecretARN"
 
-func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, error) {
+func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 	var err error
 	ctx = log_config.SetTraceIdInContext(ctx, Request.OrderId, Request.WorkflowId)
 
-	log.Info(ctx, "Datastorelambda reached...")
+	log.Infof(ctx, "Datastorelambda reached... %+v", Request)
 	switch Request.Action {
 	case "insert":
 		var data documentDB_client.WorkflowExecutionDataBody
@@ -86,13 +89,52 @@ func Handler(ctx context.Context, Request RequestBody) (map[string]interface{}, 
 			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
 			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
+	case "sfnSummary":
+		log.Infof(ctx, "Filter: %+v", Request.SfnSummaryFilters)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters, false)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		workflowSummary := []documentDB_client.WorkflowExecutionDataBody{}
+		for _, result := range response {
+			bye, _ := json.Marshal(result)
+			var temp documentDB_client.WorkflowExecutionDataBody
+			json.Unmarshal(bye, &temp)
+			workflowSummary = append(workflowSummary, temp)
+		}
+		log.Infof(ctx, "Response: %+v", len(workflowSummary))
+		return workflowSummary, nil
+	case "sfnListOfWorkflowIDs":
+		log.Infof(ctx, "Filter: %+v", Request.SfnSummaryFilters)
+		response, err := commonHandler.DBClient.FetchWorkflowExecutionDataByListOfWorkflows(ctx, Request.SfnSummaryFilters, true)
+		if err != nil {
+			log.Errorf(ctx, "Unable to UpdateDocumentDB error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		workflowIDs := []documentDB_client.WorkflowID{}
+		for _, result := range response {
+			bye, _ := json.Marshal(result)
+			var temp documentDB_client.WorkflowID
+			json.Unmarshal(bye, &temp)
+			workflowIDs = append(workflowIDs, temp)
+		}
+		log.Infof(ctx, "Response: %+v", workflowIDs)
+		return workflowIDs, nil
+	case "getOutputByStep":
+		response, err := commonHandler.DBClient.FetchStepExecutionData(ctx, Request.StepID)
+		if err != nil {
+			log.Errorf(ctx, "Unable to Fetch from DocuumentDb error = %s", err)
+			return map[string]interface{}{"status": "failed"}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
+		}
+		return response.Output, nil
 	}
 
 	log.Info(ctx, "Datastorelambda successful...")
 	return map[string]interface{}{"status": Success}, nil
 }
 
-func notificationWrapper(ctx context.Context, req RequestBody) (map[string]interface{}, error) {
+func notificationWrapper(ctx context.Context, req RequestBody) (interface{}, error) {
 	resp, err := Handler(ctx, req)
 	if err != nil {
 		cerr := err.(error_handler.ICodedError)
@@ -147,3 +189,5 @@ func handleTimeout(ctx context.Context, req RequestBody) error {
 	})
 	return nil
 }
+
+// mongodb+srv://master:<password>@cluster0.qucxctq.mongodb.net/?retryWrites=true&w=majority

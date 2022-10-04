@@ -83,6 +83,7 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 ],
                 "Resource": [
                     "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.callback_lambda_name}",
+                    "arn:aws:lambda:${local.region}:${local.account_id}:function:${local.resource_name_prefix}-lambda-${module.config.environment_config_map.datastore_lambda_name}",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*",
                     "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveLegacyOrder",
@@ -99,13 +100,18 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                 "states:StartExecution",
                 "states:DeleteStateMachine",
                 "states:ListExecutions",
-                "states:UpdateStateMachine"
+                "states:UpdateStateMachine",
+                "states:GetExecutionHistory"
               ],
               "Resource": [ 
                 "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-evoss-rerun-sfn",
                 "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-sim",
                 "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-ais",
-                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-symphony_workflow"
+                "arn:aws:states:${local.region}:${local.account_id}:stateMachine:${local.resource_name_prefix}-sfn-symphony_workflow",
+                "arn:aws:states:${local.region}:${local.account_id}:execution:${local.resource_name_prefix}-sfn-evoss-rerun-sfn:*",
+                "arn:aws:states:${local.region}:${local.account_id}:execution:${local.resource_name_prefix}-sfn-sim:*",
+                "arn:aws:states:${local.region}:${local.account_id}:execution:${local.resource_name_prefix}-sfn-ais:*",
+                "arn:aws:states:${local.region}:${local.account_id}:execution:${local.resource_name_prefix}-sfn-symphony_workflow:*"
               ]
             }
 
