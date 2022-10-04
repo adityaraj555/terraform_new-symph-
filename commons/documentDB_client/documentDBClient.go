@@ -218,9 +218,9 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 
 	} else if SummaryFilters.EndDate != 0 {
 		if SummaryFilters.StartDate != 0 {
-			finalQuery = bson.M{"createdAt": bson.M{"$gt": SummaryFilters.StartDate, "$lt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
+			finalQuery = bson.M{"createdAt": bson.M{"$lt": SummaryFilters.StartDate, "$gt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
 		} else {
-			finalQuery = bson.M{"createdAt": bson.M{"$lt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
+			finalQuery = bson.M{"createdAt": bson.M{"$gt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
 		}
 	} else {
 		query, queryArray := bson.A{}, bson.A{}
