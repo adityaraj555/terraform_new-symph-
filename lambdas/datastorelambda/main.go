@@ -103,7 +103,7 @@ func Handler(ctx context.Context, Request RequestBody) (interface{}, error) {
 			json.Unmarshal(bye, &temp)
 			workflowSummary = append(workflowSummary, temp)
 		}
-		log.Infof(ctx, "Response: %+v", workflowSummary)
+		log.Infof(ctx, "Response: %+v", len(workflowSummary))
 		return workflowSummary, nil
 	case "sfnListOfWorkflowIDs":
 		log.Infof(ctx, "Filter: %+v", Request.SfnSummaryFilters)
@@ -147,20 +147,6 @@ func main() {
 	log_config.InitLogging(loglevel)
 	commonHandler = common_handler.New(false, false, true, true, false)
 	lambda.Start(notificationWrapper)
-	// d := []byte(`{
-	// 	"sfnSummaryFilters": {
-	// 	  "orderIds": [
-	// 	  ],
-	// 	  "workflowIds": [
-	// 	  ],
-	// 	  "source": "MA"
-	// 	},
-	// 	"action": "sfnListOfWorkflowIDs"
-	//   }`)
-	// req := RequestBody{}
-	// json.Unmarshal(d, &req)
-	// commonHandler.DBClient = documentDB_client.NewDBClientService(map[string]interface{}{})
-	// Handler(context.Background(), req)
 }
 
 func handleTimeout(ctx context.Context, req RequestBody) error {

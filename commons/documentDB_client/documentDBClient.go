@@ -98,8 +98,8 @@ type SummaryFilters struct {
 	OrderIDs    []string `json:"orderIds"`
 	WorkflowIDs []string `json:"workflowIds"`
 	Source      string   `json:"source"`
-	StartDate   int64    `json:"startDate"`
-	EndDate     int64    `json:"endDate"`
+	StartTime   int64    `json:"startTime"`
+	EndTime     int64    `json:"endTime"`
 	MaxCount    int64    `json:"maxCount"`
 }
 
@@ -216,11 +216,11 @@ func (db *DocDBClient) FetchWorkflowExecutionDataByListOfWorkflows(ctx context.C
 		findOptions.SetSort(bson.D{{"createdAt", -1}})
 		finalQuery = bson.M{"initialInput.source": SummaryFilters.Source}
 
-	} else if SummaryFilters.EndDate != 0 {
-		if SummaryFilters.StartDate != 0 {
-			finalQuery = bson.M{"createdAt": bson.M{"$lt": SummaryFilters.StartDate, "$gt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
+	} else if SummaryFilters.EndTime != 0 {
+		if SummaryFilters.StartTime != 0 {
+			finalQuery = bson.M{"createdAt": bson.M{"$lt": SummaryFilters.StartTime, "$gt": SummaryFilters.EndTime}, "initialInput.source": SummaryFilters.Source}
 		} else {
-			finalQuery = bson.M{"createdAt": bson.M{"$gt": SummaryFilters.EndDate}, "initialInput.source": SummaryFilters.Source}
+			finalQuery = bson.M{"createdAt": bson.M{"$gt": SummaryFilters.EndTime}, "initialInput.source": SummaryFilters.Source}
 		}
 	} else {
 		query, queryArray := bson.A{}, bson.A{}
