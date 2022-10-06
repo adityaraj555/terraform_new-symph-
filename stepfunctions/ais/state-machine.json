@@ -26,11 +26,76 @@
                     "BackoffRate": 2
                 }
             ],
-            "Next": "Parallel",
+            "Next": "InvokeSim",
             "ResultSelector": {
                 "response.$": "$.Payload"
             },
             "ResultPath": "$.InsertWorkflowDataToDocDB"
+        },
+        "InvokeSim": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "ResultSelector": {
+                "response.$": "$"
+            },
+            "ResultPath": "$.InvokeSim",
+            "OutputPath": "$",
+            "Parameters": {
+                "Payload": {
+                    "requestData": {
+                        "address": {
+                            "lat.$": "$$.Execution.Input.address.latitude",
+                            "long.$": "$$.Execution.Input.address.longitude"
+                        },
+                        "meta": {
+                            "callbackUrl": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-checkhipstereligibility"
+                        }
+                    },
+                    "url": "${SIM_HOST_URL}/pdo/api/v1/sim/job",
+                    "requestMethod": "POST",
+                    "headers": {},
+                    "isWaitTask": true,
+                    "timeout": 45,
+                    "storeDataToS3": "",
+                    "taskName": "InvokeSim",
+                    "workflowId.$": "$$.Execution.Name",
+                    "taskToken.$": "$$.Task.Token",
+                    "auth": {
+                        "type": "bearer",
+                        "authData": {
+                            "secretStoreType": "pdo_secret_manager",
+                            "clientIdKey": "ClientID",
+                            "clientSecretKey": "ClientSecret",
+                            "url": "${ENDPOINT_AUTH_TOKEN}"
+                        }
+                    }
+                },
+                "FunctionName": "arn:aws:lambda:${region}:${resource_name_prefix}-lambda-calloutlambda:$LATEST"
+            },
+            "Retry": [
+                {
+                    "ErrorEquals": [
+                        "RetriableError",
+                        "Lambda.ServiceException",
+                        "Lambda.AWSLambdaException",
+                        "Lambda.SdkClientException"
+                    ],
+                    "IntervalSeconds": 60,
+                    "MaxAttempts": 2,
+                    "BackoffRate": 1
+                }
+            ],
+            "Next": "Parallel",
+            "Catch": [
+                {
+                    "ErrorEquals": [
+                        "States.ALL"
+                    ],
+                    "Next": "Parallel",
+                    "ResultPath": "$.InvokeSim"
+                }
+            ],
+            "TimeoutSeconds": 300
         },
         "Parallel": {
             "Type": "Parallel",
