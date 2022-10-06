@@ -129,7 +129,7 @@ func handler(ctx context.Context, eventData eventData) (eventResponse, error) {
 	if !isValid {
 		// make callback if structures doesn't exist after ingestion
 		if eventData.Action == querydata {
-			err = error_handler.NewRetriableError(error_codes.ErrorQueryingPDWAfterIngestion, "unable to query data after ingestion")
+			err = error_handler.NewServiceError(error_codes.ErrorQueryingPDWAfterIngestion, "unable to query data after ingestion")
 			return eventResponse{}, err
 		}
 		//Address := fmt.Sprintf("%s %s %s %s", validationgraphResponse.Data.Parcels[0].Address, validationgraphResponse.Data.Parcels[0].City, validationgraphResponse.Data.Parcels[0].State, validationgraphResponse.Data.Parcels[0].Zip)

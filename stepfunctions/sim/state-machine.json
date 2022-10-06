@@ -272,8 +272,8 @@
                     "RetriableError"
                   ],
                   "IntervalSeconds": 60,
-                  "MaxAttempts": 3,
-                  "BackoffRate": 2
+                  "MaxAttempts": 2,
+                  "BackoffRate": 1
                 }
               ],
               "End": true,
