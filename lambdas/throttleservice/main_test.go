@@ -120,7 +120,7 @@ func TestGetWorkflowExecutionPathHipster(t *testing.T) {
 	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
 
 	eventDataRequestObj.IsPenetration = false
-	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	resp, _, _, _, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -139,7 +139,7 @@ func TestGetWorkflowExecutionPathHTwister(t *testing.T) {
 	var count int64 = 20
 	t.Setenv("AllowedHipsterCount", "50")
 	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
-	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	resp, _, _, _, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 }
