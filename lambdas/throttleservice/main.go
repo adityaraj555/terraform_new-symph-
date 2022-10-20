@@ -43,7 +43,7 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 	ctx = log_config.SetTraceIdInContext(ctx, eventData.ReportID, eventData.WorkflowID)
 
 	// set the execution to twister or hipster
-	Path, err := getWorkflowExecutionPath(ctx, eventData)
+	Path, todayCount, thresholdVal, isHipsterAllowed, err := getWorkflowExecutionPath(ctx, eventData)
 	if err != nil {
 		return map[string]interface{}{"status": failed}, err
 	}
@@ -61,31 +61,33 @@ func handler(ctx context.Context, eventData *eventData) (map[string]interface{},
 			return map[string]interface{}{"status": failed}, error_handler.NewServiceError(error_codes.ErrorUpdatingWorkflowDataInDB, err.Error())
 		}
 	}
-	return map[string]interface{}{"Path": Path, "status": Success}, nil
+	return map[string]interface{}{"Path": Path, "status": Success, "TodayHipsterCountBeforeCurrentOrder": todayCount, "HipsterThresholdValue": thresholdVal, "isHipsterAllowed":  isHipsterAllowed}, nil
 }
 
-func getWorkflowExecutionPath(ctx context.Context, eventData *eventData) (string, error) {
-
-	// Get the count of data from documnetDB for last 24 hours UTC
-	count, err := commonHandler.DBClient.GetHipsterCountPerDay(ctx)
-	if err != nil {
-		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
-		return "", error_handler.NewServiceError(error_codes.ErrorFetchingHipsterCountFromDB, err.Error())
-	}
-
+func getWorkflowExecutionPath(ctx context.Context, eventData *eventData) (string, int64, int64, bool, error) {
+	var threshold, count int64
+	isHipsterAllowed :=  hipsterAllowed(ctx, eventData)
 	threshold, err := strconv.ParseInt(os.Getenv(AllowedHipsterCount), 10, 64)
 	if err != nil {
 		log.Errorf(ctx, "Unable to convert string to int64 error = %s", err)
-		return "", error_handler.NewServiceError(error_codes.ErrorConvertingAllowedHipsterCountToInteger, err.Error())
+		return "", count, threshold, isHipsterAllowed, error_handler.NewServiceError(error_codes.ErrorConvertingAllowedHipsterCountToInteger, err.Error())
+	}
+
+	// Get the count of data from documnetDB for last 24 hours UTC
+	count, err = commonHandler.DBClient.GetHipsterCountPerDay(ctx)
+	if err != nil {
+		log.Errorf(ctx, "Unable to Fetch from DocumentDb error = %s", err)
+		return "", count, threshold, isHipsterAllowed, error_handler.NewServiceError(error_codes.ErrorFetchingHipsterCountFromDB, err.Error())
 	}
 
 	// Move to hipster only when count is less than threshold and product matches
-	if (count < threshold) && hipsterAllowed(ctx, eventData) {
+	
+	if (count < threshold) && isHipsterAllowed {
 		log.Infof(ctx, "Path is set as hipster", err)
-		return hipster, nil
+		return hipster, count, threshold, isHipsterAllowed, nil
 	}
 	log.Infof(ctx, "Path is set as twister", err)
-	return twister, nil
+	return twister, count, threshold, isHipsterAllowed, nil
 }
 
 func hipsterAllowed(ctx context.Context, eventData *eventData) bool {

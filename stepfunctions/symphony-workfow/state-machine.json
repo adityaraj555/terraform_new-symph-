@@ -124,27 +124,16 @@
                     "BackoffRate": 1
                 }
             ],
-            "Next": "isValidFacetCount",
+            "Next": "MeasurementAutomation",
             "TimeoutSeconds": 300,
             "Catch": [
                 {
                     "ErrorEquals": [
                         "States.ALL"
                     ],
-                    "Next": "updateMLAutomationRejected"
+                    "Next": "MeasurementAutomation"
                 }
             ]
-        },
-        "isValidFacetCount": {
-            "Type": "Choice",
-            "Choices": [
-                {
-                    "Variable": "$.CheckIsMAEligible.response.isValidFacetCount",
-                    "BooleanEquals": false,
-                    "Next": "updateMLAutomationRejected"
-                }
-            ],
-            "Default": "MeasurementAutomation"
         },
         "MeasurementAutomation": {
             "Type": "Parallel",

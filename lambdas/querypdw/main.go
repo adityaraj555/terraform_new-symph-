@@ -303,6 +303,11 @@ func isValidPDWResponse(pdwResponse pdwValidationResponse, minDate string) bool 
 	if marker == "" || (minDate != "" && marker < minDate) {
 		return false
 	}
+
+	if len(pdwResponse.Data.Parcels[0].Structures) == 0 {
+		return false
+	}
+
 	countRoofFacetsObj := pdwResponse.Data.Parcels[0].Structures[0].Roof["_countRoofFacets"]
 	if countRoofFacetsObj == nil {
 		return false

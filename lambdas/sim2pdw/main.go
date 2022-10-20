@@ -190,6 +190,7 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 	trampolineCount := 0
 	timeStamp := simOutput.Image.ShotDateTime + "T00:00:00.000000+00:00"
 	dateCreated := time.Now().Format(time.RFC3339)
+	var roofPayload *PDWPayload
 
 	imageryMeta := map[string]interface{}{
 		"imageSetUrn": simOutput.Image.ImageSetURN,
@@ -212,10 +213,10 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 				payload.Attributes["type"] = pdwAttributes{
 					Value: "main",
 				}
-				roofPayload := setPayloadAttributes(ctx, *simOutput, v, imageryMeta, dateCreated, address, timeStamp)
+				rPayload := setPayloadAttributes(ctx, *simOutput, v, imageryMeta, dateCreated, address, timeStamp)
 				facetCount := getFacetCount(ctx, v)
-				roofPayload = getRoofPayload(ctx, roofPayload, v, facetCount)
-				resp = append(resp, roofPayload)
+				rPayload = getRoofPayload(ctx, rPayload, v, facetCount)
+				roofPayload = &rPayload
 
 			case v.SubType == "barn":
 				payload.Attributes["type"] = pdwAttributes{
@@ -257,6 +258,10 @@ func sim2Pdw(ctx context.Context, simOutput *SimOutput, parcelId, address string
 			continue
 		}
 		resp = append(resp, payload)
+	}
+
+	if roofPayload != nil {
+		resp = append(resp, *roofPayload)
 	}
 
 	parcel := PDWPayload{

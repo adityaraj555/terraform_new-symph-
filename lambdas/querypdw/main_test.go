@@ -105,6 +105,62 @@ func TestHandlerTriggerSIM(t *testing.T) {
 
 }
 
+func TestHandlerTriggerSIM3NoStructures(t *testing.T) {
+
+	var eventDataReq eventData
+	scannerErr := json.Unmarshal(testevent, &eventDataReq)
+	assert.NoError(t, scannerErr)
+	aws_Client := new(mocks.IAWSClient)
+	http_Client := new(mocks.MockHTTPClient)
+	mock_auth_client := new(mocks.AuthTokenInterface)
+	mock_auth_client.Mock.On("AddAuthorizationTokenHeader", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	auth_client = mock_auth_client
+	http_Client.Mock.On("Post").Return(&http.Response{
+
+		Body: ioutil.NopCloser(bytes.NewBufferString(string(`{
+			"data": {
+			  "parcels": [
+				{
+				  "state": "NY",
+				  "zip": "14625",
+				  "id": "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
+				  "_detectedBuildingCount": {
+                    "marker": "2021-08-29",
+                    "value": 1
+                   },
+				  "structures": null,
+				  "geocoder": {
+					  "lat": 43.172988,
+					  "lon": -77.501957
+				  },
+				  "address": "23 HAVENSHIRE RD",
+				  "city": "ROCHESTER"
+				}
+			  ]
+			}
+		  }`))),
+		StatusCode: http.StatusOK,
+	}, nil)
+	http_Client.On("Get").Return(nil, nil)
+	commonHandler.AwsClient = aws_Client
+	commonHandler.HttpClient = http_Client
+	commonHandler.Secrets = map[string]interface{}{
+		"ClientID":     "id",
+		"ClientSecret": "secret"}
+	expectedResp := eventResponse{
+		Address:    "23 HAVENSHIRE RD, ROCHESTER, NY, 14625",
+		Latitude:   43.172988,
+		Longitude:  -77.501957,
+		TriggerSIM: true,
+		ParcelID:   "9a3a3f3b-8ba1-468b-8102-3b3e6ee5d8c1",
+		Message:    NoStructureMessage,
+	}
+	resp, err := notificationWrapper(context.Background(), eventDataReq)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResp, resp)
+
+}
+
 func TestQueryFailed2(t *testing.T) {
 
 	var eventDataReq eventData

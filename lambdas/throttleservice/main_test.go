@@ -30,9 +30,11 @@ func TestThrottleLambdaTwisterFlow(t *testing.T) {
 	mydata := []byte(eventTestData)
 	json.Unmarshal(mydata, &eventDataRequestObj)
 
-	expectedResp := map[string]interface{}{"Path": "Twister", "status": Success}
-	commonHandler.DBClient = dBClient
 	var count int64 = 52
+	var AllowedHipsterCount int64= 50
+	expectedResp := map[string]interface{}{"Path": "Twister", "status": Success, "TodayHipsterCountBeforeCurrentOrder": count, "HipsterThresholdValue": AllowedHipsterCount, "isHipsterAllowed": false }
+	commonHandler.DBClient = dBClient
+	
 	t.Setenv("AllowedHipsterCount", "50")
 	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
 	dBClient.Mock.On("UpdateDocumentDB", testContext, mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -120,7 +122,7 @@ func TestGetWorkflowExecutionPathHipster(t *testing.T) {
 	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
 
 	eventDataRequestObj.IsPenetration = false
-	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	resp, _, _, _, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 
@@ -139,7 +141,7 @@ func TestGetWorkflowExecutionPathHTwister(t *testing.T) {
 	var count int64 = 20
 	t.Setenv("AllowedHipsterCount", "50")
 	dBClient.Mock.On("GetHipsterCountPerDay", testContext).Return(count, nil)
-	resp, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
+	resp, _, _, _, err := getWorkflowExecutionPath(testContext, &eventDataRequestObj)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedResp, resp)
 }
