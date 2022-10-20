@@ -87,8 +87,8 @@ ${module.config.environment_config_map.trust_relashionships_external_service_fac
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator",
                     "arn:aws:s3:::${local.resource_name_prefix}-s3-property-data-orchestrator/*",
                     "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveLegacyOrder",
-                    "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveSIMOrder"
-
+                    "arn:aws:sqs:${local.region}:${local.account_id}:${local.resource_name_prefix}-sqs-receiveSIMOrder",
+                    "arn:aws:sqs:${local.region}:${local.account_id}:evh22_jobQueue"
                 ],
                 "Effect": "Allow",
                 "Sid": "AccessCallback2"
